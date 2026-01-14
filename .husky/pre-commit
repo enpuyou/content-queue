@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "Running backend pre-commit checks..."
+cd content-queue-backend && poetry run pre-commit run --all-files
+
+echo "Running frontend pre-commit checks..."
+cd ../frontend && npx lint-staged
