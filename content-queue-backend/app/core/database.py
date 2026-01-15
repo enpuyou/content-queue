@@ -5,7 +5,8 @@ from app.core.config import settings
 
 # Convert postgres:// or postgresql:// to postgresql+psycopg:// for psycopg v3
 # Railway/Heroku use postgres://, SQLAlchemy needs postgresql+psycopg://
-database_url = settings.DATABASE_URL
+# Also strip whitespace/newlines that may exist in env vars
+database_url = settings.DATABASE_URL.strip()
 if database_url.startswith("postgres://"):
     database_url = database_url.replace("postgres://", "postgresql+psycopg://", 1)
 elif database_url.startswith("postgresql://"):
