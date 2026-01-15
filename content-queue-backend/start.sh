@@ -7,7 +7,7 @@ echo "=== Installing Poetry ==="
 pip install --no-cache-dir poetry
 
 echo "=== Installing dependencies from poetry.lock ==="
-python -m poetry install --no-interaction --no-root --sync
+python -m poetry install --no-interaction --no-root --no-cache --sync
 
 echo "=== Running database migrations ==="
 python -m poetry run alembic upgrade head
