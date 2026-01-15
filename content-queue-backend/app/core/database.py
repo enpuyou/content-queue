@@ -3,9 +3,12 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from app.core.config import settings
 
-# Convert postgresql:// to postgresql+psycopg:// for psycopg v3
+# Convert postgres:// or postgresql:// to postgresql+psycopg:// for psycopg v3
+# Railway/Heroku use postgres://, SQLAlchemy needs postgresql+psycopg://
 database_url = settings.DATABASE_URL
-if database_url.startswith("postgresql://"):
+if database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql+psycopg://", 1)
+elif database_url.startswith("postgresql://"):
     database_url = database_url.replace("postgresql://", "postgresql+psycopg://", 1)
 
 engine = create_engine(database_url)
