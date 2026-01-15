@@ -3,8 +3,8 @@
 
 set -e  # Exit on error
 
-echo "=== Syncing dependencies from poetry.lock ==="
-poetry sync --no-root
+echo "=== Installing main dependencies from poetry.lock ==="
+poetry install --no-root --only main
 
 echo "=== Running database migrations ==="
 poetry run alembic upgrade head

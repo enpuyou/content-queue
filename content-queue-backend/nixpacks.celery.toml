@@ -2,7 +2,7 @@
 nixPkgs = ["python311", "poetry"]
 
 [phases.install]
-cmds = ["poetry sync --no-root"]
+cmds = ["poetry install --no-root --only main"]
 
 [start]
 cmd = "poetry run celery -A app.core.celery_app worker --loglevel=info"
