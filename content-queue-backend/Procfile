@@ -1,1 +1,1 @@
-web: pip install poetry && export PATH="$HOME/.local/bin:/root/.local/bin:$PATH" && poetry install --no-interaction --no-root && poetry run alembic upgrade head && poetry run uvicorn app.main:app --host 0.0.0.0 --port $PORT
+web: pip install poetry && python -m poetry install --no-interaction --no-root && python -m poetry run alembic upgrade head && python -m poetry run uvicorn app.main:app --host 0.0.0.0 --port $PORT
