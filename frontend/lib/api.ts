@@ -1,5 +1,6 @@
 // API base URL - matches your FastAPI backend
-const API_BASE_URL = "http://localhost:8000";
+// Use environment variable for production, fallback to localhost for development
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 // Helper function to get auth token from localStorage
 const getAuthToken = () => {
