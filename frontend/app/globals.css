@@ -1,0 +1,74 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
+}
+
+/* Input and form styling improvements for better readability */
+input[type="text"],
+input[type="email"],
+input[type="url"],
+input[type="search"],
+textarea {
+  color: #111827 !important; /* gray-900 - make typed text dark */
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #6b7280 !important; /* gray-500 - make placeholders readable */
+  opacity: 1;
+}
+
+/* Ensure section headings are dark and readable */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: #111827 !important; /* gray-900 */
+}
+
+/* Better focus states */
+input:focus,
+textarea:focus,
+select:focus {
+  @apply ring-2 ring-blue-500 ring-offset-0 border-blue-500;
+}
