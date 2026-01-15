@@ -36,6 +36,10 @@ jobs:
       working-directory: ./content-queue-backend
       run: poetry install --no-interaction --no-root
 
+    - name: Install dependencies (including dev)
+      working-directory: ./content-queue-backend
+      run: poetry install --with dev
+
     - name: Run Black (code formatting check)
       working-directory: ./content-queue-backend
       run: poetry run black --check app/
