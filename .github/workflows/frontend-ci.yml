@@ -20,6 +20,11 @@ jobs:
         cache: 'npm'
         cache-dependency-path: frontend/package-lock.json
 
+    - name: Ensure npm cache dir exists + pin cache location
+      run: |
+        mkdir -p ~/.npm
+        npm config set cache ~/.npm --global
+
     - name: Install dependencies
       working-directory: ./frontend
       run: npm ci
