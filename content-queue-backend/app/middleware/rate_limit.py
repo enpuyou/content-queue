@@ -6,6 +6,7 @@ from collections import defaultdict, deque
 from typing import Dict, Deque
 import asyncio
 
+
 class RateLimiter:
     """Simple in-memory rate limiter using token bucket algorithm"""
 
@@ -14,10 +15,7 @@ class RateLimiter:
         self.locks: Dict[str, asyncio.Lock] = {}
 
     async def is_allowed(
-        self,
-        identifier: str,
-        max_requests: int,
-        window_seconds: int
+        self, identifier: str, max_requests: int, window_seconds: int
     ) -> bool:
         """Check if request is allowed within rate limit"""
 
@@ -55,20 +53,16 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             # Get identifier
             user_id = "unknown"
 
-            if hasattr(request.state, 'user'):
+            if hasattr(request.state, "user"):
                 user = request.state.user
-                if user and hasattr(user, 'id'):
+                if user and hasattr(user, "id"):
                     user_id = f"user:{user.id}"
             elif request.client:
                 user_id = f"ip:{request.client.host}"
 
             # Check limits
-            allowed_minute = await rate_limiter.is_allowed(
-                f"{user_id}:minute", 10, 60
-            )
-            allowed_hour = await rate_limiter.is_allowed(
-                f"{user_id}:hour", 50, 3600
-            )
+            allowed_minute = await rate_limiter.is_allowed(f"{user_id}:minute", 10, 60)
+            allowed_hour = await rate_limiter.is_allowed(f"{user_id}:hour", 50, 3600)
 
             if not (allowed_minute and allowed_hour):
                 limit_type = "per minute" if not allowed_minute else "per hour"
@@ -77,12 +71,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                     content={
                         "error": "rate_limit_exceeded",
                         "message": f"Too many requests {limit_type}. Please try again later.",
-                        "detail": "Rate limit: 10/minute, 50/hour"
+                        "detail": "Rate limit: 10/minute, 50/hour",
                     },
                     headers={
                         "Access-Control-Allow-Origin": "http://localhost:3000",
                         "Access-Control-Allow-Credentials": "true",
-                    }
+                    },
                 )
 
         # Process request

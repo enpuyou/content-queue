@@ -1,15 +1,19 @@
 from typing import Optional
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel
 from datetime import datetime
 from uuid import UUID
 
+
 class ContentItemCreate(BaseModel):
     """Data needed to save a new link"""
+
     url: str  # The URL to save
     list_ids: list[UUID] | None = None  # Optional: add to specific lists
 
+
 class ContentItemResponse(BaseModel):
     """What we return to the client"""
+
     id: UUID
     user_id: UUID
     original_url: str
@@ -36,19 +40,25 @@ class ContentItemResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
 class ContentItemDetail(ContentItemResponse):
     """Extended response with full text for single item view"""
+
     pass  # Same as ContentItemResponse but semantically different
+
 
 class ContentItemUpdate(BaseModel):
     """Fields that can be updated"""
+
     is_read: bool | None = None
     is_archived: bool | None = None
     read_position: Optional[float] = None
     tags: list[str] | None = None
 
+
 class ContentItemList(BaseModel):
     """Paginated list response"""
+
     items: list[ContentItemResponse]
     total: int
     skip: int

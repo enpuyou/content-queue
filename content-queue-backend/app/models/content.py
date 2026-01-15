@@ -1,4 +1,14 @@
-from sqlalchemy import Column, String, DateTime, Boolean, Integer, Text, ForeignKey, Float, ARRAY
+from sqlalchemy import (
+    Column,
+    String,
+    DateTime,
+    Boolean,
+    Integer,
+    Text,
+    ForeignKey,
+    Float,
+    ARRAY,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -6,11 +16,17 @@ from pgvector.sqlalchemy import Vector
 import uuid
 from app.core.database import Base
 
+
 class ContentItem(Base):
     __tablename__ = "content_items"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
 
     # Original submission
     original_url = Column(Text, nullable=False)
@@ -20,9 +36,11 @@ class ContentItem(Base):
     title = Column(Text)
     description = Column(Text)
     thumbnail_url = Column(Text)
-    content_type = Column(String(50), index=True)  # 'article', 'video', 'pdf', 'tweet', 'unknown'
+    content_type = Column(
+        String(50), index=True
+    )  # 'article', 'video', 'pdf', 'tweet', 'unknown'
     author = Column(String(255))
-    tags = Column(ARRAY(String(100)), default=list) # User-defined tags
+    tags = Column(ARRAY(String(100)), default=list)  # User-defined tags
     published_date = Column(DateTime(timezone=True))
 
     # Full content (extracted in background)
@@ -43,11 +61,13 @@ class ContentItem(Base):
     deleted_at = Column(DateTime(timezone=True), index=True)  # Soft delete
 
     # Processing status
-    processing_status = Column(String(50), default='pending', index=True)
+    processing_status = Column(String(50), default="pending", index=True)
     processing_error = Column(Text)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    updated_at = Column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
 
     # Relationships
     user = relationship("User", backref="content_items")

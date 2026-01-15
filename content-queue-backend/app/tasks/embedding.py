@@ -10,8 +10,10 @@ from openai import OpenAI
 
 logger = logging.getLogger(__name__)
 
+
 class DatabaseTask(Task):
     """Base task with database session"""
+
     _db: Session = None
 
     def after_return(self, *args, **kwargs):
@@ -36,7 +38,11 @@ def generate_embedding(self, content_item_id: str):
     """
     try:
         # Get content item
-        item = self.db.query(ContentItem).filter(ContentItem.id == UUID(content_item_id)).first()
+        item = (
+            self.db.query(ContentItem)
+            .filter(ContentItem.id == UUID(content_item_id))
+            .first()
+        )
         if not item:
             logger.error(f"Content item {content_item_id} not found")
             return
@@ -60,19 +66,17 @@ def generate_embedding(self, content_item_id: str):
             # OpenAI's limit is 8191 tokens for text-embedding-3-small
             words = item.full_text.split()
             if len(words) > 6000:
-                truncated_text = ' '.join(words[:6000])
+                truncated_text = " ".join(words[:6000])
                 text_parts.append(truncated_text)
             else:
                 text_parts.append(item.full_text)
 
-        text_to_embed = '\n\n'.join(text_parts)
+        text_to_embed = "\n\n".join(text_parts)
 
         # Generate embedding using OpenAI
         client = OpenAI(api_key=settings.OPENAI_API_KEY)
         response = client.embeddings.create(
-            model="text-embedding-3-small",
-            input=text_to_embed,
-            encoding_format="float"
+            model="text-embedding-3-small", input=text_to_embed, encoding_format="float"
         )
 
         # Extract embedding vector
@@ -82,12 +86,14 @@ def generate_embedding(self, content_item_id: str):
         item.embedding = embedding
         self.db.commit()
 
-        logger.info(f"Successfully generated embedding for {item.original_url} (dimension: {len(embedding)})")
+        logger.info(
+            f"Successfully generated embedding for {item.original_url} (dimension: {len(embedding)})"
+        )
 
         return {
             "content_item_id": content_item_id,
             "embedding_dimension": len(embedding),
-            "status": "completed"
+            "status": "completed",
         }
 
     except Exception as e:
@@ -95,6 +101,6 @@ def generate_embedding(self, content_item_id: str):
 
         # Retry with exponential backoff
         if self.request.retries < self.max_retries:
-            raise self.retry(exc=e, countdown=60 * (2 ** self.request.retries))
+            raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
 
         return {"content_item_id": content_item_id, "status": "failed", "error": str(e)}

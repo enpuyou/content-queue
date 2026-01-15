@@ -1,6 +1,5 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from app.core.config import settings
 from app.api import auth, content, lists, search, analytics
 from app.middleware.rate_limit import RateLimitMiddleware
@@ -10,7 +9,7 @@ app = FastAPI(
     title="Content Queue API",
     description="Personal content aggregation and reading queue",
     version="0.1.0",
-    debug=settings.DEBUG
+    debug=settings.DEBUG,
 )
 
 # CORS
@@ -32,13 +31,11 @@ app.include_router(lists.router)
 app.include_router(search.router)
 app.include_router(analytics.router)
 
+
 @app.get("/")
 def root():
-    return {
-        "message": "Content Queue API",
-        "version": "0.1.0",
-        "docs": "/docs"
-    }
+    return {"message": "Content Queue API", "version": "0.1.0", "docs": "/docs"}
+
 
 @app.get("/health")
 def health_check():

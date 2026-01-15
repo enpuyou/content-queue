@@ -10,9 +10,9 @@ from app.schemas.user import TokenData
 # This tells FastAPI where to find the login endpoint
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
+
 def get_current_user(
-    token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
+    token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
 ) -> User:
     """
     Verify JWT token and return the current user.
@@ -26,7 +26,9 @@ def get_current_user(
 
     try:
         # Decode the token
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+        )
         email: str = payload.get("sub")
         if email is None:
             raise credentials_exception
@@ -40,6 +42,7 @@ def get_current_user(
         raise credentials_exception
 
     return user
+
 
 def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
     """
