@@ -218,9 +218,7 @@ export default function ListDetailPage() {
             <ContentItem
               key={content.id}
               content={content}
-              onStatusChange={(updates) =>
-                handleStatusChange(content.id, updates)
-              }
+              onStatusChange={handleStatusChange}
               onDelete={handleDelete}
               onRemoveFromList={() => handleRemoveFromList(content.id)}
             />
