@@ -1,1 +1,1 @@
-web: pip install poetry && python -m poetry install --no-interaction --no-root && python -m poetry run alembic upgrade head && python -m poetry run uvicorn app.main:app --host 0.0.0.0 --port $PORT
+web: pip install poetry && python -m poetry install --no-interaction --no-root --no-cache && python -m poetry run alembic upgrade head && python -m poetry run uvicorn app.main:app --host 0.0.0.0 --port $PORT
