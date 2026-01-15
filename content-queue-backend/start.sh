@@ -3,14 +3,11 @@
 
 set -e  # Exit on error
 
-echo "=== Installing Poetry ==="
-pip install --no-cache-dir poetry
-
-echo "=== Installing dependencies from poetry.lock ==="
-python -m poetry install --no-interaction --no-root --no-cache --sync
+echo "=== Syncing dependencies from poetry.lock ==="
+poetry sync --no-root
 
 echo "=== Running database migrations ==="
-python -m poetry run alembic upgrade head
+poetry run alembic upgrade head
 
 echo "=== Starting FastAPI server ==="
-exec python -m poetry run uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}
+exec poetry run uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}

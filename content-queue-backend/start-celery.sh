@@ -1,12 +1,10 @@
 #!/bin/bash
 # Celery worker startup script
 
-echo "Installing Poetry..."
-pip install poetry
+set -e  # Exit on error
 
-# Use python -m poetry instead of relying on PATH
-echo "Installing dependencies..."
-python -m poetry install --no-interaction --no-root --no-cache --sync
+echo "=== Syncing dependencies from poetry.lock ==="
+poetry sync --no-root
 
-echo "Starting Celery worker..."
-python -m poetry run celery -A app.core.celery_app worker --loglevel=info
+echo "=== Starting Celery worker ==="
+exec poetry run celery -A app.core.celery_app worker --loglevel=info

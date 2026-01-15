@@ -2,7 +2,7 @@
 nixPkgs = ["python311", "poetry"]
 
 [phases.install]
-cmds = ["poetry install --no-interaction --no-root"]
+cmds = ["poetry sync --no-root"]
 
 [phases.build]
 cmds = ["poetry run alembic upgrade head"]
