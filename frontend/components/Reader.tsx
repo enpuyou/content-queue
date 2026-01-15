@@ -10,6 +10,7 @@ interface ReaderProps {
   onStatusChange: (updates: {
     is_read?: boolean;
     is_archived?: boolean;
+    read_position?: number;
   }) => void;
 }
 
@@ -77,11 +78,14 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
   // Restore scroll position when article loads
   useEffect(() => {
     if (content.read_position && content.read_position > 0) {
+      // Store position in a const to ensure it's not undefined
+      const savedPosition = content.read_position;
+
       // Wait for content to render, then scroll
       setTimeout(() => {
         const docHeight =
           document.documentElement.scrollHeight - window.innerHeight;
-        const scrollTo = docHeight * content.read_position;
+        const scrollTo = docHeight * savedPosition;
         window.scrollTo({ top: scrollTo, behavior: "smooth" });
       }, 100);
     }

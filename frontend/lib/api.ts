@@ -13,10 +13,14 @@ const getAuthToken = () => {
 const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
   const token = getAuthToken();
 
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    ...options.headers,
   };
+
+  // Spread existing headers if they exist
+  if (options.headers) {
+    Object.assign(headers, options.headers);
+  }
 
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
@@ -192,7 +196,7 @@ export const listsAPI = {
   },
 
   // Create a new list (POST /lists)
-  create: async (data: { name: string; description?: string }) => {
+  create: async (data: { name: string; description?: string; is_shared?: boolean }) => {
     return fetchWithAuth(`${API_BASE_URL}/lists`, {
       method: "POST",
       body: JSON.stringify(data),

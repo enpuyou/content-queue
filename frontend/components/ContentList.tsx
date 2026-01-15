@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import ContentItem from "./ContentItem";
 import { contentAPI, listsAPI } from "@/lib/api";
-import { ContentItem as ContentItemType } from "@/types";
+import { ContentItem as ContentItemType, List } from "@/types";
 import { useToast } from "@/contexts/ToastContext";
 
 /**
@@ -85,7 +85,7 @@ export default function ContentList() {
    */
   const fetchAvailableLists = async () => {
     try {
-      const lists = await listsAPI.getAll();
+      const lists: List[] = await listsAPI.getAll();
       // Map to simpler format for dropdown
       setAvailableLists(
         lists.map((list) => ({ id: list.id, name: list.name })),
