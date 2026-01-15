@@ -1,11 +1,13 @@
 #!/bin/bash
 # Celery worker startup script
 
-# Ensure poetry is in PATH
-export PATH="/root/.local/bin:$PATH"
+echo "Installing Poetry..."
+pip install poetry
+
+# Add poetry to PATH (check multiple possible locations)
+export PATH="/root/.local/bin:/home/railway/.local/bin:$HOME/.local/bin:$PATH"
 
 echo "Installing dependencies..."
-pip install poetry
 poetry install --no-interaction --no-root
 
 echo "Starting Celery worker..."
