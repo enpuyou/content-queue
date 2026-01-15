@@ -1,3 +1,4 @@
+# ruff: noqa: E402,F401
 from celery import Celery
 from app.core.config import settings
 
@@ -24,3 +25,4 @@ celery_app.conf.update(
 # celery_app.autodiscover_tasks(['app.tasks'])
 
 # Import tasks here (explicit import)
+from app.tasks import extraction
