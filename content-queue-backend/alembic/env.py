@@ -7,7 +7,16 @@ from app.core.config import settings
 # Import all models so Alembic can detect them
 
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+
+# Convert postgres:// or postgresql:// to postgresql+psycopg:// for psycopg v3
+# Railway/Heroku use postgres://, SQLAlchemy needs postgresql+psycopg://
+database_url = settings.DATABASE_URL
+if database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql+psycopg://", 1)
+elif database_url.startswith("postgresql://"):
+    database_url = database_url.replace("postgresql://", "postgresql+psycopg://", 1)
+
+config.set_main_option("sqlalchemy.url", database_url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
