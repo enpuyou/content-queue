@@ -10,4 +10,4 @@ echo "=== Installing main dependencies from poetry.lock ==="
 poetry install --no-root --only main
 
 echo "=== Starting Celery worker ==="
-exec poetry run celery -A app.core.celery_app worker --loglevel=info
+exec poetry run celery -A app.core.celery_app worker --loglevel=info --concurrency=2 --pool=solo
