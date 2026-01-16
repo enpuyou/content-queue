@@ -39,20 +39,20 @@
 **Goal**: Make content discoverable and organized
 
 ### Lists & Collections
-- [ ] Create/edit/delete custom lists
-- [ ] Add content to multiple lists
-- [ ] List view with content counts
-- [ ] Bulk operations (add/remove from lists)
+- [x] Create/edit/delete custom lists
+- [x] Add content to multiple lists
+- [x] List view with content counts
+- [x] Bulk operations (add/remove from lists)
 - [ ] Default lists: "Read Later", "Favorites"
 
 ### Search Integration
-- [ ] Text search (title, description, full-text)
-- [ ] Semantic search UI (use your existing backend)
-- [ ] "Find Similar" button on articles
+- [x] Text search (title, description, full-text)
+- [x] Semantic search UI with SearchBar component
+- [x] "Find Similar" button on articles
 - [ ] Search within specific lists
 
 ### Tags & Metadata
-- [ ] Manual tagging system
+- [x] Manual tagging system
 - [ ] Auto-tag extraction from content
 - [ ] Filter by tags
 - [ ] Tag management (rename, merge, delete)
@@ -79,7 +79,8 @@
   - Estimate time remaining
 
 ### Dashboard & Analytics
-- [ ] **Reading stats dashboard**
+
+- [x] **Reading stats dashboard** (StatsCards component)
   - Items saved this week/month
   - Items read (completion rate)
   - Total reading time
@@ -90,12 +91,13 @@
   - Trending in your saved items
 
 ### Performance & UX
-- [ ] Optimistic UI updates
+
+- [x] Optimistic UI updates
 - [ ] Skeleton loaders
 - [ ] Error boundaries with helpful messages
-- [ ] Toast notifications
+- [x] Toast notifications
 - [ ] Keyboard shortcuts
-- [ ] Mobile-responsive design
+- [x] Mobile-responsive design
 - [ ] Progressive Web App (PWA) support
 
 **Deliverable**: Polished, production-quality web app
@@ -160,12 +162,13 @@
 **Goal**: Ship it to production
 
 ### Infrastructure
-- [ ] **Deployment**
-  - Backend: AWS ECS/Railway/Render
-  - Frontend: Vercel/Netlify
-  - Database: Managed PostgreSQL (AWS RDS/Supabase)
-  - Redis: ElastiCache/Upstash
-  - Celery workers: Background job processing
+
+- [x] **Deployment**
+  - [x] Backend: Railway (FastAPI + Celery workers)
+  - [x] Frontend: Vercel
+  - [x] Database: Railway pgvector (PostgreSQL with vector extension)
+  - [x] Redis: Railway Redis
+  - [x] Celery workers: Background job processing with limited concurrency
 - [ ] **CI/CD Pipeline**
   - GitHub Actions
   - Automated testing

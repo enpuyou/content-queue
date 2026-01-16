@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { contentAPI, listsAPI } from "@/lib/api";
 import { ContentItem } from "@/types";
 import { useToast } from "@/contexts/ToastContext";
+import { useLists } from "@/contexts/ListsContext";
 
 interface AddContentToListModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ export default function AddContentToListModal({
   onSuccess,
 }: AddContentToListModalProps) {
   const { showToast } = useToast();
+  const { incrementListCount, decrementListCount } = useLists();
   const [allContent, setAllContent] = useState<ContentItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
@@ -63,14 +65,25 @@ export default function AddContentToListModal({
       return;
     }
 
+    const itemCount = selectedIds.size;
+
     try {
       setLoading(true);
+      // Optimistic update - increment count by number of items being added
+      for (let i = 0; i < itemCount; i++) {
+        incrementListCount(listId);
+      }
+
       await listsAPI.addContent(listId, Array.from(selectedIds));
-      showToast(`Added ${selectedIds.size} item(s) to list`, "success");
+      showToast(`Added ${itemCount} item(s) to list`, "success");
       onSuccess();
       onClose();
     } catch (error) {
       console.error("Failed to add content to list:", error);
+      // Revert on error - decrement count back
+      for (let i = 0; i < itemCount; i++) {
+        decrementListCount(listId);
+      }
       showToast("Failed to add content to list", "error");
     } finally {
       setLoading(false);

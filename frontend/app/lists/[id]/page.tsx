@@ -7,6 +7,10 @@ import { useToast } from "@/contexts/ToastContext";
 import ContentItem from "@/components/ContentItem";
 import AddContentToListModal from "@/components/AddContentToListModal";
 import { ContentItem as ContentItemType } from "@/types";
+import { useAuth } from "@/contexts/AuthContext";
+import { useLists } from "@/contexts/ListsContext";
+import Link from "next/link";
+
 
 // Type for list details
 interface ListDetail {
@@ -23,6 +27,8 @@ export default function ListDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { showToast } = useToast();
+  const { logout } = useAuth();
+  const { decrementListCount, incrementListCount } = useLists();
 
   const listId = params.id as string;
 
@@ -67,6 +73,8 @@ export default function ListDetailPage() {
     try {
       // Optimistic update - remove from UI immediately
       setContents(contents.filter((c) => c.id !== contentId));
+      // Also decrement the count in the lists context
+      decrementListCount(listId);
 
       // Call API to remove from list
       await listsAPI.removeContent(listId, [contentId]);
@@ -75,6 +83,8 @@ export default function ListDetailPage() {
       console.error("Failed to remove from list:", err);
       // Revert on error
       setContents(previousContents);
+      // Increment count back on error (undo the decrement)
+      incrementListCount(listId);
       showToast("Failed to remove from list", "error");
     }
   };
@@ -154,86 +164,120 @@ export default function ListDetailPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      {/* Header */}
-      <div className="mb-8">
-        {/* Back button */}
-        <button
-          onClick={() => router.push("/lists")}
-          className="text-blue-600 hover:text-blue-800 mb-4 flex items-center gap-2"
-        >
-          ← Back to Lists
-        </button>
+    <div className="min-h-screen bg-gray-50">
+      {/* Navigation Header */}
+      <nav className="bg-white shadow-sm mb-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <Link href="/dashboard" className="text-2xl font-bold text-gray-900">
+              Content Queue
+            </Link>
 
-        <div className="flex justify-between items-start">
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-bold text-gray-900">{list.name}</h1>
-              {list.is_shared && (
-                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                  Shared
-                </span>
-              )}
+            <div className="flex items-center gap-4">
+              <Link
+                href="/dashboard"
+                className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+              >
+                Dashboard
+              </Link>
+              <Link
+                href="/lists"
+                className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+              >
+                Lists
+              </Link>
+              <button
+                className="text-gray-600 hover:text-gray-900"
+                onClick={logout}
+              >
+                Logout
+              </button>
             </div>
-            {list.description && (
-              <p className="text-gray-600 mt-2">{list.description}</p>
-            )}
-            <p className="text-sm text-gray-500 mt-2">
-              {contents.length} {contents.length === 1 ? "item" : "items"}
-            </p>
           </div>
-
-          {/* Add Content button - will implement in next step */}
-          <button
-            onClick={() => setIsAddContentModalOpen(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
-          >
-            + Add Content
-          </button>
         </div>
+      </nav>
+
+      <div className="max-w-6xl mx-auto p-6">
+        {/* Header */}
+        <div className="mb-8">
+          {/* Back button */}
+          <button
+            onClick={() => router.push("/lists")}
+            className="text-blue-600 hover:text-blue-800 mb-4 flex items-center gap-2"
+          >
+            ← Back to Lists
+          </button>
+
+          <div className="flex justify-between items-start">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="text-3xl font-bold text-gray-900">{list.name}</h1>
+                {list.is_shared && (
+                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                    Shared
+                  </span>
+                )}
+              </div>
+              {list.description && (
+                <p className="text-gray-600 mt-2">{list.description}</p>
+              )}
+              <p className="text-sm text-gray-500 mt-2">
+                {contents.length} {contents.length === 1 ? "item" : "items"}
+              </p>
+            </div>
+
+            {/* Add Content button - will implement in next step */}
+            <button
+              onClick={() => setIsAddContentModalOpen(true)}
+              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+            >
+              + Add Content
+            </button>
+          </div>
+        </div>
+
+        {/* Empty state */}
+        {contents.length === 0 && (
+          <div className="text-center py-12 bg-gray-50 rounded-lg">
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              No content yet
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Add articles to this list to get started
+            </p>
+            <button
+              onClick={() => setIsAddContentModalOpen(true)}
+              className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors"
+            >
+              Add Your First Item
+            </button>
+          </div>
+        )}
+
+        {/* Content list */}
+        {contents.length > 0 && (
+          <div className="space-y-4">
+            {contents.map((content) => (
+              <ContentItem
+                key={content.id}
+                content={content}
+                onStatusChange={handleStatusChange}
+                onDelete={handleDelete}
+                onRemoveFromList={() => handleRemoveFromList(content.id)}
+              />
+            ))}
+          </div>
+        )}
+        {/* Add Content Modal */}
+        <AddContentToListModal
+          isOpen={isAddContentModalOpen}
+          listId={listId}
+          onClose={() => setIsAddContentModalOpen(false)}
+          onSuccess={() => {
+            fetchListAndContent(); // Refresh the list content
+          }}
+        />
       </div>
-
-      {/* Empty state */}
-      {contents.length === 0 && (
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">
-            No content yet
-          </h3>
-          <p className="text-gray-600 mb-6">
-            Add articles to this list to get started
-          </p>
-          <button
-            onClick={() => setIsAddContentModalOpen(true)}
-            className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors"
-          >
-            Add Your First Item
-          </button>
-        </div>
-      )}
-
-      {/* Content list */}
-      {contents.length > 0 && (
-        <div className="space-y-4">
-          {contents.map((content) => (
-            <ContentItem
-              key={content.id}
-              content={content}
-              onStatusChange={handleStatusChange}
-              onDelete={handleDelete}
-              onRemoveFromList={() => handleRemoveFromList(content.id)}
-            />
-          ))}
-        </div>
-      )}
-      {/* Add Content Modal */}
-      <AddContentToListModal
-        isOpen={isAddContentModalOpen}
-        listId={listId}
-        onClose={() => setIsAddContentModalOpen(false)}
-        onSuccess={() => {
-          fetchListAndContent(); // Refresh the list content
-        }}
-      />
     </div>
   );
 }

@@ -7,6 +7,8 @@ import ContentItem from "./ContentItem";
 import { contentAPI, listsAPI } from "@/lib/api";
 import { ContentItem as ContentItemType, List } from "@/types";
 import { useToast } from "@/contexts/ToastContext";
+import { useProcessingPolling } from "@/hooks/useProcessingPolling";
+import { useLists } from "@/contexts/ListsContext";
 
 /**
  * Filter type matching the backend's boolean flags:
@@ -20,6 +22,7 @@ type FilterType = "all" | "unread" | "read" | "archived";
 export default function ContentList() {
   // Toast context for showing success/error messages
   const { showToast } = useToast();
+  const { incrementListCount, decrementListCount } = useLists();
 
   // Get URL search params to read filter from URL
   const searchParams = useSearchParams();
@@ -53,6 +56,29 @@ export default function ContentList() {
     fetchContents();
     fetchAvailableLists();
   }, [filter]); // Empty array = run once on mount
+
+  /**
+   * Polling hook - automatically updates items when processing completes
+   * This runs continuously, checking items with status "pending" or "processing"
+   */
+  useProcessingPolling(
+    contents,
+    (updatedItem) => {
+      // When an item finishes processing, update it in our state
+      setContents((prevContents) =>
+        prevContents.map((content) =>
+          content.id === updatedItem.id ? updatedItem : content
+        )
+      );
+
+      // Show a toast notification
+      if (updatedItem.processing_status === "completed") {
+        showToast(`"${updatedItem.title || "Article"}" finished processing`, "success");
+      } else if (updatedItem.processing_status === "failed") {
+        showToast(`Failed to process "${updatedItem.title || "Article"}"`, "error");
+      }
+    }
+  );
 
   /**
    * Fetches content from the backend API
@@ -156,10 +182,15 @@ export default function ContentList() {
    */
   const handleAddToList = async (contentId: string, listId: string) => {
     try {
+      // Optimistic update - increment count immediately
+      incrementListCount(listId);
+
       await listsAPI.addContent(listId, [contentId]);
       showToast("Added to list successfully", "success");
     } catch (err) {
       console.error("Failed to add to list:", err);
+      // Revert on error - decrement count back
+      decrementListCount(listId);
       showToast("Failed to add to list", "error");
     }
   };

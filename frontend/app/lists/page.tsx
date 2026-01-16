@@ -6,6 +6,10 @@ import { listsAPI } from "@/lib/api";
 import ListModal from "@/components/ListModal";
 import ConfirmModal from "@/components/ConfirmModal";
 import { useToast } from "@/contexts/ToastContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useLists } from "@/contexts/ListsContext";
+import Link from "next/link";
+
 
 // Type for list with content count (from backend)
 interface ListWithCount {
@@ -22,6 +26,8 @@ interface ListWithCount {
 export default function ListsPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { logout } = useAuth();
+  const { listCounts, setListCount } = useLists();
 
   const [lists, setLists] = useState<ListWithCount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,6 +49,11 @@ export default function ListsPage() {
       setError(null);
       const data = await listsAPI.getAll();
       setLists(data);
+
+      // Populate the context with current counts
+      data.forEach((list: ListWithCount) => {
+        setListCount(list.id, list.content_count);
+      });
     } catch (err) {
       console.error("Failed to fetch lists:", err);
       setError("Failed to load lists. Please try again.");
@@ -72,16 +83,82 @@ export default function ListsPage() {
 
   if (loading) {
     return (
-      <div className="max-w-6xl mx-auto p-6">
-        <div className="text-center py-12">
-          <div className="text-gray-500">Loading your lists...</div>
+      <div className="min-h-screen bg-gray-50">
+        {/* Navigation Header */}
+        <nav className="bg-white shadow-sm mb-6">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
+              <Link href="/dashboard" className="text-2xl font-bold text-gray-900">
+                Content Queue
+              </Link>
+
+              <div className="flex items-center gap-4">
+                <Link
+                  href="/dashboard"
+                  className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                >
+                  Dashboard
+                </Link>
+                <Link
+                  href="/lists"
+                  className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                >
+                  Lists
+                </Link>
+                <button
+                  className="text-gray-600 hover:text-gray-900"
+                  onClick={logout}
+                >
+                  Logout
+                </button>
+              </div>
+            </div>
+          </div>
+        </nav>
+
+        <div className="max-w-6xl mx-auto p-6">
+          <div className="text-center py-12">
+            <div className="text-gray-500">Loading your lists...</div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <>
+    <div className="min-h-screen bg-gray-50">
+      {/* Navigation Header */}
+      <nav className="bg-white shadow-sm mb-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <Link href="/dashboard" className="text-2xl font-bold text-gray-900">
+              Content Queue
+            </Link>
+
+            <div className="flex items-center gap-4">
+              <Link
+                href="/dashboard"
+                className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+              >
+                Dashboard
+              </Link>
+              <Link
+                href="/lists"
+                className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+              >
+                Lists
+              </Link>
+              <button
+                className="text-gray-600 hover:text-gray-900"
+                onClick={logout}
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      </nav>
+
       <div className="max-w-6xl mx-auto p-6">
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
@@ -155,8 +232,8 @@ export default function ListsPage() {
                 {/* Content count */}
                 <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                   <span className="text-sm text-gray-500">
-                    {list.content_count}{" "}
-                    {list.content_count === 1 ? "item" : "items"}
+                    {listCounts[list.id] ?? list.content_count}{" "}
+                    {(listCounts[list.id] ?? list.content_count) === 1 ? "item" : "items"}
                   </span>
 
                   {/* Action buttons */}
@@ -215,6 +292,6 @@ export default function ListsPage() {
         }}
         onCancel={() => setDeletingList(null)}
       />
-    </>
+    </div>
   );
 }

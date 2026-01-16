@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { listsAPI } from "@/lib/api";
+import { useLists } from "@/contexts/ListsContext";
 
 /**
  * Sidebar Navigation Component
@@ -27,6 +28,7 @@ export default function Sidebar() {
   const searchParams = useSearchParams();
   const [lists, setLists] = useState<ListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const { listCounts, setListCount } = useLists();
 
   useEffect(() => {
     fetchLists();
@@ -36,6 +38,9 @@ export default function Sidebar() {
     try {
       const data = await listsAPI.getAll();
       setLists(data);
+      data.forEach((list: ListItem) => {
+        setListCount(list.id, list.content_count);
+      });
     } catch (err) {
       console.error("Failed to fetch lists:", err);
     } finally {
@@ -152,7 +157,7 @@ export default function Sidebar() {
                 >
                   <span className="truncate">{list.name}</span>
                   <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-gray-200 text-gray-700">
-                    {list.content_count}
+                    {listCounts[list.id] ?? list.content_count}
                   </span>
                 </Link>
               ))}

@@ -6,10 +6,13 @@ import SearchBar from "@/components/SearchBar";
 import StatsCards from "@/components/StatsCards";
 import ContentList from "@/components/ContentList";
 import Link from "next/link";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function DashboardClient() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const { logout } = useAuth();
 
   const handleContentAdded = () => {
     // Trigger refresh of content list
@@ -33,10 +36,7 @@ export default function DashboardClient() {
               </Link>
               <button
                 className="text-gray-600 hover:text-gray-900"
-                onClick={() => {
-                  // TODO: Implement logout
-                  console.log("Logout clicked");
-                }}
+                onClick={logout}
               >
                 Logout
               </button>
@@ -96,8 +96,7 @@ export default function DashboardClient() {
                 className="block w-full text-left text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-base font-medium hover:bg-gray-50"
                 onClick={() => {
                   setMobileMenuOpen(false);
-                  // TODO: Implement logout
-                  console.log("Logout clicked");
+                  logout();
                 }}
               >
                 Logout
