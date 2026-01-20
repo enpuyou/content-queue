@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { ContentItem } from "@/types";
-import { searchAPI } from "@/lib/api";
+import { searchAPI, highlightsAPI } from "@/lib/api";
+import HighlightToolbar from "./HighlightToolbar";
+import HighlightRenderer from "./HighlightRenderer";
+import HighlightsPanel from "./HighlightsPanel";
 
 interface ReaderProps {
   content: ContentItem;
@@ -30,6 +33,72 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
     }>
   >([]);
   const [loadingSimilar, setLoadingSimilar] = useState(false);
+
+  const [selection, setSelection] = useState<{
+    text: string;
+    startOffset: number;
+    endOffset: number;
+    position: { x: number; y: number };
+  } | null>(null);
+
+  const [isCreatingHighlight, setIsCreatingHighlight] = useState(false);
+
+  // Highlights state
+  const [highlights, setHighlights] = useState<
+    Array<{
+      id: string;
+      text: string;
+      start_offset: number;
+      end_offset: number;
+      color: string;
+      note?: string;
+    }>
+  >([]);
+  const [loadingHighlights, setLoadingHighlights] = useState(false);
+
+  // Store original plain text for offset calculation
+  const [originalPlainText, setOriginalPlainText] = useState<string>("");
+
+  // Highlights panel visibility
+  const [showHighlightsPanel, setShowHighlightsPanel] = useState(false);
+
+  // Fetch highlights when article loads
+  const fetchHighlights = useCallback(async () => {
+    try {
+      setLoadingHighlights(true);
+      console.log("Fetching highlights for content:", content.id);
+      const data = await highlightsAPI.getByContent(content.id);
+      console.log("Highlights fetched:", data);
+      setHighlights(data);
+    } catch (error) {
+      console.error("Failed to load highlights:", error);
+    } finally {
+      setLoadingHighlights(false);
+    }
+  }, [content.id]);
+
+  useEffect(() => {
+    fetchHighlights();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content.id]);
+
+  // Extract original plain text when content loads
+  useEffect(() => {
+    if (!content.full_text) {
+      setOriginalPlainText("");
+      return;
+    }
+
+    // Parse the HTML to get plain text without any existing highlights
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(content.full_text, "text/html");
+    const plainText = doc.body.innerText || doc.body.textContent || "";
+    setOriginalPlainText(plainText);
+    console.log("Original plain text extracted:", {
+      length: plainText.length,
+      preview: plainText.substring(0, 100),
+    });
+  }, [content.full_text, content.id]); // Also depend on content.id to refresh on article change
 
   // Auto-mark as read when user opens the article
   useEffect(() => {
@@ -91,6 +160,68 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
     }
   }, [content.id]); // Only run when article changes
 
+  // highlight
+  useEffect(() => {
+    const handleMouseUp = (e: MouseEvent) => {
+      // Check if click was on the toolbar - if so, ignore
+      const target = e.target as HTMLElement;
+      if (target.closest('.highlight-toolbar')) {
+        return;
+      }
+
+      const selection = window.getSelection();
+
+      // Check if user clicked on an existing highlight (without selecting new text)
+      if (!selection || selection.toString().length === 0) {
+        // Check if the click was on a highlighted span
+        if (target.dataset.highlightId) {
+          const clickedHighlight = highlights.find(
+            (h) => h.id === target.dataset.highlightId
+          );
+          if (clickedHighlight) {
+            // Show toolbar for editing this highlight
+            const rect = target.getBoundingClientRect();
+            setSelection({
+              text: clickedHighlight.text,
+              startOffset: clickedHighlight.start_offset,
+              endOffset: clickedHighlight.end_offset,
+              position: {
+                x: rect.left + rect.width / 2,
+                y: rect.top - 10,
+              },
+              existingHighlightId: clickedHighlight.id,
+              existingColor: clickedHighlight.color,
+              existingNote: clickedHighlight.note,
+            } as any);
+            return;
+          }
+        }
+        setSelection(null);
+        return;
+      }
+
+      const offsets = getTextOffsets();
+      if (!offsets) return;
+
+      // Get toolbar position (show near selection)
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+
+      setSelection({
+        text: offsets.selectedText,
+        startOffset: offsets.startOffset,
+        endOffset: offsets.endOffset,
+        position: {
+          x: rect.left + rect.width / 2,
+          y: rect.top - 10, // Above selection
+        },
+      });
+    };
+
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => document.removeEventListener('mouseup', handleMouseUp);
+  }, [highlights]);
+
   /**
    * Fetch similar articles when user requests them
    */
@@ -134,8 +265,131 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
     dark: "text-blue-400 hover:text-blue-300",
   };
 
+  const scrollToHighlight = (highlight: {
+    id: string;
+    text: string;
+    start_offset: number;
+    end_offset: number;
+    color: string;
+    note?: string;
+  }) => {
+    // Find the span element with this highlight ID
+    const highlightEl = document.querySelector(
+      `[data-highlight-id="${highlight.id}"]`
+    );
+
+    if (highlightEl) {
+      highlightEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      // Flash animation to draw attention
+      highlightEl.classList.add("ring-2", "ring-blue-500");
+      setTimeout(() => {
+        highlightEl.classList.remove("ring-2", "ring-blue-500");
+      }, 1500);
+    }
+  };
+
+  const getTextOffsets = () => {
+    const selection = window.getSelection();
+    if (!selection || selection.toString().length === 0) return null;
+
+    // Get selected text
+    const selectedText = selection.toString();
+
+    // If we don't have original plain text yet, extract it on the fly
+    let plainText = originalPlainText;
+    if (!plainText && content.full_text) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(content.full_text, "text/html");
+      plainText = doc.body.innerText || doc.body.textContent || "";
+    }
+
+    if (!plainText) {
+      console.error("Cannot extract plain text from content");
+      return null;
+    }
+
+    // Simple approach: Find the selected text in the plain text
+    // Since the user is selecting from the rendered content which might have highlights,
+    // we need to search for the text in the original
+
+    // Try to find exact match first
+    const exactMatchIndex = plainText.indexOf(selectedText);
+
+    if (exactMatchIndex !== -1) {
+      console.log("getTextOffsets (exact match):", {
+        selectedText: selectedText.substring(0, 50),
+        startOffset: exactMatchIndex,
+        endOffset: exactMatchIndex + selectedText.length,
+        plainTextLength: plainText.length,
+      });
+
+      return {
+        selectedText,
+        startOffset: exactMatchIndex,
+        endOffset: exactMatchIndex + selectedText.length,
+      };
+    }
+
+    // If exact match fails, try to find it by context
+    // Get some context before and after from the rendered DOM
+    const contentEl = document.getElementById('reader-content');
+    if (!contentEl) return null;
+
+    const range = selection.getRangeAt(0);
+    const preCaretRange = range.cloneRange();
+    preCaretRange.selectNodeContents(contentEl);
+    preCaretRange.setEnd(range.startContainer, range.startOffset);
+
+    // Get last 100 chars before selection as context
+    const contextBefore = preCaretRange.toString().slice(-100);
+
+    // Find this context in the original text
+    const contextIndex = plainText.indexOf(contextBefore);
+
+    if (contextIndex !== -1) {
+      const startOffset = contextIndex + contextBefore.length;
+      const endOffset = startOffset + selectedText.length;
+
+      console.log("getTextOffsets (context match):", {
+        selectedText: selectedText.substring(0, 50),
+        startOffset,
+        endOffset,
+        plainTextLength: plainText.length,
+      });
+
+      return { selectedText, startOffset, endOffset };
+    }
+
+    // Last resort: search for a cleaned version of the text
+    const cleanText = (text: string) => text.replace(/\s+/g, ' ').trim();
+    const cleanedSelected = cleanText(selectedText);
+    const cleanedPlain = cleanText(plainText);
+
+    const cleanedIndex = cleanedPlain.indexOf(cleanedSelected);
+
+    if (cleanedIndex !== -1) {
+      // Map back to original text position (approximate)
+      console.warn("Using approximate offset based on cleaned text");
+      return {
+        selectedText,
+        startOffset: cleanedIndex,
+        endOffset: cleanedIndex + cleanedSelected.length,
+      };
+    }
+
+    console.error("Could not find selected text in original content");
+    return null;
+  };
+
+
   return (
     <div className={`min-h-screen ${themeClasses[theme]} transition-colors`}>
+      <HighlightToolbar
+        selection={selection}
+        contentId={content.id}
+        onClose={() => setSelection(null)}
+        onHighlightCreated={fetchHighlights}
+      />
       {/* Sticky Header with Controls */}
       <div
         className={`sticky top-0 z-10 ${themeClasses[theme]} border-b ${theme === "dark" ? "border-gray-700" : "border-gray-200"} shadow-sm`}
@@ -209,6 +463,21 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
                 }}
               >
                 <button
+                  onClick={() => setShowHighlightsPanel(!showHighlightsPanel)}
+                  className={`text-sm px-3 py-1.5 rounded-md transition-colors ${
+                    showHighlightsPanel
+                      ? theme === "dark"
+                        ? "bg-yellow-900 text-yellow-200 hover:bg-yellow-800"
+                        : "bg-yellow-100 text-yellow-700 hover:bg-yellow-200"
+                      : theme === "dark"
+                        ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  {showHighlightsPanel ? "Hide" : "Show"} Highlights{" "}
+                  {highlights.length > 0 && `(${highlights.length})`}
+                </button>
+                <button
                   onClick={() =>
                     onStatusChange({ is_archived: !content.is_archived })
                   }
@@ -245,8 +514,22 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
         </div>
       </div>
 
+      {/* Highlights Panel Sidebar */}
+      {showHighlightsPanel && (
+        <div
+          className={`fixed right-0 top-0 h-full w-80 ${themeClasses[theme]} border-l ${theme === "dark" ? "border-gray-700" : "border-gray-200"} shadow-xl z-20 overflow-hidden flex flex-col`}
+        >
+          <HighlightsPanel
+            highlights={highlights}
+            onHighlightClick={scrollToHighlight}
+            onHighlightDeleted={fetchHighlights}
+            onHighlightUpdated={fetchHighlights}
+          />
+        </div>
+      )}
+
       {/* Article Content */}
-      <article className="max-w-4xl mx-auto px-4 py-8">
+      <article className={`max-w-4xl mx-auto px-4 py-8 transition-all ${showHighlightsPanel ? "mr-80" : ""}`}>
         {/* Article Header */}
         <header className="mb-8">
           <h1
@@ -310,10 +593,17 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
 
         {/* Main Content */}
         <div
+          id="reader-content"
           className={`prose ${theme === "dark" ? "prose-invert" : theme === "sepia" ? "prose-amber" : ""} max-w-none ${fontSizeClasses[fontSize]} leading-relaxed`}
         >
           {content.full_text ? (
-            <div dangerouslySetInnerHTML={{ __html: content.full_text }} />
+            <HighlightRenderer
+              html={content.full_text}
+              highlights={highlights}
+              onHighlightClick={(highlight) => {
+                console.log("Clicked highlight:", highlight);
+              }}
+            />
           ) : (
             <div className="text-center py-12 opacity-60">
               <p>Full content not available yet.</p>

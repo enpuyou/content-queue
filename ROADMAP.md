@@ -1,318 +1,281 @@
-# Content Queue - Production Roadmap
+# Signal - A Thinking Partner for Reading
 
-## Phase 1: Core MVP (Weeks 1-2)
-**Goal**: Build a functional reading queue you can start using daily
-
-### Frontend Core Features
-- [x] Authentication (login/register) - DONE
-- [x] Add content via URL - DONE
-- [x] **Content List View**
-  - Display all saved items with metadata (title, thumbnail, reading time)
-  - Filter: unread/read, archived/active
-  - Sort: date added, reading time, alphabetical
-  - Pagination or infinite scroll
-- [x] **Reading View**
-  - Full-text article reader with clean typography
-  - Mark as read functionality
-  - Archive/delete actions
-  - Progress tracking (scroll position)
-- [x] **Quick Actions**
-  - Mark read/unread from list view
-  - Archive/unarchive
-  - Delete with confirmation
-
-### Backend Enhancements
-- [x] Add read position tracking (save scroll % for resume reading)
-- [x] Improve error handling for failed metadata extraction
-- [x] Add rate limiting on content creation endpoint
-
-### Infrastructure
-- [x] Set up proper environment variables management
-- [x] Docker compose for local development (PostgreSQL, Redis, Celery)
-- [x] Basic error logging
-
-**Deliverable**: You can save links, read articles, and manage your queue
+> *Not another read-it-later app. A tool for building understanding.*
 
 ---
 
-## Phase 2: Organization & Discovery (Weeks 3-4)
-**Goal**: Make content discoverable and organized
+## Vision
 
-### Lists & Collections
-- [x] Create/edit/delete custom lists
-- [x] Add content to multiple lists
-- [x] List view with content counts
-- [x] Bulk operations (add/remove from lists)
-- [ ] Default lists: "Read Later", "Favorites"
+Signal transforms passive content consumption into active thinking. Inspired by Are.na's quiet, intentional design—anti-consumerist, anti-flashy AI slop. We want something quiet and deep.
 
-### Search Integration
-- [x] Text search (title, description, full-text)
-- [x] Semantic search UI with SearchBar component
-- [x] "Find Similar" button on articles
-- [ ] Search within specific lists
-
-### Tags & Metadata
-- [x] Manual tagging system
-- [ ] Auto-tag extraction from content
-- [ ] Filter by tags
-- [ ] Tag management (rename, merge, delete)
-
-**Deliverable**: Organized reading queue with powerful discovery
+**Core philosophy:**
+- Typography-first, content-focused
+- No dark patterns, no engagement metrics
+- AI as invisible infrastructure, not a feature
+- Tools for thought, not tools for productivity theater
 
 ---
 
-## Phase 3: Enhanced UX & Polish (Weeks 5-6)
-**Goal**: Make it delightful to use
+## Completed (Foundation)
 
-### Reading Experience
-- [ ] **Reader customization**
-  - Font size/family controls
-  - Light/dark/sepia themes
-  - Reading width adjustment
-  - Text-to-speech integration
-- [ ] **Highlights & Notes**
-  - Highlight text in articles
-  - Add notes/annotations
-  - Export highlights
-- [ ] **Estimated reading time progress**
-  - Show reading progress bar
-  - Estimate time remaining
-
-### Dashboard & Analytics
-
-- [x] **Reading stats dashboard** (StatsCards component)
-  - Items saved this week/month
-  - Items read (completion rate)
-  - Total reading time
-  - Most-read topics/domains
-  - Reading streak tracking
-- [ ] **Recommendations**
-  - "You might like" based on reading history
-  - Trending in your saved items
-
-### Performance & UX
-
-- [x] Optimistic UI updates
-- [ ] Skeleton loaders
-- [ ] Error boundaries with helpful messages
+### ✅ Phase 1: Core MVP
+- [x] Authentication (login/register)
+- [x] Add content via URL
+- [x] Content List View with metadata, filtering, sorting, pagination
+- [x] Reading View with clean typography, progress tracking
+- [x] Quick Actions (mark read, archive, delete) - hover-reveal icons
 - [x] Toast notifications
-- [ ] Keyboard shortcuts
-- [x] Mobile-responsive design
-- [ ] Progressive Web App (PWA) support
+- [x] Optimistic UI updates
+- [x] Rate limiting
 
-**Deliverable**: Polished, production-quality web app
+### ✅ Phase 2: Organization
+- [x] Lists & Collections (CRUD, add content, bulk operations)
+- [x] Auto-updating list counts in sidebar
+- [x] Semantic search with embeddings
+- [x] "Find Similar" feature
+- [x] Manual tagging system
+- [x] Text search
 
----
-
-## Phase 4: Browser Extension (Week 7)
-**Goal**: Seamless content saving from anywhere
-
-### Chrome Extension
-- [ ] One-click save to queue
-- [ ] Save with custom list selection
-- [ ] Keyboard shortcut to save
-- [ ] Context menu integration
-- [ ] Badge showing unread count
-- [ ] Quick add with notes/tags
-
-### Firefox Support
-- [ ] Port extension to Firefox
-- [ ] Cross-browser testing
-
-**Deliverable**: Professional browser extension (major portfolio piece)
+### ✅ Infrastructure
+- [x] Backend: Railway (FastAPI + Celery)
+- [x] Frontend: Vercel (Next.js)
+- [x] Database: Railway pgvector
+- [x] Redis for background jobs
 
 ---
 
-## Phase 5: Advanced Features (Weeks 8-9)
-**Goal**: Demonstrate technical depth
+## The Signal Roadmap
 
-### Content Intelligence
-- [ ] **Automatic summarization**
-  - Use LLM to generate article summaries
-  - Key points extraction
-- [ ] **Content categorization**
-  - ML-based topic classification
-  - Auto-organize into smart folders
-- [ ] **Duplicate detection**
-  - Prevent saving same article twice
-  - Merge duplicates
+### Phase A: Highlights & Annotations (Foundation)
+**Goal**: Turn reading into active engagement
 
-### Collaboration (Optional but Impressive)
-- [ ] Share lists publicly (read-only links)
-- [ ] Collaborative lists (multiple users)
-- [ ] Social features (follow users, see popular saves)
+The most fundamental shift—from consuming to capturing.
 
-### Integrations
-- [ ] Import from Pocket, Instapaper, Readwise
-- [ ] Export to Notion, Obsidian
-- [ ] RSS feed support
-- [ ] Email forwarding (save@your-app.com)
+#### Backend
+- [ ] Create `Highlight` model
+  ```
+  - id, content_item_id, user_id
+  - text (the highlighted text)
+  - note (optional annotation)
+  - start_offset, end_offset (character positions)
+  - color (yellow/green/blue/pink)
+  - created_at
+  ```
+- [ ] CRUD endpoints: POST/GET/PATCH/DELETE `/content/{id}/highlights`
+- [ ] Export endpoint: GET `/content/{id}/highlights/export` (Markdown)
 
-### Advanced Backend
-- [ ] GraphQL API (alongside REST)
-- [ ] WebSocket for real-time updates
-- [ ] Background sync for offline reading
-- [ ] Caching strategy with Redis
+#### Frontend
+- [ ] Text selection detection in Reader
+- [ ] Highlight toolbar on selection (highlight, add note, cancel)
+- [ ] Render highlights with colored backgrounds
+- [ ] Click highlight to view/edit note
+- [ ] Highlights panel (slide-out sidebar)
+- [ ] Export highlights button (copy as Markdown)
 
-**Deliverable**: Advanced features that showcase ML/AI integration
+**Why first**: Everything else builds on this. Claims come from highlights. Signals are patterns across highlights.
 
 ---
 
-## Phase 6: Production Deployment (Week 10)
-**Goal**: Ship it to production
+### Phase B: Claims Extraction
+**Goal**: Surface the ideas that matter
 
-### Infrastructure
+#### Backend
+- [ ] Create `Claim` model
+  ```
+  - id, content_item_id, user_id
+  - claim_text (the extracted assertion)
+  - source_highlight_id (optional - link to evidence)
+  - is_verified (user confirmed accuracy)
+  - embedding (vector for similarity)
+  - created_at
+  ```
+- [ ] LLM extraction job: POST `/content/{id}/extract-claims`
+- [ ] Celery task for background extraction
+- [ ] Similarity matching: GET `/claims/similar?text=...`
 
-- [x] **Deployment**
-  - [x] Backend: Railway (FastAPI + Celery workers)
-  - [x] Frontend: Vercel
-  - [x] Database: Railway pgvector (PostgreSQL with vector extension)
-  - [x] Redis: Railway Redis
-  - [x] Celery workers: Background job processing with limited concurrency
-- [ ] **CI/CD Pipeline**
-  - GitHub Actions
-  - Automated testing
-  - Staging environment
-  - Automated deployments
-- [ ] **Monitoring & Observability**
-  - Sentry for error tracking
-  - Application performance monitoring (DataDog/New Relic)
-  - Logging aggregation
-  - Uptime monitoring
-  - Cost tracking
-
-### Testing
-- [ ] Backend unit tests (pytest)
-- [ ] API integration tests
-- [ ] Frontend component tests (Jest/React Testing Library)
-- [ ] E2E tests (Playwright/Cypress)
-- [ ] Load testing
-
-### Security & Compliance
-- [ ] Security headers
-- [ ] Rate limiting (per user, per IP)
-- [ ] CORS configuration
-- [ ] Input validation & sanitization
-- [ ] SQL injection prevention
-- [ ] XSS protection
-- [ ] CSRF tokens
-- [ ] Secure password requirements
-- [ ] Email verification
-- [ ] Password reset flow
-- [ ] GDPR compliance (data export, account deletion)
-
-### Performance
-- [ ] Database query optimization
-- [ ] Index optimization
-- [ ] CDN for static assets
-- [ ] Image optimization
-- [ ] Lazy loading
-- [ ] Code splitting
-- [ ] Bundle size optimization
-
-**Deliverable**: Production-ready, deployed application
+#### Frontend
+- [ ] "Extract Claims" button in reader
+- [ ] Claims panel showing extracted assertions
+- [ ] Verify/dismiss individual claims
+- [ ] Link claims to source highlights
+- [ ] "Find contradictions" feature (claims that conflict)
 
 ---
 
-## Phase 7: Polish & Launch (Week 11)
-**Goal**: Make it launch-ready
+### Phase C: Connections & Signals
+**Goal**: See patterns across your reading
 
-### Documentation
-- [ ] User guide / help center
-- [ ] API documentation (OpenAPI/Swagger)
-- [ ] Developer documentation
-- [ ] Architecture diagrams
-- [ ] README with demo GIFs
+#### Backend
+- [ ] Similarity matching between content items
+- [ ] Endpoint: GET `/content/{id}/related` (based on embeddings)
+- [ ] Cluster detection for recurring themes
 
-### Marketing Site
-- [ ] Landing page
-- [ ] Feature showcase
-- [ ] Pricing page (if freemium)
-- [ ] Blog/changelog
-- [ ] Privacy policy & Terms of Service
-
-### User Onboarding
-- [ ] Welcome tour for new users
-- [ ] Sample content for demo
-- [ ] Onboarding checklist
-- [ ] Email welcome series
-
-**Deliverable**: Launched product with users
+#### Frontend
+- [ ] "Related Items" section in reader sidebar
+- [ ] Signal cards showing recurring themes
+- [ ] Visual connections between related content
 
 ---
 
-## Future Considerations (Post-Launch)
+### Phase D: Workspaces
+**Goal**: Focus mode for deep work
 
-### Mobile Apps
-- [ ] React Native mobile app
-- [ ] iOS/Android native apps
+#### Backend
+- [ ] Create `Workspace` model
+  ```
+  - id, user_id, name, description
+  - theme (research question or topic)
+  - created_at, updated_at
+  ```
+- [ ] Workspace content association (many-to-many)
+- [ ] Workspace claims aggregation
 
-### Enterprise Features
-- [ ] Team accounts
-- [ ] SSO integration
-- [ ] Admin dashboard
-- [ ] Usage analytics
-
-### AI Features
-- [ ] Smart scheduling (suggest what to read when)
-- [ ] Reading assistant chatbot
-- [ ] Content quality scoring
-- [ ] Personalized digests
-
----
-
-## Technical Stack Recommendations
-
-### Current (Keep)
-- **Backend**: FastAPI, PostgreSQL, Celery, Redis
-- **Frontend**: Next.js 14 (App Router), TypeScript, Tailwind CSS
-
-### Additions for Production
-- **Testing**: pytest, Jest, Playwright
-- **Monitoring**: Sentry, DataDog/Grafana
-- **Deployment**: Vercel (frontend), Railway/Render (backend)
-- **CI/CD**: GitHub Actions
-- **Email**: SendGrid/Postmark
-- **Storage**: AWS S3 (for thumbnails, PDFs)
-- **Search**: Consider Elasticsearch for advanced search (optional)
+#### Frontend
+- [ ] Workspace list view
+- [ ] Create/edit workspace modal
+- [ ] Add content to workspace from reader
+- [ ] Workspace detail page with:
+  - All associated content
+  - Aggregated highlights
+  - Extracted claims
+  - Related external content suggestions
 
 ---
 
-## Resume/Portfolio Highlights
+### Phase E: Reflection & Review
+**Goal**: Consolidate understanding
 
-This project demonstrates:
+#### Backend
+- [ ] Weekly digest generation (Celery scheduled task)
+- [ ] Endpoint: GET `/reflections/weekly`
+- [ ] Store reflection entries
 
-1. **Full-stack development** (React, Next.js, FastAPI, PostgreSQL)
-2. **Async/background processing** (Celery, Redis)
-3. **ML/AI integration** (embeddings, semantic search, LLM summaries)
-4. **Browser extension development**
-5. **Production deployment** (AWS/cloud infrastructure)
-6. **Testing & CI/CD**
-7. **Security best practices**
-8. **Performance optimization**
-9. **System design** (caching, queueing, real-time features)
-10. **Product thinking** (UX, onboarding, analytics)
+#### Frontend
+- [ ] Weekly Review page
+- [ ] "What did I learn?" prompts
+- [ ] Highlight review (spaced repetition style)
+- [ ] Reading stats (quiet, not gamified)
 
 ---
 
-## Suggested Timeline for Job Applications
+### Phase F: Design Polish
+**Goal**: The Are.na aesthetic
 
-**If applying in 3 months**: Focus on Phases 1-4, 6 (core + extension + deployed)
+#### Visual System
+- [ ] CSS custom properties for theming
+  ```css
+  --color-ink: #1a1a1a
+  --color-paper: #fafaf8
+  --color-highlight-yellow: #fff3cd
+  --color-accent: #2563eb
+  --font-body: 'Literata', Georgia, serif
+  --font-ui: 'Inter', system-ui, sans-serif
+  ```
+- [ ] Light/Dark/Sepia themes
+- [ ] Generous whitespace (space-6 minimum)
+- [ ] Subtle animations (150ms, ease-out)
 
-**If applying in 2 months**: Focus on Phases 1-3, 6 (core + polish + deployed)
+#### Typography
+- [ ] Reader font controls (size, family, width)
+- [ ] Optimal line length (65-75 chars)
+- [ ] Proper vertical rhythm
 
-**Priority for interviews**: Have Phase 1-2 working well, deployed, with good documentation
+---
+
+### Phase G: Chrome Extension
+**Goal**: Capture from anywhere
+
+- [ ] One-click save to Signal
+- [ ] Quick highlight before saving
+- [ ] Add to workspace on save
+- [ ] Keyboard shortcut (Cmd+Shift+S)
+
+---
+
+## Priority Options
+
+Based on what's completed and the Signal vision, here are your options:
+
+### Option 1: Highlights First (Recommended)
+**Why**: Foundation for everything. Makes the app immediately more useful.
+**Scope**: Phase A only (~3-4 sessions)
+**Result**: Active reading experience
+
+### Option 2: Full Claims Pipeline
+**Why**: The differentiator. "See what you believe."
+**Scope**: Phase A + B (~6-8 sessions)
+**Result**: Extract and verify ideas from reading
+
+### Option 3: Design Overhaul First
+**Why**: Set the visual foundation before adding features.
+**Scope**: Phase F (~2-3 sessions)
+**Result**: Beautiful, calm interface
+
+### Option 4: Extension + Highlights
+**Why**: Two high-impact features that work together.
+**Scope**: Phase A + G (~5-6 sessions)
+**Result**: Complete capture → engage loop
+
+---
+
+## Technical Notes
+
+### New Backend Models Needed
+```python
+# models/highlight.py
+class Highlight(Base):
+    id = Column(UUID)
+    content_item_id = Column(UUID, ForeignKey)
+    user_id = Column(UUID, ForeignKey)
+    text = Column(Text)
+    note = Column(Text, nullable=True)
+    start_offset = Column(Integer)
+    end_offset = Column(Integer)
+    color = Column(String, default="yellow")
+    created_at = Column(DateTime)
+
+# models/claim.py
+class Claim(Base):
+    id = Column(UUID)
+    content_item_id = Column(UUID, ForeignKey)
+    user_id = Column(UUID, ForeignKey)
+    claim_text = Column(Text)
+    source_highlight_id = Column(UUID, nullable=True)
+    is_verified = Column(Boolean, default=False)
+    embedding = Column(Vector(1536))
+    created_at = Column(DateTime)
+```
+
+### Frontend Component Structure
+```
+components/
+├── highlights/
+│   ├── HighlightToolbar.tsx
+│   ├── HighlightRenderer.tsx
+│   └── HighlightsPanel.tsx
+├── claims/
+│   ├── ClaimCard.tsx
+│   ├── ClaimsPanel.tsx
+│   └── ExtractClaimsButton.tsx
+└── workspaces/
+    ├── WorkspaceCard.tsx
+    └── WorkspaceDetail.tsx
+```
+
+---
+
+## What This Project Demonstrates
+
+1. **Full-stack depth** - React, Next.js, FastAPI, PostgreSQL, Celery
+2. **AI/ML integration** - Embeddings, LLM extraction, vector search
+3. **Product thinking** - Opinionated design, not feature bloat
+4. **System design** - Background jobs, caching, real-time updates
+5. **Design sensibility** - Typography, whitespace, intentional UX
 
 ---
 
 ## Current Status
 
-### Completed
-- ✅ Backend with FastAPI, Celery, metadata extraction
-- ✅ Semantic search implementation
-- ✅ Frontend with Next.js setup
-- ✅ Basic authentication (login/register)
-- ✅ Content creation via URL
+**Last completed**: Sidebar list count auto-updates, hover-reveal actions on content cards
 
-### Next Steps
-**Recommended**: Start with **Phase 1 (Content List View & Reading View)** - this is the foundation you'll use daily and makes the app actually functional.
+**Recommended next**: **Phase A - Highlights** (the foundation for active reading)

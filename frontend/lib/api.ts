@@ -268,3 +268,65 @@ export const analyticsAPI = {
     return fetchWithAuth(`${API_BASE_URL}/analytics/stats`);
   },
 };
+
+// Highlights API - matches your /highlights endpoints
+export const highlightsAPI = {
+  // Create a highlight (POST /content/{content_id}/highlights)
+  create: async (
+    contentId: string,
+    data: {
+      text: string;
+      start_offset: number;
+      end_offset: number;
+      color?: string;
+      note?: string;
+    },
+  ) => {
+    return fetchWithAuth(`${API_BASE_URL}/content/${contentId}/highlights`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Get all highlights for content (GET /content/{content_id}/highlights)
+  getByContent: async (contentId: string) => {
+    return fetchWithAuth(`${API_BASE_URL}/content/${contentId}/highlights`);
+  },
+
+  // Update a highlight (PATCH /highlights/{highlight_id})
+  update: async (
+    highlightId: string,
+    data: { note?: string; color?: string },
+  ) => {
+    return fetchWithAuth(`${API_BASE_URL}/highlights/${highlightId}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Delete a highlight (DELETE /highlights/{highlight_id})
+  delete: async (highlightId: string) => {
+    const response = await fetch(`${API_BASE_URL}/highlights/${highlightId}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${getAuthToken()}`,
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("token");
+          window.location.href = "/login";
+        }
+      }
+      throw new Error(`Delete failed: ${response.status}`);
+    }
+
+    if (response.status === 204) {
+      return null;
+    }
+
+    return response.json();
+  },
+};
