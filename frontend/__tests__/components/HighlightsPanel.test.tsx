@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Unit tests for the HighlightsPanel component.
  *
@@ -11,20 +12,20 @@
  * - Color badges and note display
  */
 
-import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import '@testing-library/jest-dom';
-import HighlightsPanel from '../../components/HighlightsPanel';
-import { highlightsAPI } from '../../lib/api';
+import React from "react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import "@testing-library/jest-dom";
+import HighlightsPanel from "../../components/HighlightsPanel";
+import { highlightsAPI } from "../../lib/api";
 
 // Mock the API module
-jest.mock('../../lib/api');
+jest.mock("../../lib/api");
 const mockedHighlightsAPI = highlightsAPI as jest.Mocked<typeof highlightsAPI>;
 
 // Mock the ToastContext
 const mockShowToast = jest.fn();
-jest.mock('../../contexts/ToastContext', () => ({
+jest.mock("../../contexts/ToastContext", () => ({
   useToast: () => ({ showToast: mockShowToast }),
 }));
 
@@ -35,7 +36,7 @@ Object.assign(navigator, {
   },
 });
 
-describe('HighlightsPanel', () => {
+describe("HighlightsPanel", () => {
   const mockOnHighlightClick = jest.fn();
   const mockOnHighlightDeleted = jest.fn();
   const mockOnHighlightUpdated = jest.fn();
@@ -44,184 +45,194 @@ describe('HighlightsPanel', () => {
     jest.clearAllMocks();
   });
 
-  describe('Empty State', () => {
-    it('renders empty state when no highlights', () => {
+  describe("Empty State", () => {
+    it("renders empty state when no highlights", () => {
       render(
         <HighlightsPanel
           highlights={[]}
           onHighlightClick={mockOnHighlightClick}
           onHighlightDeleted={mockOnHighlightDeleted}
           onHighlightUpdated={mockOnHighlightUpdated}
-        />
+        />,
       );
 
       expect(screen.getByText(/no highlights yet/i)).toBeInTheDocument();
     });
 
-    it('does not show copy button when empty', () => {
+    it("does not show copy button when empty", () => {
       render(
         <HighlightsPanel
           highlights={[]}
           onHighlightClick={mockOnHighlightClick}
           onHighlightDeleted={mockOnHighlightDeleted}
           onHighlightUpdated={mockOnHighlightUpdated}
-        />
+        />,
       );
 
       expect(screen.queryByText(/copy all/i)).not.toBeInTheDocument();
     });
   });
 
-  describe('Highlights List', () => {
+  describe("Highlights List", () => {
     const mockHighlights = [
       {
-        id: '1',
-        text: 'First highlight text',
+        id: "1",
+        text: "First highlight text",
         start_offset: 0,
         end_offset: 20,
-        color: 'yellow',
+        color: "yellow",
         note: undefined,
-        created_at: '2024-01-15T10:00:00Z',
+        created_at: "2024-01-15T10:00:00Z",
       },
       {
-        id: '2',
-        text: 'Second highlight with a note',
+        id: "2",
+        text: "Second highlight with a note",
         start_offset: 50,
         end_offset: 78,
-        color: 'green',
-        note: 'This is an important point',
-        created_at: '2024-01-15T10:30:00Z',
+        color: "green",
+        note: "This is an important point",
+        created_at: "2024-01-15T10:30:00Z",
       },
       {
-        id: '3',
-        text: 'Third highlight',
+        id: "3",
+        text: "Third highlight",
         start_offset: 100,
         end_offset: 115,
-        color: 'blue',
+        color: "blue",
         note: undefined,
-        created_at: '2024-01-15T11:00:00Z',
+        created_at: "2024-01-15T11:00:00Z",
       },
     ];
 
-    it('renders all highlights', () => {
+    it("renders all highlights", () => {
       render(
         <HighlightsPanel
           highlights={mockHighlights}
           onHighlightClick={mockOnHighlightClick}
           onHighlightDeleted={mockOnHighlightDeleted}
           onHighlightUpdated={mockOnHighlightUpdated}
-        />
+        />,
       );
 
-      expect(screen.getByText('First highlight text')).toBeInTheDocument();
-      expect(screen.getByText('Second highlight with a note')).toBeInTheDocument();
-      expect(screen.getByText('Third highlight')).toBeInTheDocument();
+      expect(screen.getByText("First highlight text")).toBeInTheDocument();
+      expect(
+        screen.getByText("Second highlight with a note"),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Third highlight")).toBeInTheDocument();
     });
 
-    it('displays color badges for each highlight', () => {
+    it("displays color badges for each highlight", () => {
       render(
         <HighlightsPanel
           highlights={mockHighlights}
           onHighlightClick={mockOnHighlightClick}
           onHighlightDeleted={mockOnHighlightDeleted}
           onHighlightUpdated={mockOnHighlightUpdated}
-        />
+        />,
       );
 
       // Color badges should have background colors
-      const highlights = screen.getAllByRole('listitem');
+      const highlights = screen.getAllByRole("listitem");
       expect(highlights).toHaveLength(3);
 
       // Each should have a color indicator
-      expect(screen.getByText('First highlight text').parentElement?.parentElement).toHaveClass('bg-yellow-100');
-      expect(screen.getByText('Second highlight with a note').parentElement?.parentElement).toHaveClass('bg-green-100');
+      expect(screen.getByText("First highlight text")).toHaveClass(
+        "bg-yellow-200",
+      );
+      expect(screen.getByText("Second highlight with a note")).toHaveClass(
+        "bg-green-200",
+      );
     });
 
-    it('displays notes for highlights that have them', () => {
+    it("displays notes for highlights that have them", () => {
       render(
         <HighlightsPanel
           highlights={mockHighlights}
           onHighlightClick={mockOnHighlightClick}
           onHighlightDeleted={mockOnHighlightDeleted}
           onHighlightUpdated={mockOnHighlightUpdated}
-        />
+        />,
       );
 
-      expect(screen.getByText('This is an important point')).toBeInTheDocument();
+      expect(
+        screen.getByText("This is an important point"),
+      ).toBeInTheDocument();
     });
 
-    it('calls onHighlightClick when a highlight is clicked', () => {
+    it("calls onHighlightClick when a highlight is clicked", () => {
       render(
         <HighlightsPanel
           highlights={mockHighlights}
           onHighlightClick={mockOnHighlightClick}
           onHighlightDeleted={mockOnHighlightDeleted}
           onHighlightUpdated={mockOnHighlightUpdated}
-        />
+        />,
       );
 
-      const firstHighlight = screen.getByText('First highlight text');
+      const firstHighlight = screen.getByText("First highlight text");
       fireEvent.click(firstHighlight);
 
       expect(mockOnHighlightClick).toHaveBeenCalledWith(mockHighlights[0]);
     });
 
-    it('shows highlight count in header', () => {
+    it("shows highlight count in header", () => {
       render(
         <HighlightsPanel
           highlights={mockHighlights}
           onHighlightClick={mockOnHighlightClick}
           onHighlightDeleted={mockOnHighlightDeleted}
           onHighlightUpdated={mockOnHighlightUpdated}
-        />
+        />,
       );
 
       expect(screen.getByText(/highlights \(3\)/i)).toBeInTheDocument();
     });
   });
 
-  describe('Edit Functionality', () => {
+  describe("Edit Functionality", () => {
     const singleHighlight = [
       {
-        id: 'edit-test',
-        text: 'Highlight to edit',
+        id: "edit-test",
+        text: "Highlight to edit",
         start_offset: 0,
         end_offset: 17,
-        color: 'yellow',
-        note: 'Original note',
-        created_at: '2024-01-15T10:00:00Z',
+        color: "yellow",
+        note: "Original note",
+        created_at: "2024-01-15T10:00:00Z",
       },
     ];
 
-    it('enters edit mode when edit button is clicked', async () => {
+    it("enters edit mode when edit button is clicked", async () => {
       render(
         <HighlightsPanel
           highlights={singleHighlight}
           onHighlightClick={mockOnHighlightClick}
           onHighlightDeleted={mockOnHighlightDeleted}
           onHighlightUpdated={mockOnHighlightUpdated}
-        />
+        />,
       );
 
-      const editButton = screen.getByLabelText(/edit/i);
+      const editButton = screen.getByLabelText(/^edit$/i);
       fireEvent.click(editButton);
 
       await waitFor(() => {
         // Should show color picker
-        const colors = ['yellow', 'green', 'blue', 'pink', 'purple'];
+        const colors = ["yellow", "green", "blue", "pink", "purple"];
         colors.forEach((color) => {
-          expect(screen.getByLabelText(new RegExp(color, 'i'))).toBeInTheDocument();
+          expect(
+            screen.getByLabelText(new RegExp(color, "i")),
+          ).toBeInTheDocument();
         });
 
         // Should show note textarea
-        expect(screen.getByPlaceholderText(/edit note/i)).toBeInTheDocument();
+        expect(screen.getByPlaceholderText(/add a note/i)).toBeInTheDocument();
       });
     });
 
-    it('updates highlight color', async () => {
+    it("updates highlight color", async () => {
       mockedHighlightsAPI.update.mockResolvedValue({
         ...singleHighlight[0],
-        color: 'purple',
+        color: "purple",
       });
 
       render(
@@ -230,11 +241,11 @@ describe('HighlightsPanel', () => {
           onHighlightClick={mockOnHighlightClick}
           onHighlightDeleted={mockOnHighlightDeleted}
           onHighlightUpdated={mockOnHighlightUpdated}
-        />
+        />,
       );
 
       // Enter edit mode
-      const editButton = screen.getByLabelText(/edit/i);
+      const editButton = screen.getByLabelText(/^edit$/i);
       fireEvent.click(editButton);
 
       // Select purple color
@@ -242,24 +253,27 @@ describe('HighlightsPanel', () => {
       fireEvent.click(purpleButton);
 
       // Save
-      const saveButton = screen.getByRole('button', { name: /save/i });
+      const saveButton = screen.getByRole("button", { name: /save/i });
       fireEvent.click(saveButton);
 
       await waitFor(() => {
-        expect(mockedHighlightsAPI.update).toHaveBeenCalledWith('edit-test', {
-          color: 'purple',
-          note: 'Original note',
+        expect(mockedHighlightsAPI.update).toHaveBeenCalledWith("edit-test", {
+          color: "purple",
+          note: "Original note",
         });
 
-        expect(mockShowToast).toHaveBeenCalledWith('Highlight updated', 'success');
+        expect(mockShowToast).toHaveBeenCalledWith(
+          "Highlight updated",
+          "success",
+        );
         expect(mockOnHighlightUpdated).toHaveBeenCalled();
       });
     });
 
-    it('updates highlight note', async () => {
+    it("updates highlight note", async () => {
       mockedHighlightsAPI.update.mockResolvedValue({
         ...singleHighlight[0],
-        note: 'Updated note',
+        note: "Updated note",
       });
 
       render(
@@ -268,71 +282,75 @@ describe('HighlightsPanel', () => {
           onHighlightClick={mockOnHighlightClick}
           onHighlightDeleted={mockOnHighlightDeleted}
           onHighlightUpdated={mockOnHighlightUpdated}
-        />
+        />,
       );
 
       // Enter edit mode
-      const editButton = screen.getByLabelText(/edit/i);
+      const editButton = screen.getByLabelText(/^edit$/i);
       fireEvent.click(editButton);
 
       // Edit note
-      const noteInput = await screen.findByPlaceholderText(/edit note/i);
+      const noteInput = await screen.findByPlaceholderText(/add a note/i);
       await userEvent.clear(noteInput);
-      await userEvent.type(noteInput, 'Updated note');
+      await userEvent.type(noteInput, "Updated note");
 
       // Save
-      const saveButton = screen.getByRole('button', { name: /save/i });
+      const saveButton = screen.getByRole("button", { name: /save/i });
       fireEvent.click(saveButton);
 
       await waitFor(() => {
-        expect(mockedHighlightsAPI.update).toHaveBeenCalledWith('edit-test', {
-          color: 'yellow',
-          note: 'Updated note',
+        expect(mockedHighlightsAPI.update).toHaveBeenCalledWith("edit-test", {
+          color: "yellow",
+          note: "Updated note",
         });
 
         expect(mockOnHighlightUpdated).toHaveBeenCalled();
       });
     });
 
-    it('cancels edit mode', async () => {
+    it("cancels edit mode", async () => {
       render(
         <HighlightsPanel
           highlights={singleHighlight}
           onHighlightClick={mockOnHighlightClick}
           onHighlightDeleted={mockOnHighlightDeleted}
           onHighlightUpdated={mockOnHighlightUpdated}
-        />
+        />,
       );
 
       // Enter edit mode
-      const editButton = screen.getByLabelText(/edit/i);
+      const editButton = screen.getByLabelText(/^edit$/i);
       fireEvent.click(editButton);
 
       // Cancel
-      const cancelButton = await screen.findByRole('button', { name: /cancel/i });
+      const cancelButton = await screen.findByRole("button", {
+        name: /cancel/i,
+      });
       fireEvent.click(cancelButton);
 
       await waitFor(() => {
         // Should exit edit mode
-        expect(screen.queryByPlaceholderText(/edit note/i)).not.toBeInTheDocument();
+        expect(
+          screen.queryByPlaceholderText(/add a note/i),
+        ).not.toBeInTheDocument();
       });
     });
   });
 
-  describe('Delete Functionality', () => {
+  describe("Delete Functionality", () => {
     const highlightToDelete = [
       {
-        id: 'delete-test',
-        text: 'Highlight to delete',
+        id: "delete-test",
+        text: "Highlight to delete",
         start_offset: 0,
         end_offset: 19,
-        color: 'yellow',
+        color: "yellow",
         note: undefined,
-        created_at: '2024-01-15T10:00:00Z',
+        created_at: "2024-01-15T10:00:00Z",
       },
     ];
 
-    it('deletes highlight with confirmation', async () => {
+    it("deletes highlight with confirmation", async () => {
       mockedHighlightsAPI.delete.mockResolvedValue(null);
       global.confirm = jest.fn(() => true);
 
@@ -342,21 +360,26 @@ describe('HighlightsPanel', () => {
           onHighlightClick={mockOnHighlightClick}
           onHighlightDeleted={mockOnHighlightDeleted}
           onHighlightUpdated={mockOnHighlightUpdated}
-        />
+        />,
       );
 
-      const deleteButton = screen.getByLabelText(/delete/i);
+      const deleteButton = screen.getByLabelText(/^delete$/i);
       fireEvent.click(deleteButton);
 
       await waitFor(() => {
-        expect(global.confirm).toHaveBeenCalledWith('Delete this highlight?');
-        expect(mockedHighlightsAPI.delete).toHaveBeenCalledWith('delete-test');
-        expect(mockShowToast).toHaveBeenCalledWith('Highlight deleted', 'success');
+        expect(global.confirm).toHaveBeenCalledWith(
+          "Are you sure you want to delete this highlight?",
+        );
+        expect(mockedHighlightsAPI.delete).toHaveBeenCalledWith("delete-test");
+        expect(mockShowToast).toHaveBeenCalledWith(
+          "Highlight deleted",
+          "success",
+        );
         expect(mockOnHighlightDeleted).toHaveBeenCalled();
       });
     });
 
-    it('does not delete when user cancels', async () => {
+    it("does not delete when user cancels", async () => {
       global.confirm = jest.fn(() => false);
 
       render(
@@ -365,10 +388,10 @@ describe('HighlightsPanel', () => {
           onHighlightClick={mockOnHighlightClick}
           onHighlightDeleted={mockOnHighlightDeleted}
           onHighlightUpdated={mockOnHighlightUpdated}
-        />
+        />,
       );
 
-      const deleteButton = screen.getByLabelText(/delete/i);
+      const deleteButton = screen.getByLabelText(/^delete$/i);
       fireEvent.click(deleteButton);
 
       await waitFor(() => {
@@ -378,8 +401,8 @@ describe('HighlightsPanel', () => {
       });
     });
 
-    it('handles delete error gracefully', async () => {
-      mockedHighlightsAPI.delete.mockRejectedValue(new Error('Delete failed'));
+    it("handles delete error gracefully", async () => {
+      mockedHighlightsAPI.delete.mockRejectedValue(new Error("Delete failed"));
       global.confirm = jest.fn(() => true);
 
       render(
@@ -388,82 +411,90 @@ describe('HighlightsPanel', () => {
           onHighlightClick={mockOnHighlightClick}
           onHighlightDeleted={mockOnHighlightDeleted}
           onHighlightUpdated={mockOnHighlightUpdated}
-        />
+        />,
       );
 
-      const deleteButton = screen.getByLabelText(/delete/i);
+      const deleteButton = screen.getByLabelText(/^delete$/i);
       fireEvent.click(deleteButton);
 
       await waitFor(() => {
-        expect(mockShowToast).toHaveBeenCalledWith('Failed to delete highlight', 'error');
+        expect(mockShowToast).toHaveBeenCalledWith(
+          "Failed to delete highlight",
+          "error",
+        );
         expect(mockOnHighlightDeleted).not.toHaveBeenCalled();
       });
     });
   });
 
-  describe('Copy All Functionality', () => {
+  describe("Copy All Functionality", () => {
     const multipleHighlights = [
       {
-        id: '1',
-        text: 'First highlight',
+        id: "1",
+        text: "First highlight",
         start_offset: 0,
         end_offset: 15,
-        color: 'yellow',
-        note: 'Note 1',
-        created_at: '2024-01-15T10:00:00Z',
+        color: "yellow",
+        note: "Note 1",
+        created_at: "2024-01-15T10:00:00Z",
       },
       {
-        id: '2',
-        text: 'Second highlight',
+        id: "2",
+        text: "Second highlight",
         start_offset: 20,
         end_offset: 36,
-        color: 'green',
+        color: "green",
         note: undefined,
-        created_at: '2024-01-15T10:30:00Z',
+        created_at: "2024-01-15T10:30:00Z",
       },
     ];
 
-    it('shows copy all button when highlights exist', () => {
+    it("shows copy all button when highlights exist", () => {
       render(
         <HighlightsPanel
           highlights={multipleHighlights}
           onHighlightClick={mockOnHighlightClick}
           onHighlightDeleted={mockOnHighlightDeleted}
           onHighlightUpdated={mockOnHighlightUpdated}
-        />
+        />,
       );
 
-      expect(screen.getByRole('button', { name: /copy all/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /copy all/i }),
+      ).toBeInTheDocument();
     });
 
-    it('copies all highlights to clipboard in markdown format', async () => {
+    it("copies all highlights to clipboard in markdown format", async () => {
       render(
         <HighlightsPanel
           highlights={multipleHighlights}
           onHighlightClick={mockOnHighlightClick}
           onHighlightDeleted={mockOnHighlightDeleted}
           onHighlightUpdated={mockOnHighlightUpdated}
-        />
+        />,
       );
 
-      const copyButton = screen.getByRole('button', { name: /copy all/i });
+      const copyButton = screen.getByRole("button", { name: /copy all/i });
       fireEvent.click(copyButton);
 
       await waitFor(() => {
         const expectedMarkdown =
-          '> First highlight\n\nNote 1\n\n---\n\n' +
-          '> Second highlight\n\n---\n\n';
+          "> First highlight\n\nNote 1\n\n---\n\n" +
+          "> Second highlight\n\n---\n\n";
 
         expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-          expect.stringContaining('First highlight')
+          expect.stringContaining("First highlight"),
         );
-        expect(mockShowToast).toHaveBeenCalledWith('Copied to clipboard', 'success');
+        expect(mockShowToast).toHaveBeenCalledWith(
+          "Copied to clipboard",
+          "success",
+        );
       });
     });
 
-    it('handles clipboard error', async () => {
+    it("handles clipboard error", async () => {
       (navigator.clipboard.writeText as jest.Mock).mockRejectedValue(
-        new Error('Clipboard error')
+        new Error("Clipboard error"),
       );
 
       render(
@@ -472,58 +503,58 @@ describe('HighlightsPanel', () => {
           onHighlightClick={mockOnHighlightClick}
           onHighlightDeleted={mockOnHighlightDeleted}
           onHighlightUpdated={mockOnHighlightUpdated}
-        />
+        />,
       );
 
-      const copyButton = screen.getByRole('button', { name: /copy all/i });
+      const copyButton = screen.getByRole("button", { name: /copy all/i });
       fireEvent.click(copyButton);
 
       await waitFor(() => {
-        expect(mockShowToast).toHaveBeenCalledWith('Failed to copy', 'error');
+        expect(mockShowToast).toHaveBeenCalledWith("Failed to copy", "error");
       });
     });
   });
 
-  describe('Accessibility', () => {
+  describe("Accessibility", () => {
     const highlights = [
       {
-        id: '1',
-        text: 'Test highlight',
+        id: "1",
+        text: "Test highlight",
         start_offset: 0,
         end_offset: 14,
-        color: 'yellow',
+        color: "yellow",
         note: undefined,
-        created_at: '2024-01-15T10:00:00Z',
+        created_at: "2024-01-15T10:00:00Z",
       },
     ];
 
-    it('has proper ARIA labels for buttons', () => {
+    it("has proper ARIA labels for buttons", () => {
       render(
         <HighlightsPanel
           highlights={highlights}
           onHighlightClick={mockOnHighlightClick}
           onHighlightDeleted={mockOnHighlightDeleted}
           onHighlightUpdated={mockOnHighlightUpdated}
-        />
+        />,
       );
 
-      expect(screen.getByLabelText(/edit/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/delete/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/^edit$/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/^delete$/i)).toBeInTheDocument();
     });
 
-    it('keyboard navigation works for highlighting items', () => {
+    it("keyboard navigation works for highlighting items", () => {
       render(
         <HighlightsPanel
           highlights={highlights}
           onHighlightClick={mockOnHighlightClick}
           onHighlightDeleted={mockOnHighlightDeleted}
           onHighlightUpdated={mockOnHighlightUpdated}
-        />
+        />,
       );
 
-      const highlightItem = screen.getByText('Test highlight');
+      const highlightItem = screen.getByText("Test highlight");
       highlightItem.focus();
-      fireEvent.keyPress(highlightItem, { key: 'Enter', code: 'Enter' });
+      fireEvent.keyDown(highlightItem, { key: "Enter", code: "Enter" });
 
       expect(mockOnHighlightClick).toHaveBeenCalledWith(highlights[0]);
     });

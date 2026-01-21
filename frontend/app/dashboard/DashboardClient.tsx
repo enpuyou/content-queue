@@ -123,7 +123,11 @@ export default function DashboardClient() {
           {/* Content List Section */}
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-xl font-semibold mb-4">Your Queue</h2>
-            <Suspense fallback={<div className="text-center py-8 text-gray-500">Loading...</div>}>
+            <Suspense
+              fallback={
+                <div className="text-center py-8 text-gray-500">Loading...</div>
+              }
+            >
               <ContentList key={refreshTrigger} />
             </Suspense>
           </div>

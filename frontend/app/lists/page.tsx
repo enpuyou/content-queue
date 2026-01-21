@@ -10,7 +10,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLists } from "@/contexts/ListsContext";
 import Link from "next/link";
 
-
 // Type for list with content count (from backend)
 interface ListWithCount {
   id: string;
@@ -88,7 +87,10 @@ export default function ListsPage() {
         <nav className="bg-white shadow-sm mb-6">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
-              <Link href="/dashboard" className="text-2xl font-bold text-gray-900">
+              <Link
+                href="/dashboard"
+                className="text-2xl font-bold text-gray-900"
+              >
                 Content Queue
               </Link>
 
@@ -131,7 +133,10 @@ export default function ListsPage() {
       <nav className="bg-white shadow-sm mb-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <Link href="/dashboard" className="text-2xl font-bold text-gray-900">
+            <Link
+              href="/dashboard"
+              className="text-2xl font-bold text-gray-900"
+            >
               Content Queue
             </Link>
 
@@ -233,7 +238,9 @@ export default function ListsPage() {
                 <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                   <span className="text-sm text-gray-500">
                     {listCounts[list.id] ?? list.content_count}{" "}
-                    {(listCounts[list.id] ?? list.content_count) === 1 ? "item" : "items"}
+                    {(listCounts[list.id] ?? list.content_count) === 1
+                      ? "item"
+                      : "items"}
                   </span>
 
                   {/* Action buttons */}

@@ -165,7 +165,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
     const handleMouseUp = (e: MouseEvent) => {
       // Check if click was on the toolbar - if so, ignore
       const target = e.target as HTMLElement;
-      if (target.closest('.highlight-toolbar')) {
+      if (target.closest(".highlight-toolbar")) {
         return;
       }
 
@@ -176,7 +176,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
         // Check if the click was on a highlighted span
         if (target.dataset.highlightId) {
           const clickedHighlight = highlights.find(
-            (h) => h.id === target.dataset.highlightId
+            (h) => h.id === target.dataset.highlightId,
           );
           if (clickedHighlight) {
             // Show toolbar for editing this highlight
@@ -218,8 +218,8 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
       });
     };
 
-    document.addEventListener('mouseup', handleMouseUp);
-    return () => document.removeEventListener('mouseup', handleMouseUp);
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => document.removeEventListener("mouseup", handleMouseUp);
   }, [highlights]);
 
   /**
@@ -275,7 +275,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
   }) => {
     // Find the span element with this highlight ID
     const highlightEl = document.querySelector(
-      `[data-highlight-id="${highlight.id}"]`
+      `[data-highlight-id="${highlight.id}"]`,
     );
 
     if (highlightEl) {
@@ -332,7 +332,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
 
     // If exact match fails, try to find it by context
     // Get some context before and after from the rendered DOM
-    const contentEl = document.getElementById('reader-content');
+    const contentEl = document.getElementById("reader-content");
     if (!contentEl) return null;
 
     const range = selection.getRangeAt(0);
@@ -361,7 +361,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
     }
 
     // Last resort: search for a cleaned version of the text
-    const cleanText = (text: string) => text.replace(/\s+/g, ' ').trim();
+    const cleanText = (text: string) => text.replace(/\s+/g, " ").trim();
     const cleanedSelected = cleanText(selectedText);
     const cleanedPlain = cleanText(plainText);
 
@@ -380,7 +380,6 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
     console.error("Could not find selected text in original content");
     return null;
   };
-
 
   return (
     <div className={`min-h-screen ${themeClasses[theme]} transition-colors`}>
@@ -529,7 +528,9 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
       )}
 
       {/* Article Content */}
-      <article className={`max-w-4xl mx-auto px-4 py-8 transition-all ${showHighlightsPanel ? "mr-80" : ""}`}>
+      <article
+        className={`max-w-4xl mx-auto px-4 py-8 transition-all ${showHighlightsPanel ? "mr-80" : ""}`}
+      >
         {/* Article Header */}
         <header className="mb-8">
           <h1

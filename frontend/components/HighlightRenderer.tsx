@@ -49,11 +49,7 @@ export default function HighlightRenderer({
     const doc = parser.parseFromString(html, "text/html");
 
     // Get all text nodes from the parsed DOM
-    const walker = doc.createTreeWalker(
-      doc.body,
-      NodeFilter.SHOW_TEXT,
-      null,
-    );
+    const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null);
 
     let charIndex = 0;
     const textNodes: Array<{ node: Text; startChar: number; endChar: number }> =

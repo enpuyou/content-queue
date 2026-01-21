@@ -24,6 +24,7 @@ const colors = [
   { name: "green", bg: "bg-green-200", hex: "#dcfce7" },
   { name: "blue", bg: "bg-blue-200", hex: "#bfdbfe" },
   { name: "pink", bg: "bg-pink-200", hex: "#fbcfe8" },
+  { name: "purple", bg: "bg-purple-200", hex: "#e9d5ff" },
 ];
 
 export default function HighlightToolbar({
@@ -46,7 +47,11 @@ export default function HighlightToolbar({
       setNote(selection.existingNote || "");
       setShowNoteInput(!!selection.existingNote);
     }
-  }, [selection?.existingHighlightId, selection?.startOffset, selection?.endOffset]);
+  }, [
+    selection?.existingHighlightId,
+    selection?.startOffset,
+    selection?.endOffset,
+  ]);
 
   console.log("HighlightToolbar render:", { hasSelection: !!selection });
 
@@ -147,6 +152,7 @@ export default function HighlightToolbar({
                 : "border-gray-300 opacity-60 hover:opacity-100"
             }`}
             title={color.name}
+            aria-label={color.name}
           />
         ))}
       </div>

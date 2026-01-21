@@ -61,24 +61,27 @@ export default function ContentList() {
    * Polling hook - automatically updates items when processing completes
    * This runs continuously, checking items with status "pending" or "processing"
    */
-  useProcessingPolling(
-    contents,
-    (updatedItem) => {
-      // When an item finishes processing, update it in our state
-      setContents((prevContents) =>
-        prevContents.map((content) =>
-          content.id === updatedItem.id ? updatedItem : content
-        )
-      );
+  useProcessingPolling(contents, (updatedItem) => {
+    // When an item finishes processing, update it in our state
+    setContents((prevContents) =>
+      prevContents.map((content) =>
+        content.id === updatedItem.id ? updatedItem : content,
+      ),
+    );
 
-      // Show a toast notification
-      if (updatedItem.processing_status === "completed") {
-        showToast(`"${updatedItem.title || "Article"}" finished processing`, "success");
-      } else if (updatedItem.processing_status === "failed") {
-        showToast(`Failed to process "${updatedItem.title || "Article"}"`, "error");
-      }
+    // Show a toast notification
+    if (updatedItem.processing_status === "completed") {
+      showToast(
+        `"${updatedItem.title || "Article"}" finished processing`,
+        "success",
+      );
+    } else if (updatedItem.processing_status === "failed") {
+      showToast(
+        `Failed to process "${updatedItem.title || "Article"}"`,
+        "error",
+      );
     }
-  );
+  });
 
   /**
    * Fetches content from the backend API

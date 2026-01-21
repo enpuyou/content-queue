@@ -197,7 +197,11 @@ export const listsAPI = {
   },
 
   // Create a new list (POST /lists)
-  create: async (data: { name: string; description?: string; is_shared?: boolean }) => {
+  create: async (data: {
+    name: string;
+    description?: string;
+    is_shared?: boolean;
+  }) => {
     return fetchWithAuth(`${API_BASE_URL}/lists`, {
       method: "POST",
       body: JSON.stringify(data),

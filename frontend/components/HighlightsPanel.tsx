@@ -25,6 +25,7 @@ const colorClasses: Record<string, string> = {
   green: "bg-green-200",
   blue: "bg-blue-200",
   pink: "bg-pink-200",
+  purple: "bg-purple-200",
 };
 
 const colorOptions = [
@@ -32,6 +33,7 @@ const colorOptions = [
   { name: "green", bg: "bg-green-200" },
   { name: "blue", bg: "bg-blue-200" },
   { name: "pink", bg: "bg-pink-200" },
+  { name: "purple", bg: "bg-purple-200" },
 ];
 
 export default function HighlightsPanel({
@@ -93,16 +95,21 @@ export default function HighlightsPanel({
     }
   };
 
-  const handleCopyAllHighlights = () => {
+  const handleCopyAllHighlights = async () => {
     const markdown = highlights
       .map((h) => {
-        const noteSection = h.note ? `\n  Note: ${h.note}` : "";
-        return `- ${h.text}${noteSection}`;
+        const noteSection = h.note ? `\n\n${h.note}` : "";
+        return `> ${h.text}${noteSection}\n\n---`;
       })
       .join("\n\n");
 
-    navigator.clipboard.writeText(markdown);
-    showToast("Copied all highlights to clipboard", "success");
+    try {
+      await navigator.clipboard.writeText(markdown);
+      showToast("Copied to clipboard", "success");
+    } catch (error) {
+      console.error("Failed to copy highlights:", error);
+      showToast("Failed to copy", "error");
+    }
   };
 
   if (highlights.length === 0) {
@@ -124,6 +131,7 @@ export default function HighlightsPanel({
           onClick={handleCopyAllHighlights}
           className="text-xs px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 transition-colors"
           title="Copy all highlights as Markdown"
+          aria-label="Copy all highlights"
         >
           Copy All
         </button>
@@ -139,12 +147,22 @@ export default function HighlightsPanel({
             <div
               key={highlight.id}
               className="border-b border-gray-200 p-4 hover:bg-gray-50 transition-colors"
+              role="listitem"
             >
               {/* Highlighted Text */}
               <div
-                className={`${colorClasses[isEditing ? editColor : highlight.color]} p-2 rounded mb-2 cursor-pointer text-sm`}
+                className={`${colorClasses[isEditing ? editColor : highlight.color]} p-2 rounded mb-2 cursor-pointer text-sm outline-none focus:ring-2 focus:ring-blue-400`}
                 onClick={() => !isEditing && onHighlightClick(highlight)}
+                onKeyDown={(e) => {
+                  if ((e.key === "Enter" || e.key === " ") && !isEditing) {
+                    e.preventDefault();
+                    onHighlightClick(highlight);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
                 title="Click to scroll to this highlight"
+                aria-label={`Go to highlight: ${highlight.text}`}
               >
                 {highlight.text.length > 150
                   ? `${highlight.text.substring(0, 150)}...`
@@ -166,6 +184,7 @@ export default function HighlightsPanel({
                             : "border-gray-300 opacity-60 hover:opacity-100"
                         }`}
                         title={color.name}
+                        aria-label={`Select color ${color.name}`}
                       />
                     ))}
                   </div>
@@ -177,6 +196,7 @@ export default function HighlightsPanel({
                     placeholder="Add a note..."
                     className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
                     rows={3}
+                    aria-label="Edit note"
                   />
                 </div>
               ) : (
@@ -194,12 +214,14 @@ export default function HighlightsPanel({
                     <button
                       onClick={() => handleSaveEdit(highlight.id)}
                       className="text-xs px-2 py-1 rounded bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+                      aria-label="Save"
                     >
                       Save
                     </button>
                     <button
                       onClick={handleCancelEdit}
                       className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+                      aria-label="Cancel"
                     >
                       Cancel
                     </button>
@@ -209,6 +231,7 @@ export default function HighlightsPanel({
                     <button
                       onClick={() => handleStartEdit(highlight)}
                       className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+                      aria-label="Edit"
                     >
                       Edit
                     </button>
@@ -216,6 +239,7 @@ export default function HighlightsPanel({
                       onClick={() => handleDelete(highlight.id)}
                       disabled={isBeingDeleted}
                       className="text-xs px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      aria-label="Delete"
                     >
                       {isBeingDeleted ? "Deleting..." : "Delete"}
                     </button>

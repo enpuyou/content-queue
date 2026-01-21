@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Unit tests for the HighlightToolbar component.
  *
@@ -12,105 +13,111 @@
  * - Auto-focus behavior
  */
 
-import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import '@testing-library/jest-dom';
-import HighlightToolbar from '../../components/HighlightToolbar';
-import { highlightsAPI } from '../../lib/api';
+import React from "react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import "@testing-library/jest-dom";
+import HighlightToolbar from "../../components/HighlightToolbar";
+import { highlightsAPI } from "../../lib/api";
 
 // Mock the API module
-jest.mock('../../lib/api');
+jest.mock("../../lib/api");
 const mockedHighlightsAPI = highlightsAPI as jest.Mocked<typeof highlightsAPI>;
 
 // Mock the ToastContext
 const mockShowToast = jest.fn();
-jest.mock('../../contexts/ToastContext', () => ({
+jest.mock("../../contexts/ToastContext", () => ({
   useToast: () => ({ showToast: mockShowToast }),
 }));
 
-describe('HighlightToolbar', () => {
+describe("HighlightToolbar", () => {
   const mockOnClose = jest.fn();
   const mockOnHighlightCreated = jest.fn();
-  const contentId = 'test-content-123';
+  const contentId = "test-content-123";
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  describe('Create Mode', () => {
+  describe("Create Mode", () => {
     const createSelection = {
-      text: 'selected text for highlighting',
+      text: "selected text for highlighting",
       startOffset: 10,
       endOffset: 40,
       position: { x: 100, y: 200 },
     };
 
-    it('renders in create mode with selected text', () => {
+    it("renders in create mode with selected text", () => {
       render(
         <HighlightToolbar
           selection={createSelection}
           contentId={contentId}
           onClose={mockOnClose}
           onHighlightCreated={mockOnHighlightCreated}
-        />
+        />,
       );
 
       // Should show truncated text
-      expect(screen.getByText(/"selected text for highlighti\.\.\."/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/"selected text for highlighting"/),
+      ).toBeInTheDocument();
 
       // Should show Save button (not Update)
-      expect(screen.getByRole('button', { name: /save/i })).toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: /update/i })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /save/i })).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /update/i }),
+      ).not.toBeInTheDocument();
 
       // Should NOT show Unhighlight button
-      expect(screen.queryByRole('button', { name: /unhighlight/i })).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /unhighlight/i }),
+      ).not.toBeInTheDocument();
     });
 
-    it('renders all color options', () => {
+    it("renders all color options", () => {
       render(
         <HighlightToolbar
           selection={createSelection}
           contentId={contentId}
           onClose={mockOnClose}
-        />
+        />,
       );
 
-      const colors = ['yellow', 'green', 'blue', 'pink', 'purple'];
+      const colors = ["yellow", "green", "blue", "pink", "purple"];
       colors.forEach((color) => {
-        const colorButton = screen.getByLabelText(new RegExp(color, 'i'));
+        const colorButton = screen.getByLabelText(new RegExp(color, "i"));
         expect(colorButton).toBeInTheDocument();
       });
     });
 
-    it('defaults to yellow color', () => {
+    it("defaults to yellow color", () => {
       render(
         <HighlightToolbar
           selection={createSelection}
           contentId={contentId}
           onClose={mockOnClose}
-        />
+        />,
       );
 
       const yellowButton = screen.getByLabelText(/yellow/i);
       // The selected color should have a ring around it (check for ring class or aria-pressed)
-      expect(yellowButton).toHaveClass('ring-2');
+      expect(yellowButton).toHaveClass("border-gray-900");
     });
 
-    it('allows changing color before saving', async () => {
+    it("allows changing color before saving", async () => {
       render(
         <HighlightToolbar
           selection={createSelection}
           contentId={contentId}
           onClose={mockOnClose}
-        />
+        />,
       );
 
       const greenButton = screen.getByLabelText(/green/i);
       fireEvent.click(greenButton);
 
       await waitFor(() => {
-        expect(greenButton).toHaveClass('ring-2');
+        expect(greenButton).toHaveClass("border-gray-900");
       });
     });
 
@@ -120,10 +127,10 @@ describe('HighlightToolbar', () => {
           selection={createSelection}
           contentId={contentId}
           onClose={mockOnClose}
-        />
+        />,
       );
 
-      const addNoteButton = screen.getByRole('button', { name: /add note/i });
+      const addNoteButton = screen.getByRole("button", { name: /add note/i });
       fireEvent.click(addNoteButton);
 
       await waitFor(() => {
@@ -132,14 +139,14 @@ describe('HighlightToolbar', () => {
       });
     });
 
-    it('creates highlight with selected color and note', async () => {
+    it("creates highlight with selected color and note", async () => {
       mockedHighlightsAPI.create.mockResolvedValue({
-        id: 'new-highlight-123',
+        id: "new-highlight-123",
         text: createSelection.text,
         start_offset: createSelection.startOffset,
         end_offset: createSelection.endOffset,
-        color: 'green',
-        note: 'Important point',
+        color: "green",
+        note: "Important point",
         created_at: new Date().toISOString(),
       });
 
@@ -149,7 +156,7 @@ describe('HighlightToolbar', () => {
           contentId={contentId}
           onClose={mockOnClose}
           onHighlightCreated={mockOnHighlightCreated}
-        />
+        />,
       );
 
       // Select green color
@@ -157,14 +164,14 @@ describe('HighlightToolbar', () => {
       fireEvent.click(greenButton);
 
       // Add note
-      const addNoteButton = screen.getByRole('button', { name: /add note/i });
+      const addNoteButton = screen.getByRole("button", { name: /add note/i });
       fireEvent.click(addNoteButton);
 
       const noteInput = await screen.findByPlaceholderText(/add a note/i);
-      await userEvent.type(noteInput, 'Important point');
+      await userEvent.type(noteInput, "Important point");
 
       // Save
-      const saveButton = screen.getByRole('button', { name: /^save$/i });
+      const saveButton = screen.getByRole("button", { name: /^save$/i });
       fireEvent.click(saveButton);
 
       await waitFor(() => {
@@ -172,112 +179,121 @@ describe('HighlightToolbar', () => {
           text: createSelection.text,
           start_offset: createSelection.startOffset,
           end_offset: createSelection.endOffset,
-          color: 'green',
-          note: 'Important point',
+          color: "green",
+          note: "Important point",
         });
 
-        expect(mockShowToast).toHaveBeenCalledWith('Highlight saved', 'success');
+        expect(mockShowToast).toHaveBeenCalledWith(
+          "Highlight saved",
+          "success",
+        );
         expect(mockOnHighlightCreated).toHaveBeenCalled();
         expect(mockOnClose).toHaveBeenCalled();
       });
     });
 
-    it('handles API error gracefully', async () => {
-      mockedHighlightsAPI.create.mockRejectedValue(new Error('Network error'));
+    it("handles API error gracefully", async () => {
+      mockedHighlightsAPI.create.mockRejectedValue(new Error("Network error"));
 
       render(
         <HighlightToolbar
           selection={createSelection}
           contentId={contentId}
           onClose={mockOnClose}
-        />
+        />,
       );
 
-      const saveButton = screen.getByRole('button', { name: /^save$/i });
+      const saveButton = screen.getByRole("button", { name: /^save$/i });
       fireEvent.click(saveButton);
 
       await waitFor(() => {
-        expect(mockShowToast).toHaveBeenCalledWith('Network error', 'error');
+        expect(mockShowToast).toHaveBeenCalledWith("Network error", "error");
         expect(mockOnClose).not.toHaveBeenCalled(); // Should stay open on error
       });
     });
   });
 
-  describe('Edit Mode', () => {
+  describe("Edit Mode", () => {
     const editSelection = {
-      text: 'existing highlighted text',
+      text: "existing highlighted text",
       startOffset: 50,
       endOffset: 75,
       position: { x: 150, y: 250 },
-      existingHighlightId: 'existing-highlight-456',
-      existingColor: 'blue',
-      existingNote: 'Existing note',
+      existingHighlightId: "existing-highlight-456",
+      existingColor: "blue",
+      existingNote: "Existing note",
     };
 
-    it('renders in edit mode with existing highlight data', () => {
+    it("renders in edit mode with existing highlight data", () => {
       render(
         <HighlightToolbar
           selection={editSelection as any}
           contentId={contentId}
           onClose={mockOnClose}
           onHighlightCreated={mockOnHighlightCreated}
-        />
+        />,
       );
 
       // Should show Update button (not Save)
-      expect(screen.getByRole('button', { name: /update/i })).toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: /^save$/i })).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /update/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /^save$/i }),
+      ).not.toBeInTheDocument();
 
       // Should show Unhighlight button
-      expect(screen.getByRole('button', { name: /unhighlight/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /unhighlight/i }),
+      ).toBeInTheDocument();
     });
 
-    it('pre-selects existing color in edit mode', () => {
+    it("pre-selects existing color in edit mode", () => {
       render(
         <HighlightToolbar
           selection={editSelection as any}
           contentId={contentId}
           onClose={mockOnClose}
-        />
+        />,
       );
 
       const blueButton = screen.getByLabelText(/blue/i);
-      expect(blueButton).toHaveClass('ring-2');
+      expect(blueButton).toHaveClass("border-gray-900");
     });
 
-    it('shows existing note in edit mode', () => {
+    it("shows existing note in edit mode", () => {
       render(
         <HighlightToolbar
           selection={editSelection as any}
           contentId={contentId}
           onClose={mockOnClose}
-        />
+        />,
       );
 
       const noteInput = screen.getByPlaceholderText(/edit note/i);
-      expect(noteInput).toHaveValue('Existing note');
+      expect(noteInput).toHaveValue("Existing note");
     });
 
-    it('note textarea does not auto-focus in edit mode', () => {
+    it("note textarea does not auto-focus in edit mode", () => {
       render(
         <HighlightToolbar
           selection={editSelection as any}
           contentId={contentId}
           onClose={mockOnClose}
-        />
+        />,
       );
 
       const noteInput = screen.getByPlaceholderText(/edit note/i);
       expect(noteInput).not.toHaveFocus();
     });
 
-    it('updates highlight with changed color', async () => {
+    it("updates highlight with changed color", async () => {
       mockedHighlightsAPI.update.mockResolvedValue({
         id: editSelection.existingHighlightId,
         text: editSelection.text,
         start_offset: editSelection.startOffset,
         end_offset: editSelection.endOffset,
-        color: 'purple',
+        color: "purple",
         note: editSelection.existingNote,
         created_at: new Date().toISOString(),
       });
@@ -288,7 +304,7 @@ describe('HighlightToolbar', () => {
           contentId={contentId}
           onClose={mockOnClose}
           onHighlightCreated={mockOnHighlightCreated}
-        />
+        />,
       );
 
       // Change color to purple
@@ -296,25 +312,28 @@ describe('HighlightToolbar', () => {
       fireEvent.click(purpleButton);
 
       // Update
-      const updateButton = screen.getByRole('button', { name: /update/i });
+      const updateButton = screen.getByRole("button", { name: /update/i });
       fireEvent.click(updateButton);
 
       await waitFor(() => {
         expect(mockedHighlightsAPI.update).toHaveBeenCalledWith(
           editSelection.existingHighlightId,
           {
-            color: 'purple',
+            color: "purple",
             note: editSelection.existingNote,
-          }
+          },
         );
 
-        expect(mockShowToast).toHaveBeenCalledWith('Highlight updated', 'success');
+        expect(mockShowToast).toHaveBeenCalledWith(
+          "Highlight updated",
+          "success",
+        );
         expect(mockOnHighlightCreated).toHaveBeenCalled();
         expect(mockOnClose).toHaveBeenCalled();
       });
     });
 
-    it('deletes highlight when Unhighlight is clicked', async () => {
+    it("deletes highlight when Unhighlight is clicked", async () => {
       mockedHighlightsAPI.delete.mockResolvedValue(null);
 
       // Mock window.confirm
@@ -326,22 +345,29 @@ describe('HighlightToolbar', () => {
           contentId={contentId}
           onClose={mockOnClose}
           onHighlightCreated={mockOnHighlightCreated}
-        />
+        />,
       );
 
-      const unhighlightButton = screen.getByRole('button', { name: /unhighlight/i });
+      const unhighlightButton = screen.getByRole("button", {
+        name: /unhighlight/i,
+      });
       fireEvent.click(unhighlightButton);
 
       await waitFor(() => {
-        expect(global.confirm).toHaveBeenCalledWith('Remove this highlight?');
-        expect(mockedHighlightsAPI.delete).toHaveBeenCalledWith(editSelection.existingHighlightId);
-        expect(mockShowToast).toHaveBeenCalledWith('Highlight removed', 'success');
+        expect(global.confirm).toHaveBeenCalledWith("Remove this highlight?");
+        expect(mockedHighlightsAPI.delete).toHaveBeenCalledWith(
+          editSelection.existingHighlightId,
+        );
+        expect(mockShowToast).toHaveBeenCalledWith(
+          "Highlight removed",
+          "success",
+        );
         expect(mockOnHighlightCreated).toHaveBeenCalled();
         expect(mockOnClose).toHaveBeenCalled();
       });
     });
 
-    it('does not delete when user cancels confirmation', async () => {
+    it("does not delete when user cancels confirmation", async () => {
       global.confirm = jest.fn(() => false);
 
       render(
@@ -349,10 +375,12 @@ describe('HighlightToolbar', () => {
           selection={editSelection as any}
           contentId={contentId}
           onClose={mockOnClose}
-        />
+        />,
       );
 
-      const unhighlightButton = screen.getByRole('button', { name: /unhighlight/i });
+      const unhighlightButton = screen.getByRole("button", {
+        name: /unhighlight/i,
+      });
       fireEvent.click(unhighlightButton);
 
       await waitFor(() => {
@@ -362,17 +390,17 @@ describe('HighlightToolbar', () => {
     });
   });
 
-  describe('State Management', () => {
-    it('resets state when selection changes from one new selection to another', () => {
+  describe("State Management", () => {
+    it("resets state when selection changes from one new selection to another", () => {
       const selection1 = {
-        text: 'first selection',
+        text: "first selection",
         startOffset: 0,
         endOffset: 15,
         position: { x: 100, y: 100 },
       };
 
       const selection2 = {
-        text: 'second selection',
+        text: "second selection",
         startOffset: 20,
         endOffset: 36,
         position: { x: 150, y: 150 },
@@ -383,15 +411,15 @@ describe('HighlightToolbar', () => {
           selection={selection1}
           contentId={contentId}
           onClose={mockOnClose}
-        />
+        />,
       );
 
       // Add a note to first selection
-      const addNoteButton = screen.getByRole('button', { name: /add note/i });
+      const addNoteButton = screen.getByRole("button", { name: /add note/i });
       fireEvent.click(addNoteButton);
 
       const noteInput = screen.getByPlaceholderText(/add a note/i);
-      fireEvent.change(noteInput, { target: { value: 'First note' } });
+      fireEvent.change(noteInput, { target: { value: "First note" } });
 
       // Change to second selection
       rerender(
@@ -399,30 +427,30 @@ describe('HighlightToolbar', () => {
           selection={selection2}
           contentId={contentId}
           onClose={mockOnClose}
-        />
+        />,
       );
 
       // Note should be cleared
       const newNoteInput = screen.queryByPlaceholderText(/add a note/i);
       // Note input should not be visible anymore (or empty if visible)
       if (newNoteInput) {
-        expect(newNoteInput).toHaveValue('');
+        expect(newNoteInput).toHaveValue("");
       }
     });
 
-    it('resets state when moving from edit mode to create mode', () => {
+    it("resets state when moving from edit mode to create mode", () => {
       const editSelection = {
-        text: 'edited text',
+        text: "edited text",
         startOffset: 10,
         endOffset: 21,
         position: { x: 100, y: 100 },
-        existingHighlightId: 'test-id',
-        existingColor: 'purple',
-        existingNote: 'Old note',
+        existingHighlightId: "test-id",
+        existingColor: "purple",
+        existingNote: "Old note",
       };
 
       const newSelection = {
-        text: 'new text',
+        text: "new text",
         startOffset: 30,
         endOffset: 38,
         position: { x: 150, y: 150 },
@@ -433,12 +461,14 @@ describe('HighlightToolbar', () => {
           selection={editSelection as any}
           contentId={contentId}
           onClose={mockOnClose}
-        />
+        />,
       );
 
       // Should be in edit mode
-      expect(screen.getByRole('button', { name: /update/i })).toBeInTheDocument();
-      expect(screen.getByPlaceholderText(/edit note/i)).toHaveValue('Old note');
+      expect(
+        screen.getByRole("button", { name: /update/i }),
+      ).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/edit note/i)).toHaveValue("Old note");
 
       // Switch to new selection
       rerender(
@@ -446,20 +476,22 @@ describe('HighlightToolbar', () => {
           selection={newSelection}
           contentId={contentId}
           onClose={mockOnClose}
-        />
+        />,
       );
 
       // Should be in create mode with reset state
-      expect(screen.getByRole('button', { name: /^save$/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /^save$/i }),
+      ).toBeInTheDocument();
       const yellowButton = screen.getByLabelText(/yellow/i);
-      expect(yellowButton).toHaveClass('ring-2'); // Back to default yellow
+      expect(yellowButton).toHaveClass("border-gray-900"); // Back to default yellow
     });
   });
 
-  describe('Toolbar Positioning', () => {
-    it('positions toolbar based on selection position', () => {
+  describe("Toolbar Positioning", () => {
+    it("positions toolbar based on selection position", () => {
       const selection = {
-        text: 'test',
+        text: "test",
         startOffset: 0,
         endOffset: 4,
         position: { x: 200, y: 300 },
@@ -470,21 +502,21 @@ describe('HighlightToolbar', () => {
           selection={selection}
           contentId={contentId}
           onClose={mockOnClose}
-        />
+        />,
       );
 
       const toolbar = container.firstChild as HTMLElement;
       expect(toolbar).toHaveStyle({
-        left: '200px',
-        top: '300px',
+        left: "50px",
+        top: "240px",
       });
     });
   });
 
-  describe('Close Button', () => {
-    it('closes toolbar when X button is clicked', () => {
+  describe("Close Button", () => {
+    it("closes toolbar when X button is clicked", () => {
       const selection = {
-        text: 'test',
+        text: "test",
         startOffset: 0,
         endOffset: 4,
         position: { x: 100, y: 100 },
@@ -495,10 +527,10 @@ describe('HighlightToolbar', () => {
           selection={selection}
           contentId={contentId}
           onClose={mockOnClose}
-        />
+        />,
       );
 
-      const closeButton = screen.getByText('×');
+      const closeButton = screen.getByText("✕");
       fireEvent.click(closeButton);
 
       expect(mockOnClose).toHaveBeenCalled();

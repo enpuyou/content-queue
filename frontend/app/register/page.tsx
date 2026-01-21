@@ -34,9 +34,7 @@ export default function RegisterPage() {
       <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-lg shadow">
         <div>
           <h2 className="text-3xl font-bold text-center">Content Queue</h2>
-          <p className="mt-2 text-center text-gray-600">
-            Create your account
-          </p>
+          <p className="mt-2 text-center text-gray-600">Create your account</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">

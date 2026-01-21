@@ -12,7 +12,7 @@ import { ContentItem } from "@/types";
 export function useProcessingPolling(
   items: ContentItem[],
   onUpdate: (updatedItem: ContentItem) => void,
-  pollingInterval: number = 5000
+  pollingInterval: number = 5000,
 ) {
   // useRef to store interval ID so we can clear it on unmount
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -23,7 +23,7 @@ export function useProcessingPolling(
     const processingItems = items.filter(
       (item) =>
         item.processing_status === "pending" ||
-        item.processing_status === "processing"
+        item.processing_status === "processing",
     );
 
     // If no items are processing, no need to poll

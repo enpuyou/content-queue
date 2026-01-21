@@ -11,7 +11,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLists } from "@/contexts/ListsContext";
 import Link from "next/link";
 
-
 // Type for list details
 interface ListDetail {
   id: string;
@@ -169,7 +168,10 @@ export default function ListDetailPage() {
       <nav className="bg-white shadow-sm mb-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <Link href="/dashboard" className="text-2xl font-bold text-gray-900">
+            <Link
+              href="/dashboard"
+              className="text-2xl font-bold text-gray-900"
+            >
               Content Queue
             </Link>
 
@@ -211,7 +213,9 @@ export default function ListDetailPage() {
           <div className="flex justify-between items-start">
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-3xl font-bold text-gray-900">{list.name}</h1>
+                <h1 className="text-3xl font-bold text-gray-900">
+                  {list.name}
+                </h1>
                 {list.is_shared && (
                   <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
                     Shared
