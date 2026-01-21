@@ -48,18 +48,27 @@ jobs:
       working-directory: ./content-queue-backend
       run: poetry run ruff check app/
 
-    - name: Set up PostgreSQL
-      uses: ikalnytskyi/action-setup-postgres@v6
-      with:
-        username: postgres
-        password: postgres
-        database: content_queue_test
-        port: 5432
-      id: postgres
+    - name: Set up PostgreSQL with pgvector
+      run: |
+        docker run -d \
+          --name postgres-pgvector \
+          -e POSTGRES_USER=postgres \
+          -e POSTGRES_PASSWORD=postgres \
+          -e POSTGRES_DB=content_queue_test \
+          -p 5432:5432 \
+          pgvector/pgvector:pg16
+        # Wait for PostgreSQL to be ready
+        for i in {1..30}; do
+          if docker exec postgres-pgvector pg_isready -U postgres; then
+            break
+          fi
+          echo "Waiting for PostgreSQL..."
+          sleep 1
+        done
 
     - name: Enable pgvector extension
       run: |
-        PGPASSWORD=postgres psql -h localhost -U postgres -d content_queue_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
+        docker exec postgres-pgvector psql -U postgres -d content_queue_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
 
     - name: Run tests
       working-directory: ./content-queue-backend
