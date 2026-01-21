@@ -48,7 +48,25 @@ jobs:
       working-directory: ./content-queue-backend
       run: poetry run ruff check app/
 
-    # Uncomment when you have tests
-    # - name: Run tests
-    #   working-directory: ./content-queue-backend
-    #   run: poetry run pytest
+    - name: Set up PostgreSQL
+      uses: ikalnytskyi/action-setup-postgres@v6
+      with:
+        username: postgres
+        password: postgres
+        database: content_queue_test
+        port: 5432
+      id: postgres
+
+    - name: Enable pgvector extension
+      run: |
+        PGPASSWORD=postgres psql -h localhost -U postgres -d content_queue_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
+
+    - name: Run tests
+      working-directory: ./content-queue-backend
+      run: poetry run pytest tests/ -v --tb=short
+      env:
+        TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/content_queue_test
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/content_queue_test
+        REDIS_URL: redis://localhost:6379/0
+        SECRET_KEY: test-secret-key-for-ci
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

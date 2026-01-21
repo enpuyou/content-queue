@@ -19,3 +19,14 @@ repos:
       - id: end-of-file-fixer
       - id: check-yaml
       - id: check-added-large-files
+
+  # Run tests before committing
+  - repo: local
+    hooks:
+      - id: pytest
+        name: Run pytest
+        entry: bash -c 'cd content-queue-backend && poetry run pytest tests/ -q --tb=line'
+        language: system
+        pass_filenames: false
+        types: [python]
+        stages: [pre-commit]

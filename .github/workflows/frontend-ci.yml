@@ -43,13 +43,14 @@ jobs:
       working-directory: ./frontend
       run: npm run lint
 
+    - name: Run tests
+      working-directory: ./frontend
+      run: npm test -- --passWithNoTests --watchAll=false
+      env:
+        CI: true
+
     - name: Build
       working-directory: ./frontend
       run: npm run build
       env:
         NEXT_PUBLIC_API_URL: http://localhost:8000
-
-    # Uncomment when you have tests
-    # - name: Run tests
-    #   working-directory: ./frontend
-    #   run: npm test
