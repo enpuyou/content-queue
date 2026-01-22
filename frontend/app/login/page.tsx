@@ -45,9 +45,6 @@ export default function LoginPage() {
           <h2 className="font-serif text-3xl font-normal text-center text-[var(--color-text-primary)]">
             sedi
           </h2>
-          <p className="mt-2 text-center text-[var(--color-text-secondary)]">
-            Sign in to your account
-          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -58,46 +55,38 @@ export default function LoginPage() {
           )}
 
           <div>
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-[var(--color-text-primary)]"
-            >
-              Email
-            </label>
             <input
               id="email"
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] rounded-none focus:outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)] text-[var(--color-text-primary)]"
+              placeholder="Email"
+              className="block w-full px-3 py-2 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] rounded-none hover:bg-[var(--color-bg-tertiary)] focus:outline-none focus:border-[var(--color-accent)] placeholder-[var(--color-text-muted)] transition-all"
             />
           </div>
 
           <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-[var(--color-text-primary)]"
-            >
-              Password
-            </label>
             <input
               id="password"
               type="password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] rounded-none focus:outline-none focus:border-[var(--color-accent)] focus:ring-1 focus:ring-[var(--color-accent)] text-[var(--color-text-primary)]"
+              placeholder="Password"
+              className="block w-full px-3 py-2 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] rounded-none hover:bg-[var(--color-bg-tertiary)] focus:outline-none focus:border-[var(--color-accent)] placeholder-[var(--color-text-muted)] transition-all"
             />
           </div>
 
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full flex justify-center py-2 px-4 rounded-none text-sm font-medium text-white bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50"
-          >
-            {isLoading ? "Signing in..." : "Sign in"}
-          </button>
+          <div className="flex justify-center">
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"
+            >
+              {isLoading ? "Signing in..." : "Sign In"}
+            </button>
+          </div>
 
           <p className="text-center text-sm text-[var(--color-text-secondary)]">
             Don't have an account?{" "}

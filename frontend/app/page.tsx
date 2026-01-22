@@ -33,23 +33,23 @@ export default function Home() {
           <h1 className="font-serif text-4xl font-normal text-[var(--color-text-primary)]">
             sedi
           </h1>
-          <p className="mt-4 text-lg text-[var(--color-text-secondary)]">
-            Your personal content aggregation and reading queue
+          <p className="mt-4 text-md text-[var(--color-text-secondary)]">
+            Content aggregation and reading queue
           </p>
         </div>
 
-        <div className="space-y-4">
+        <div className="flex justify-center gap-4">
           <Link
             href="/login"
-            className="block w-full bg-[var(--color-accent)] text-white py-3 px-6 rounded-none hover:bg-[var(--color-accent-hover)] transition-colors font-medium"
+            className="text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"
           >
-            Sign In
+            Log in
           </Link>
           <Link
             href="/register"
-            className="block w-full bg-[var(--color-bg-secondary)] text-[var(--color-accent)] py-3 px-6 rounded-none border border-[var(--color-border)] hover:bg-[var(--color-bg-tertiary)] transition-colors font-medium"
+            className="text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"
           >
-            Create Account
+            Sign up
           </Link>
         </div>
       </div>
