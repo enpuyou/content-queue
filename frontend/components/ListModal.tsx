@@ -135,22 +135,22 @@ export default function ListModal({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black bg-opacity-50 z-40"
+        className="fixed inset-0 bg-black bg-opacity-30 z-40"
         onClick={handleClose}
       />
 
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div
-          className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+          className="bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-none max-w-md w-full p-8"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">
+          <div className="mb-8">
+            <h2 className="font-serif text-2xl font-normal text-[var(--color-text-primary)]">
               {isEditing ? "Edit List" : "Create New List"}
             </h2>
-            <p className="text-gray-600 mt-1">
+            <p className="text-[var(--color-text-secondary)] mt-2 text-sm">
               {isEditing
                 ? "Update the details of your list"
                 : "Organize your content into a custom collection"}
@@ -159,18 +159,18 @@ export default function ListModal({
 
           {/* Error message */}
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+            <div className="border-l-4 border-red-600 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 px-4 py-3 rounded-none mb-6">
               {error}
             </div>
           )}
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-6">
             {/* Name field */}
             <div>
               <label
                 htmlFor="name"
-                className="block text-sm font-medium text-gray-700 mb-1"
+                className="block text-sm font-medium text-[var(--color-text-primary)] mb-2"
               >
                 List Name *
               </label>
@@ -182,7 +182,7 @@ export default function ListModal({
                 placeholder="e.g., Web Development, Reading List"
                 required
                 disabled={loading}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-0 py-2 border-0 border-b border-[var(--color-border)] bg-transparent rounded-none focus:outline-none focus:border-[var(--color-accent)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
 
@@ -190,7 +190,7 @@ export default function ListModal({
             <div>
               <label
                 htmlFor="description"
-                className="block text-sm font-medium text-gray-700 mb-1"
+                className="block text-sm font-medium text-[var(--color-text-primary)] mb-2"
               >
                 Description (optional)
               </label>
@@ -201,7 +201,7 @@ export default function ListModal({
                 placeholder="What's this list about?"
                 rows={3}
                 disabled={loading}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed resize-none"
+                className="w-full px-0 py-2 border-0 border-b border-[var(--color-border)] bg-transparent rounded-none focus:outline-none focus:border-[var(--color-accent)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] disabled:opacity-50 disabled:cursor-not-allowed resize-none"
               />
             </div>
 
@@ -214,14 +214,14 @@ export default function ListModal({
                   checked={isShared}
                   onChange={(e) => setIsShared(e.target.checked)}
                   disabled={loading}
-                  className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="mt-1 h-4 w-4 text-[var(--color-accent)] focus:ring-[var(--color-accent)] border-[var(--color-border)] rounded disabled:opacity-50 disabled:cursor-not-allowed"
                 />
                 <label
                   htmlFor="is_shared"
-                  className="ml-2 block text-sm text-gray-700"
+                  className="ml-2 block text-sm text-[var(--color-text-secondary)]"
                 >
                   <span className="font-medium">Make this list shared</span>
-                  <span className="block text-gray-500 text-xs mt-0.5">
+                  <span className="block text-[var(--color-text-muted)] text-xs mt-0.5">
                     Others can view this list (future feature)
                   </span>
                 </label>
@@ -229,19 +229,19 @@ export default function ListModal({
             )}
 
             {/* Buttons */}
-            <div className="flex gap-3 pt-4">
+            <div className="flex gap-4 pt-6">
               <button
                 type="button"
                 onClick={handleClose}
                 disabled={loading}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2 border border-[var(--color-border)] text-[var(--color-text-muted)] rounded-none hover:text-[var(--color-text-primary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={loading || !name.trim()}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2 bg-[var(--color-accent)] text-white rounded-none hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading
                   ? "Saving..."

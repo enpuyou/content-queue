@@ -104,17 +104,17 @@ export default function AddContentToListModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] flex flex-col">
+    <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 p-4">
+      <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-none max-w-2xl w-full max-h-[80vh] flex flex-col">
         {/* Header */}
-        <div className="p-6 border-b border-gray-200">
+        <div className="p-6 border-b border-[var(--color-border)]">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold text-gray-900">
+            <h2 className="font-serif text-2xl font-normal text-[var(--color-text-primary)]">
               Add Content to List
             </h2>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-[var(--color-text-faint)] hover:text-[var(--color-text-primary)] transition-colors"
             >
               <svg
                 className="w-6 h-6"
@@ -138,18 +138,18 @@ export default function AddContentToListModal({
             placeholder="Search your content..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-0 py-2 border-0 border-b border-[var(--color-border)] bg-transparent rounded-none focus:outline-none focus:border-[var(--color-accent)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)]"
           />
         </div>
 
         {/* Content list */}
         <div className="flex-1 overflow-y-auto p-6">
           {fetching ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-[var(--color-text-muted)]">
               Loading content...
             </div>
           ) : filteredContent.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-[var(--color-text-muted)]">
               {searchQuery
                 ? "No content matches your search"
                 : "No content available"}
@@ -160,20 +160,20 @@ export default function AddContentToListModal({
                 <div
                   key={item.id}
                   onClick={() => handleToggleSelect(item.id)}
-                  className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                  className={`p-4 border rounded-none cursor-pointer transition-colors ${
                     selectedIds.has(item.id)
-                      ? "border-blue-500 bg-blue-50"
-                      : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                      ? "border-l-4 border-l-[var(--color-accent)] bg-[var(--color-bg-secondary)] border border-[var(--color-border)]"
+                      : "border border-[var(--color-border)] hover:border-[var(--color-accent)] hover:bg-[var(--color-bg-secondary)]"
                   }`}
                 >
                   <div className="flex items-start gap-3">
                     {/* Checkbox */}
                     <div className="flex-shrink-0 mt-1">
                       <div
-                        className={`w-5 h-5 border-2 rounded flex items-center justify-center ${
+                        className={`w-5 h-5 border-2 rounded-none flex items-center justify-center ${
                           selectedIds.has(item.id)
-                            ? "bg-blue-600 border-blue-600"
-                            : "border-gray-300"
+                            ? "bg-[var(--color-accent)] border-[var(--color-accent)]"
+                            : "border-[var(--color-border)]"
                         }`}
                       >
                         {selectedIds.has(item.id) && (
@@ -197,26 +197,26 @@ export default function AddContentToListModal({
                       <img
                         src={item.thumbnail_url}
                         alt=""
-                        className="w-16 h-16 object-cover rounded flex-shrink-0"
+                        className="w-16 h-16 object-cover rounded-none flex-shrink-0"
                       />
                     )}
 
                     {/* Content info */}
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-gray-900 line-clamp-1">
+                      <h3 className="font-medium text-[var(--color-text-primary)] line-clamp-1">
                         {item.title || "Untitled"}
                       </h3>
                       {item.description && (
-                        <p className="text-sm text-gray-600 line-clamp-2 mt-1">
+                        <p className="text-sm text-[var(--color-text-secondary)] line-clamp-2 mt-1">
                           {item.description}
                         </p>
                       )}
-                      <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
+                      <div className="flex items-center gap-2 mt-2 text-xs text-[var(--color-text-muted)]">
                         {item.reading_time_minutes && (
                           <span>{item.reading_time_minutes} min read</span>
                         )}
                         {item.is_read && (
-                          <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded">
+                          <span className="px-2 py-0.5 border border-[var(--color-border)] text-[var(--color-text-muted)] rounded-none">
                             Read
                           </span>
                         )}
@@ -230,24 +230,24 @@ export default function AddContentToListModal({
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-gray-200 bg-gray-50">
+        <div className="p-6 border-t border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">
+            <span className="text-sm text-[var(--color-text-secondary)]">
               {selectedIds.size} item{selectedIds.size !== 1 ? "s" : ""}{" "}
               selected
             </span>
-            <div className="flex gap-3">
+            <div className="flex gap-4">
               <button
                 onClick={onClose}
                 disabled={loading}
-                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                className="px-4 py-2 text-[var(--color-text-muted)] border border-[var(--color-border)] rounded-none hover:text-[var(--color-text-primary)] transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={loading || selectedIds.size === 0}
-                className="px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 text-white bg-[var(--color-accent)] rounded-none hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? "Adding..." : `Add to List`}
               </button>

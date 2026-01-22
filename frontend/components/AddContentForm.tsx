@@ -48,9 +48,9 @@ export default function AddContentForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+        <div className="text-[var(--color-text-secondary)] border-l-2 border-red-400 pl-4 bg-transparent py-3">
           {error}
         </div>
       )}
@@ -58,7 +58,7 @@ export default function AddContentForm({
       <div>
         <label
           htmlFor="url"
-          className="block text-sm font-medium text-gray-700 mb-1"
+          className="block text-xs font-medium text-[var(--color-text-muted)] mb-2 uppercase tracking-wider"
         >
           URL *
         </label>
@@ -69,14 +69,14 @@ export default function AddContentForm({
           onChange={(e) => setUrl(e.target.value)}
           placeholder="https://example.com/article"
           required
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-0 py-2 border-0 border-b border-[var(--color-border)] bg-transparent rounded-none focus:outline-none focus:border-[var(--color-accent)] placeholder-[var(--color-text-faint)]"
         />
       </div>
 
       <button
         type="submit"
         disabled={loading}
-        className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full bg-[var(--color-accent)] text-white py-2 px-4 rounded-none hover:bg-[var(--color-accent-hover)] focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-[var(--color-accent)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {loading ? "Adding..." : "Add to Queue"}
       </button>

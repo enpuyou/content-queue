@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { searchAPI } from "@/lib/api";
-import Link from "next/link";
 
 /**
  * SearchBar Component
@@ -107,16 +106,16 @@ export default function SearchBar() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search your content..."
-          className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-0 py-2 pr-10 border-0 border-b border-[var(--color-border)] bg-transparent rounded-none focus:outline-none focus:border-[var(--color-accent)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)]"
         />
 
         {/* Search Icon / Loading Spinner */}
-        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+        <div className="absolute right-0 top-1/2 transform -translate-y-1/2">
           {loading ? (
-            <div className="animate-spin h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+            <div className="animate-spin h-5 w-5 border-2 border-[var(--color-accent)] border-t-transparent rounded-full"></div>
           ) : (
             <svg
-              className="h-5 w-5 text-gray-400"
+              className="h-5 w-5 text-[var(--color-text-faint)]"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -134,12 +133,12 @@ export default function SearchBar() {
 
       {/* Results Dropdown */}
       {showResults && results.length > 0 && (
-        <div className="absolute w-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg max-h-96 overflow-y-auto z-50">
+        <div className="absolute w-full mt-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-none shadow-lg max-h-96 overflow-y-auto z-50">
           {results.map((result) => (
             <button
               key={result.item.id}
               onClick={() => handleSelectResult(result.item.id)}
-              className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
+              className="w-full text-left px-4 py-3 hover:bg-[var(--color-bg-secondary)] transition-colors border-b border-[var(--color-border-subtle)] last:border-b-0"
             >
               <div className="flex items-start gap-3">
                 {/* Thumbnail (if available) */}
@@ -147,26 +146,26 @@ export default function SearchBar() {
                   <img
                     src={result.item.thumbnail_url}
                     alt=""
-                    className="w-12 h-12 object-cover rounded flex-shrink-0"
+                    className="w-12 h-12 object-cover rounded-none flex-shrink-0"
                   />
                 )}
 
                 {/* Content Info */}
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-gray-900 truncate">
+                  <h4 className="font-medium text-[var(--color-text-primary)] truncate">
                     {result.item.title || "Untitled"}
                   </h4>
                   {result.item.description && (
-                    <p className="text-sm text-gray-600 line-clamp-2">
+                    <p className="text-sm text-[var(--color-text-secondary)] line-clamp-2">
                       {result.item.description}
                     </p>
                   )}
                   <div className="flex items-center gap-3 mt-1">
-                    <span className="text-xs text-blue-600 font-medium">
+                    <span className="text-xs text-[var(--color-accent)] font-medium">
                       {formatScore(result.similarity_score)}
                     </span>
                     {result.item.reading_time_minutes && (
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-[var(--color-text-muted)]">
                         {result.item.reading_time_minutes} min read
                       </span>
                     )}
@@ -180,8 +179,8 @@ export default function SearchBar() {
 
       {/* No Results Message */}
       {showResults && !loading && query.length >= 3 && results.length === 0 && (
-        <div className="absolute w-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-4 z-50">
-          <p className="text-gray-500 text-center">
+        <div className="absolute w-full mt-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-none shadow-lg p-4 z-50">
+          <p className="text-[var(--color-text-muted)] text-center">
             No results found for "{query}"
           </p>
         </div>

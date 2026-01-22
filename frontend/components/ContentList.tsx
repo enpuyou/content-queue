@@ -245,19 +245,19 @@ export default function ContentList() {
     <div className="space-y-4">
       {/* Error message - shown at top if something went wrong */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded flex justify-between items-center">
-          <span>{error}</span>
+        <div className="text-[var(--color-text-secondary)] border-l-2 border-red-400 pl-4 bg-transparent py-3 flex justify-between items-center mb-4">
+          <span className="text-sm">{error}</span>
           <button
             onClick={() => setError(null)}
-            className="text-red-500 hover:text-red-700"
+            className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
           >
             ✕
           </button>
         </div>
       )}
 
-      {/* Filter buttons - now using our FilterType (all, unread, read, archived) */}
-      <div className="flex gap-2 border-b pb-4 overflow-x-auto">
+      {/* Filter buttons - text-based with underline active state */}
+      <div className="flex gap-6 pb-4 border-b border-[var(--color-border)] overflow-x-auto">
         {(["all", "unread", "read", "archived"] as const).map((filterType) => (
           <Link
             key={filterType}
@@ -266,34 +266,34 @@ export default function ContentList() {
                 ? "/dashboard"
                 : `/dashboard?filter=${filterType}`
             }
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+            className={`text-sm font-medium whitespace-nowrap transition-colors pb-1 ${
               filter === filterType
-                ? "bg-blue-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                ? "text-[var(--color-text-primary)] border-b-2 border-[var(--color-accent)]"
+                : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
             }`}
           >
-            {/* Capitalize first letter */}
             {filterType.charAt(0).toUpperCase() + filterType.slice(1)}
-            {/* Show count for all filters except 'all' */}
             {filterType !== "all" && ` (${getCount(filterType)})`}
           </Link>
         ))}
       </div>
 
       {/* Total count display */}
-      <div className="text-sm text-gray-500">
+      <div className="text-xs text-[var(--color-text-faint)] uppercase tracking-wider mb-4">
         Showing {filteredContents.length} of {total} items
       </div>
 
       {/* Content items list */}
       {filteredContents.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
-          {filter === "all"
-            ? "No content yet. Add your first article above!"
-            : `No ${filter} items.`}
+        <div className="text-center py-12 text-[var(--color-text-muted)]">
+          <p className="text-sm">
+            {filter === "all"
+              ? "No content yet. Add your first article above!"
+              : `No ${filter} items.`}
+          </p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="divide-y divide-[var(--color-border-subtle)]">
           {filteredContents.map((content) => (
             <ContentItem
               key={content.id}

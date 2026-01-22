@@ -34,11 +34,11 @@ export default function StatsCards() {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+      <div className="flex flex-wrap items-center gap-8 py-4 border-b border-[var(--color-border)]">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="bg-white rounded-lg shadow p-6 animate-pulse">
-            <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
-            <div className="h-8 bg-gray-200 rounded w-3/4"></div>
+          <div key={i} className="animate-pulse">
+            <div className="h-3 bg-[var(--color-border)] rounded w-16 mb-2"></div>
+            <div className="h-6 bg-[var(--color-border)] rounded w-12"></div>
           </div>
         ))}
       </div>
@@ -55,43 +55,51 @@ export default function StatsCards() {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+    <div className="flex flex-wrap items-center gap-8 py-4 border-b border-[var(--color-border)] text-sm">
       {/* Total Items */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="text-sm text-gray-600 mb-1">Total Saved</div>
-        <div className="text-3xl font-bold text-gray-900">
+      <div>
+        <div className="text-xs text-[var(--color-text-faint)] uppercase tracking-widest mb-1">
+          Total Saved
+        </div>
+        <div className="text-2xl font-semibold text-[var(--color-text-primary)]">
           {stats.total_items}
         </div>
       </div>
 
       {/* Items Read */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="text-sm text-gray-600 mb-1">Read</div>
-        <div className="text-3xl font-bold text-green-600">
+      <div>
+        <div className="text-xs text-[var(--color-text-faint)] uppercase tracking-widest mb-1">
+          Read
+        </div>
+        <div className="text-2xl font-semibold text-[var(--color-text-primary)]">
           {stats.items_read}
         </div>
         {stats.total_items > 0 && (
-          <div className="text-xs text-gray-500 mt-1">
+          <div className="text-xs text-[var(--color-text-muted)] mt-1">
             {Math.round((stats.items_read / stats.total_items) * 100)}% of total
           </div>
         )}
       </div>
 
       {/* Items Unread */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="text-sm text-gray-600 mb-1">Unread</div>
-        <div className="text-3xl font-bold text-blue-600">
+      <div>
+        <div className="text-xs text-[var(--color-text-faint)] uppercase tracking-widest mb-1">
+          Unread
+        </div>
+        <div className="text-2xl font-semibold text-[var(--color-text-primary)]">
           {stats.items_unread}
         </div>
       </div>
 
       {/* Reading Time */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="text-sm text-gray-600 mb-1">Reading Time</div>
-        <div className="text-3xl font-bold text-purple-600">
+      <div>
+        <div className="text-xs text-[var(--color-text-faint)] uppercase tracking-widest mb-1">
+          Reading Time
+        </div>
+        <div className="text-2xl font-semibold text-[var(--color-text-primary)]">
           {formatTime(stats.read_reading_time_minutes)}
         </div>
-        <div className="text-xs text-gray-500 mt-1">
+        <div className="text-xs text-[var(--color-text-muted)] mt-1">
           {formatTime(stats.total_reading_time_minutes)} total
         </div>
       </div>

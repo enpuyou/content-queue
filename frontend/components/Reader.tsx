@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { ContentItem } from "@/types";
 import { searchAPI, highlightsAPI } from "@/lib/api";
+import { useTheme } from "@/contexts/ThemeContext";
 import HighlightToolbar from "./HighlightToolbar";
 import HighlightRenderer from "./HighlightRenderer";
 import HighlightsPanel from "./HighlightsPanel";
@@ -18,11 +19,13 @@ interface ReaderProps {
 }
 
 export default function Reader({ content, onStatusChange }: ReaderProps) {
+  // Use global theme context (no local theme state needed)
+  useTheme();
+
   // UI state
   const [fontSize, setFontSize] = useState<"small" | "medium" | "large">(
     "medium",
   );
-  const [theme, setTheme] = useState<"light" | "sepia" | "dark">("light");
 
   // Similar articles state
   const [showSimilar, setShowSimilar] = useState(false);
@@ -253,17 +256,11 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
     large: "text-xl",
   };
 
-  const themeClasses = {
-    light: "bg-white text-gray-900",
-    sepia: "bg-amber-50 text-amber-950",
-    dark: "bg-gray-900 text-gray-100",
-  };
-
-  const linkColorClasses = {
-    light: "text-blue-600 hover:text-blue-800",
-    sepia: "text-amber-700 hover:text-amber-900",
-    dark: "text-blue-400 hover:text-blue-300",
-  };
+  // Use CSS variables for theming - color changes automatically with global theme
+  const themeClasses =
+    "bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]";
+  const linkColorClasses =
+    "text-[var(--color-accent)] hover:text-[var(--color-accent-hover)]";
 
   const scrollToHighlight = (highlight: {
     id: string;
@@ -382,7 +379,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
   };
 
   return (
-    <div className={`min-h-screen ${themeClasses[theme]} transition-colors`}>
+    <div className={`min-h-screen ${themeClasses} transition-colors`}>
       <HighlightToolbar
         selection={selection}
         contentId={content.id}
@@ -391,14 +388,14 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
       />
       {/* Sticky Header with Controls */}
       <div
-        className={`sticky top-0 z-10 ${themeClasses[theme]} border-b ${theme === "dark" ? "border-gray-700" : "border-gray-200"} shadow-sm`}
+        className={`sticky top-0 z-10 ${themeClasses} border-b border-[var(--color-border)] shadow-sm`}
       >
-        <div className="max-w-4xl mx-auto px-4 py-3">
+        <div className="max-w-2xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             {/* Back Button */}
             <a
               href="/dashboard"
-              className={`${linkColorClasses[theme]} text-sm font-medium hover:underline`}
+              className={`${linkColorClasses} text-sm font-medium hover:opacity-70 transition-opacity`}
             >
               ← Back to Queue
             </a>
@@ -407,20 +404,18 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
             <div className="flex items-center gap-4">
               {/* Font Size Control */}
               <div className="flex items-center gap-2">
-                <span className="text-xs font-medium opacity-70">Size:</span>
+                <span className="text-xs font-medium text-[var(--color-text-muted)]">
+                  Size:
+                </span>
                 <div className="flex gap-1">
                   {(["small", "medium", "large"] as const).map((size) => (
                     <button
                       key={size}
                       onClick={() => setFontSize(size)}
-                      className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                      className={`px-2 py-1 rounded-none text-xs font-medium transition-colors ${
                         fontSize === size
-                          ? theme === "dark"
-                            ? "bg-gray-700 text-white"
-                            : "bg-gray-200 text-gray-900"
-                          : theme === "dark"
-                            ? "bg-gray-800 text-gray-400 hover:bg-gray-700"
-                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                          ? "bg-[var(--color-border)] text-[var(--color-text-primary)]"
+                          : "bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
                       }`}
                     >
                       {size === "small" ? "A" : size === "medium" ? "A" : "A"}
@@ -429,48 +424,14 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
                 </div>
               </div>
 
-              {/* Theme Control */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium opacity-70">Theme:</span>
-                <div className="flex gap-1">
-                  {(["light", "sepia", "dark"] as const).map((t) => (
-                    <button
-                      key={t}
-                      onClick={() => setTheme(t)}
-                      className={`w-6 h-6 rounded border-2 transition-all ${
-                        theme === t
-                          ? "border-blue-500 scale-110"
-                          : "border-gray-300 opacity-60 hover:opacity-100"
-                      } ${
-                        t === "light"
-                          ? "bg-white"
-                          : t === "sepia"
-                            ? "bg-amber-50"
-                            : "bg-gray-900"
-                      }`}
-                      title={t.charAt(0).toUpperCase() + t.slice(1)}
-                    />
-                  ))}
-                </div>
-              </div>
-
               {/* Action Buttons */}
-              <div
-                className="flex items-center gap-2 flex-wrap"
-                style={{
-                  borderColor: theme === "dark" ? "#374151" : "#e5e7eb",
-                }}
-              >
+              <div className="flex items-center gap-2 flex-wrap">
                 <button
                   onClick={() => setShowHighlightsPanel(!showHighlightsPanel)}
-                  className={`text-sm px-3 py-1.5 rounded-md transition-colors ${
+                  className={`text-sm px-3 py-1.5 rounded-none transition-colors ${
                     showHighlightsPanel
-                      ? theme === "dark"
-                        ? "bg-yellow-900 text-yellow-200 hover:bg-yellow-800"
-                        : "bg-yellow-100 text-yellow-700 hover:bg-yellow-200"
-                      : theme === "dark"
-                        ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      ? "bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)]"
+                      : "bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
                   }`}
                 >
                   {showHighlightsPanel ? "Hide" : "Show"} Highlights{" "}
@@ -480,14 +441,10 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
                   onClick={() =>
                     onStatusChange({ is_archived: !content.is_archived })
                   }
-                  className={`text-sm px-3 py-1.5 rounded-md transition-colors ${
+                  className={`text-sm px-3 py-1.5 rounded-none transition-colors ${
                     content.is_archived
-                      ? theme === "dark"
-                        ? "bg-blue-900 text-blue-200 hover:bg-blue-800"
-                        : "bg-blue-100 text-blue-700 hover:bg-blue-200"
-                      : theme === "dark"
-                        ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      ? "bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)]"
+                      : "bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
                   }`}
                 >
                   {content.is_archived ? "Unarchive" : "Archive"}
@@ -495,11 +452,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
                 <button
                   onClick={handleFindSimilar}
                   disabled={loadingSimilar}
-                  className={`text-sm px-3 py-1.5 rounded-md transition-colors ${
-                    theme === "dark"
-                      ? "bg-purple-900 text-purple-200 hover:bg-purple-800"
-                      : "bg-purple-100 text-purple-700 hover:bg-purple-200"
-                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  className="text-sm px-3 py-1.5 rounded-none transition-colors bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loadingSimilar
                     ? "Loading..."
@@ -516,7 +469,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
       {/* Highlights Panel Sidebar */}
       {showHighlightsPanel && (
         <div
-          className={`fixed right-0 top-0 h-full w-80 ${themeClasses[theme]} border-l ${theme === "dark" ? "border-gray-700" : "border-gray-200"} shadow-xl z-20 overflow-hidden flex flex-col`}
+          className={`fixed right-0 top-0 h-full w-80 ${themeClasses} border-l border-[var(--color-border)] shadow-xl z-20 overflow-hidden flex flex-col`}
         >
           <HighlightsPanel
             highlights={highlights}
@@ -529,22 +482,22 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
 
       {/* Article Content */}
       <article
-        className={`max-w-4xl mx-auto px-4 py-8 transition-all ${showHighlightsPanel ? "mr-80" : ""}`}
+        className={`max-w-2xl mx-auto px-4 py-8 transition-all ${showHighlightsPanel ? "mr-80" : ""}`}
       >
         {/* Article Header */}
-        <header className="mb-8">
+        <header className="mb-12">
           <h1
-            className={`font-bold mb-4 leading-tight ${fontSize === "small" ? "text-3xl" : fontSize === "medium" ? "text-4xl" : "text-5xl"}`}
+            className={`font-serif font-normal leading-tight mb-4 ${fontSize === "small" ? "text-3xl" : fontSize === "medium" ? "text-4xl" : "text-5xl"} text-[var(--color-text-primary)]`}
           >
             {content.title || "Untitled Article"}
           </h1>
 
           {/* Metadata */}
-          <div className="flex items-center gap-4 text-sm opacity-70 mb-4">
+          <div className="flex items-center gap-4 text-sm text-[var(--color-text-muted)] mb-4 tracking-wide">
             {content.reading_time_minutes && (
               <span>{content.reading_time_minutes} min read</span>
             )}
-            <span>•</span>
+            {content.reading_time_minutes && <span>·</span>}
             <span>{new Date(content.created_at).toLocaleDateString()}</span>
           </div>
 
@@ -553,7 +506,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
             href={content.original_url}
             target="_blank"
             rel="noopener noreferrer"
-            className={`${linkColorClasses[theme]} text-sm hover:underline inline-flex items-center gap-1`}
+            className={`${linkColorClasses} text-sm hover:opacity-70 transition-opacity inline-flex items-center gap-1 mb-6`}
           >
             View original
             <svg
@@ -577,16 +530,16 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
               <img
                 src={content.thumbnail_url}
                 alt=""
-                className="w-full rounded-lg"
+                className="w-full opacity-90 hover:opacity-100 transition-opacity"
               />
             </div>
           )}
         </header>
 
-        {/* Description */}
+        {/* Description/Lead paragraph */}
         {content.description && (
           <div
-            className={`${fontSizeClasses[fontSize]} leading-relaxed mb-8 opacity-80 italic border-l-4 pl-4 ${theme === "dark" ? "border-gray-700" : "border-gray-300"}`}
+            className={`${fontSizeClasses[fontSize]} leading-relaxed mb-8 italic font-serif border-l-2 border-[var(--color-border)] pl-6 text-[var(--color-text-secondary)]`}
           >
             {content.description}
           </div>
@@ -595,7 +548,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
         {/* Main Content */}
         <div
           id="reader-content"
-          className={`prose ${theme === "dark" ? "prose-invert" : theme === "sepia" ? "prose-amber" : ""} max-w-none ${fontSizeClasses[fontSize]} leading-relaxed`}
+          className={`prose-editorial max-w-none ${fontSizeClasses[fontSize]} leading-relaxed text-[var(--color-text-secondary)]`}
         >
           {content.full_text ? (
             <HighlightRenderer
@@ -622,42 +575,38 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
 
         {/* Similar Articles Section */}
         {showSimilar && similarArticles.length > 0 && (
-          <div
-            className={`mt-12 pt-8 border-t ${theme === "dark" ? "border-gray-700" : "border-gray-300"}`}
-          >
-            <h2 className="text-2xl font-bold mb-6">Similar Articles</h2>
+          <div className="mt-12 pt-8 border-t border-[var(--color-border)]">
+            <h2 className="font-serif text-2xl font-normal mb-6 text-[var(--color-text-primary)]">
+              Similar Articles
+            </h2>
             <div className="grid gap-4">
               {similarArticles.map(({ item, similarity_score }) => (
                 <Link
                   key={item.id}
                   href={`/content/${item.id}`}
-                  className={`block p-4 rounded-lg border transition-colors ${
-                    theme === "dark"
-                      ? "bg-gray-800 border-gray-700 hover:bg-gray-750"
-                      : "bg-white border-gray-200 hover:bg-gray-50"
-                  }`}
+                  className="block p-4 rounded-none border border-[var(--color-border)] transition-colors hover:border-[var(--color-accent)]"
                 >
                   <div className="flex items-start gap-4">
                     {item.thumbnail_url && (
                       <img
                         src={item.thumbnail_url}
                         alt=""
-                        className="w-20 h-20 object-cover rounded flex-shrink-0"
+                        className="w-20 h-20 object-cover flex-shrink-0 opacity-80 hover:opacity-100 transition-opacity"
                       />
                     )}
                     <div className="flex-1 min-w-0">
                       <h3
-                        className={`font-semibold mb-1 ${linkColorClasses[theme]}`}
+                        className={`font-serif font-medium mb-1 ${linkColorClasses}`}
                       >
                         {item.title || "Untitled"}
                       </h3>
                       {item.description && (
-                        <p className="text-sm opacity-70 line-clamp-2 mb-2">
+                        <p className="text-sm text-[var(--color-text-muted)] line-clamp-2 mb-2">
                           {item.description}
                         </p>
                       )}
-                      <div className="flex items-center gap-3 text-xs opacity-60">
-                        <span className="text-purple-600 dark:text-purple-400 font-medium">
+                      <div className="flex items-center gap-3 text-xs text-[var(--color-text-faint)]">
+                        <span className="text-[var(--color-accent)] font-medium">
                           {Math.round(similarity_score * 100)}% similar
                         </span>
                         {item.reading_time_minutes && (

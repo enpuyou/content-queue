@@ -134,7 +134,7 @@ export default function HighlightToolbar({
 
   return (
     <div
-      className="highlight-toolbar fixed z-50 bg-white rounded-lg shadow-lg border border-gray-200 p-3 max-w-sm"
+      className="highlight-toolbar fixed z-50 bg-[var(--color-bg-primary)] rounded-none border border-[var(--color-border)] shadow-lg p-3 max-w-sm"
       style={{
         left: `${Math.max(20, selection.position.x - 150)}px`,
         top: `${selection.position.y - 60}px`,
@@ -146,10 +146,10 @@ export default function HighlightToolbar({
           <button
             key={color.name}
             onClick={() => setSelectedColor(color.name)}
-            className={`w-6 h-6 rounded border-2 transition-all ${color.bg} ${
+            className={`w-6 h-6 rounded-none border-2 transition-all ${color.bg} ${
               selectedColor === color.name
-                ? "border-gray-900 scale-110"
-                : "border-gray-300 opacity-60 hover:opacity-100"
+                ? "border-[var(--color-text-primary)] scale-110"
+                : "border-[var(--color-border)] opacity-60 hover:opacity-100"
             }`}
             title={color.name}
             aria-label={color.name}
@@ -158,8 +158,8 @@ export default function HighlightToolbar({
       </div>
 
       {/* Preview of selected text */}
-      <div className="mb-3 p-2 bg-gray-50 rounded text-sm max-h-20 overflow-y-auto">
-        <p className="text-gray-600 font-medium">
+      <div className="mb-3 p-2 bg-[var(--color-bg-secondary)] rounded-none text-sm max-h-20 overflow-y-auto border border-[var(--color-border)]">
+        <p className="text-[var(--color-text-secondary)] font-medium">
           "{selection.text.substring(0, 100)}
           {selection.text.length > 100 ? "..." : ""}"
         </p>
@@ -171,7 +171,7 @@ export default function HighlightToolbar({
           placeholder={isEditing ? "Edit note..." : "Add a note (optional)"}
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          className="w-full mb-3 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+          className="w-full mb-3 px-2 py-1 text-sm border border-[var(--color-border)] bg-transparent rounded-none focus:outline-none focus:border-[var(--color-accent)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] resize-none"
           rows={2}
         />
       )}
@@ -181,7 +181,7 @@ export default function HighlightToolbar({
         {!isEditing && (
           <button
             onClick={() => setShowNoteInput(!showNoteInput)}
-            className="flex-1 text-sm px-2 py-1.5 rounded bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+            className="flex-1 text-sm px-2 py-1.5 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"
           >
             {showNoteInput ? "✓ Note" : "Add Note"}
           </button>
@@ -189,7 +189,7 @@ export default function HighlightToolbar({
         <button
           onClick={handleSaveHighlight}
           disabled={isLoading}
-          className="flex-1 text-sm px-2 py-1.5 rounded bg-blue-500 text-white hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 text-sm px-2 py-1.5 rounded-none bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isLoading ? "Saving..." : isEditing ? "Update" : "Save"}
         </button>
@@ -197,14 +197,14 @@ export default function HighlightToolbar({
           <button
             onClick={handleDeleteHighlight}
             disabled={isLoading}
-            className="flex-1 text-sm px-2 py-1.5 rounded bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1 text-sm px-2 py-1.5 rounded-none bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Unhighlight
           </button>
         )}
         <button
           onClick={onClose}
-          className="text-sm px-2 py-1.5 rounded bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+          className="text-sm px-2 py-1.5 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"
         >
           ✕
         </button>
