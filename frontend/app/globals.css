@@ -1,29 +1,65 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/* ========================================
+   EDITORIAL ELEGANCE THEME SYSTEM
+   ======================================== */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Light Mode (default) - Cream/warm aesthetic */
+  --color-bg-primary: #fffef7;      /* Warm cream */
+  --color-bg-secondary: #faf9f5;    /* Slightly darker cream */
+  --color-bg-tertiary: #f5f4f0;     /* Muted cream for cards */
+
+  --color-text-primary: #1a1a1a;    /* Ink black */
+  --color-text-secondary: #4a4a4a;  /* Soft black */
+  --color-text-muted: #666666;      /* Subtle gray */
+  --color-text-faint: #999999;      /* Very subtle */
+
+  --color-border: #e5e4e0;          /* Warm gray border */
+  --color-border-subtle: #eeede9;   /* Very subtle border */
+
+  --color-accent: #3d46c2;          /* are.na blue */
+  --color-accent-hover: #2d36b2;    /* Darker are.na blue */
+
+  /* Status indicators - minimal */
+  --color-status-unread: #1a1a1a;   /* Ink black circle */
+  --color-status-read: #999999;     /* Gray circle */
+}
+
+/* Dark Mode */
+.dark {
+  --color-bg-primary: #0d0d0d;      /* Deep black */
+  --color-bg-secondary: #141414;    /* Slightly lighter */
+  --color-bg-tertiary: #1a1a1a;     /* Card background */
+
+  --color-text-primary: #f5f5f5;    /* Off-white */
+  --color-text-secondary: #d4d4d4;  /* Soft white */
+  --color-text-muted: #a3a3a3;      /* Muted */
+  --color-text-faint: #737373;      /* Very muted */
+
+  --color-border: #2a2a2a;          /* Dark border */
+  --color-border-subtle: #1f1f1f;   /* Very subtle border */
+
+  --color-accent: #6b73e8;          /* Lighter are.na blue for dark */
+  --color-accent-hover: #8b91f0;
+
+  --color-status-unread: #f5f5f5;
+  --color-status-read: #737373;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-background: var(--color-bg-primary);
+  --color-foreground: var(--color-text-primary);
+  --font-sans: var(--font-sans);
+  --font-serif: var(--font-serif);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 @keyframes slide-in {
@@ -41,34 +77,70 @@ body {
   animation: slide-in 0.3s ease-out;
 }
 
-/* Input and form styling improvements for better readability */
+/* ========================================
+   FORM STYLING
+   ======================================== */
+
 input[type="text"],
 input[type="email"],
 input[type="url"],
 input[type="search"],
 textarea {
-  color: #111827 !important; /* gray-900 - make typed text dark */
+  color: var(--color-text-primary) !important;
+  background-color: var(--color-bg-primary) !important;
 }
 
 input::placeholder,
 textarea::placeholder {
-  color: #6b7280 !important; /* gray-500 - make placeholders readable */
+  color: var(--color-text-muted) !important;
   opacity: 1;
 }
 
-/* Ensure section headings are dark and readable */
 h1,
 h2,
 h3,
 h4,
 h5,
 h6 {
-  color: #111827 !important; /* gray-900 */
+  color: var(--color-text-primary) !important;
 }
 
 /* Better focus states */
 input:focus,
 textarea:focus,
 select:focus {
-  @apply ring-2 ring-blue-500 ring-offset-0 border-blue-500;
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px rgba(61, 70, 194, 0.1);
+}
+
+/* ========================================
+   PROSE STYLES FOR EDITORIAL ELEGANCE
+   ======================================== */
+
+.prose-editorial {
+  --tw-prose-body: var(--color-text-secondary);
+  --tw-prose-headings: var(--color-text-primary);
+  --tw-prose-links: var(--color-accent);
+  --tw-prose-bold: var(--color-text-primary);
+  --tw-prose-hr: var(--color-border);
+  --tw-prose-code: var(--color-accent);
+}
+
+.prose-editorial h1,
+.prose-editorial h2,
+.prose-editorial h3 {
+  font-family: var(--font-serif), Georgia, serif;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.prose-editorial a {
+  color: var(--color-accent);
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+.prose-editorial a:hover {
+  opacity: 0.8;
 }

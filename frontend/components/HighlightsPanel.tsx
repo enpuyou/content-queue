@@ -114,7 +114,7 @@ export default function HighlightsPanel({
 
   if (highlights.length === 0) {
     return (
-      <div className="p-4 text-center text-gray-500 text-sm">
+      <div className="p-4 text-center text-[var(--color-text-muted)] text-sm">
         No highlights yet. Select text to create a highlight.
       </div>
     );
@@ -123,13 +123,13 @@ export default function HighlightsPanel({
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-        <h3 className="font-semibold text-gray-900">
+      <div className="p-4 border-b border-[var(--color-border)] flex items-center justify-between">
+        <h3 className="font-semibold text-[var(--color-text-primary)]">
           Highlights ({highlights.length})
         </h3>
         <button
           onClick={handleCopyAllHighlights}
-          className="text-xs px-2 py-1 rounded bg-gray-100 hover:bg-gray-200 transition-colors"
+          className="text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"
           title="Copy all highlights as Markdown"
           aria-label="Copy all highlights"
         >
@@ -146,12 +146,12 @@ export default function HighlightsPanel({
           return (
             <div
               key={highlight.id}
-              className="border-b border-gray-200 p-4 hover:bg-gray-50 transition-colors"
+              className="border-b border-[var(--color-border)] p-4 hover:bg-[var(--color-bg-secondary)] transition-colors"
               role="listitem"
             >
               {/* Highlighted Text */}
               <div
-                className={`${colorClasses[isEditing ? editColor : highlight.color]} p-2 rounded mb-2 cursor-pointer text-sm outline-none focus:ring-2 focus:ring-blue-400`}
+                className={`${colorClasses[isEditing ? editColor : highlight.color]} p-2 rounded-none mb-2 cursor-pointer text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]`}
                 onClick={() => !isEditing && onHighlightClick(highlight)}
                 onKeyDown={(e) => {
                   if ((e.key === "Enter" || e.key === " ") && !isEditing) {
@@ -178,10 +178,10 @@ export default function HighlightsPanel({
                       <button
                         key={color.name}
                         onClick={() => setEditColor(color.name)}
-                        className={`w-6 h-6 rounded border-2 transition-all ${color.bg} ${
+                        className={`w-6 h-6 rounded-none border-2 transition-all ${color.bg} ${
                           editColor === color.name
-                            ? "border-gray-900 scale-110"
-                            : "border-gray-300 opacity-60 hover:opacity-100"
+                            ? "border-[var(--color-text-primary)] scale-110"
+                            : "border-[var(--color-border)] opacity-60 hover:opacity-100"
                         }`}
                         title={color.name}
                         aria-label={`Select color ${color.name}`}
@@ -194,14 +194,14 @@ export default function HighlightsPanel({
                     value={editNote}
                     onChange={(e) => setEditNote(e.target.value)}
                     placeholder="Add a note..."
-                    className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+                    className="w-full px-2 py-1 text-sm border border-[var(--color-border)] bg-transparent rounded-none focus:outline-none focus:border-[var(--color-accent)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] resize-none"
                     rows={3}
                     aria-label="Edit note"
                   />
                 </div>
               ) : (
                 highlight.note && (
-                  <div className="text-xs text-gray-600 italic mb-2 pl-2 border-l-2 border-gray-300">
+                  <div className="text-xs text-[var(--color-text-secondary)] italic mb-2 pl-2 border-l-2 border-[var(--color-border)]">
                     {highlight.note}
                   </div>
                 )
@@ -213,14 +213,14 @@ export default function HighlightsPanel({
                   <>
                     <button
                       onClick={() => handleSaveEdit(highlight.id)}
-                      className="text-xs px-2 py-1 rounded bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+                      className="text-xs px-2 py-1 rounded-none bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors"
                       aria-label="Save"
                     >
                       Save
                     </button>
                     <button
                       onClick={handleCancelEdit}
-                      className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+                      className="text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"
                       aria-label="Cancel"
                     >
                       Cancel
@@ -230,7 +230,7 @@ export default function HighlightsPanel({
                   <>
                     <button
                       onClick={() => handleStartEdit(highlight)}
-                      className="text-xs px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+                      className="text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"
                       aria-label="Edit"
                     >
                       Edit
@@ -238,7 +238,7 @@ export default function HighlightsPanel({
                     <button
                       onClick={() => handleDelete(highlight.id)}
                       disabled={isBeingDeleted}
-                      className="text-xs px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="text-xs px-2 py-1 rounded-none bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       aria-label="Delete"
                     >
                       {isBeingDeleted ? "Deleting..." : "Delete"}

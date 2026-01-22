@@ -74,22 +74,24 @@ export default function Sidebar() {
 
   /**
    * Base classes for navigation links
-   * Active links get blue background, inactive get hover effect
+   * Active links get left border, inactive get hover effect
    */
   const linkClasses = (path: string) => {
-    return `flex items-center justify-between px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+    return `flex items-center justify-between px-4 py-2 text-sm font-medium transition-colors ${
       isActive(path)
-        ? "bg-blue-600 text-white"
-        : "text-gray-700 hover:bg-gray-100"
+        ? "text-[var(--color-text-primary)] border-l-2 border-[var(--color-accent)] -ml-px pl-[calc(1rem-2px)]"
+        : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] pl-4"
     }`;
   };
 
   return (
-    <aside className="hidden lg:block w-64 bg-white border-r border-gray-200 h-screen sticky top-0 overflow-y-auto">
+    <aside className="hidden lg:block w-64 bg-[var(--color-bg-primary)] border-r border-[var(--color-border)] h-screen sticky top-0 overflow-y-auto">
       <div className="p-4 space-y-6">
         {/* App Title */}
         <div className="px-4">
-          <h1 className="text-xl font-bold text-gray-900">Content Queue</h1>
+          <h1 className="font-serif text-2xl font-normal text-[var(--color-text-primary)] tracking-tight">
+            Content Queue
+          </h1>
         </div>
 
         {/* Main Navigation Links */}
@@ -114,17 +116,17 @@ export default function Sidebar() {
         </nav>
 
         {/* Divider */}
-        <div className="border-t border-gray-200"></div>
+        <div className="border-t border-[var(--color-border)]"></div>
 
         {/* Lists Section */}
         <div className="space-y-2">
           <div className="flex items-center justify-between px-4">
-            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            <h2 className="text-xs text-[var(--color-text-faint)] uppercase tracking-widest font-medium">
               Lists
             </h2>
             <Link
               href="/lists"
-              className="text-blue-600 hover:text-blue-800 text-sm"
+              className="text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] text-sm"
             >
               Manage
             </Link>
@@ -132,16 +134,16 @@ export default function Sidebar() {
 
           {/* Lists Loading State */}
           {loading && (
-            <div className="px-4 py-2 text-sm text-gray-500">
+            <div className="px-4 py-2 text-sm text-[var(--color-text-muted)]">
               Loading lists...
             </div>
           )}
 
           {/* Lists Navigation */}
           {!loading && lists.length === 0 && (
-            <div className="px-4 py-2 text-sm text-gray-500">
+            <div className="px-4 py-2 text-sm text-[var(--color-text-muted)]">
               No lists yet.{" "}
-              <Link href="/lists" className="text-blue-600 hover:text-blue-800">
+              <Link href="/lists" className="text-[var(--color-accent)] hover:text-[var(--color-accent-hover)]">
                 Create one
               </Link>
             </div>
@@ -156,7 +158,7 @@ export default function Sidebar() {
                   className={linkClasses(`/lists/${list.id}`)}
                 >
                   <span className="truncate">{list.name}</span>
-                  <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-gray-200 text-gray-700">
+                  <span className="ml-2 text-xs text-[var(--color-text-faint)]">
                     {listCounts[list.id] ?? list.content_count}
                   </span>
                 </Link>

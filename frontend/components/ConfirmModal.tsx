@@ -47,30 +47,34 @@ export default function ConfirmModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black bg-opacity-50 transition-opacity"
+        className="absolute inset-0 bg-black bg-opacity-30 transition-opacity"
         onClick={onCancel}
       />
 
       {/* Modal */}
-      <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6 z-10">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
+      <div className="relative bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-none max-w-md w-full mx-4 p-8 z-10">
+        <h3 className="font-serif text-xl font-normal text-[var(--color-text-primary)] mb-4">
+          {title}
+        </h3>
 
-        <p className="text-gray-600 mb-6">{message}</p>
+        <p className="text-[var(--color-text-secondary)] mb-8 leading-relaxed">
+          {message}
+        </p>
 
-        <div className="flex gap-3 justify-end">
+        <div className="flex gap-4 justify-end">
           <button
             onClick={onCancel}
-            className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+            className="px-4 py-2 text-[var(--color-text-muted)] border border-[var(--color-border)] rounded-none hover:text-[var(--color-text-primary)] transition-colors"
           >
             {cancelText}
           </button>
 
           <button
             onClick={onConfirm}
-            className={`px-4 py-2 rounded-md transition-colors ${
+            className={`px-4 py-2 rounded-none transition-colors ${
               danger
-                ? "bg-red-600 text-white hover:bg-red-700"
-                : "bg-blue-600 text-white hover:bg-blue-700"
+                ? "bg-red-600 text-white hover:bg-red-700 border border-red-600"
+                : "bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] border border-[var(--color-accent)]"
             }`}
           >
             {confirmText}
