@@ -361,7 +361,7 @@ form:focus-within {
 
 /* High contrast mode support */
 @media (prefers-contrast: more) {
-  :root {
+  body {
     --color-accent: #2d36b2;
     --color-text-muted: #555555;
   }
