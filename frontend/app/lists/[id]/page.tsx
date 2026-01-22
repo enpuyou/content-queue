@@ -1,15 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { listsAPI, contentAPI } from "@/lib/api";
 import { useToast } from "@/contexts/ToastContext";
 import ContentItem from "@/components/ContentItem";
 import AddContentToListModal from "@/components/AddContentToListModal";
 import { ContentItem as ContentItemType } from "@/types";
-import { useAuth } from "@/contexts/AuthContext";
 import { useLists } from "@/contexts/ListsContext";
-import Link from "next/link";
+import Navbar from "@/components/Navbar";
 
 // Type for list details
 interface ListDetail {
@@ -26,7 +25,6 @@ export default function ListDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { showToast } = useToast();
-  const { logout } = useAuth();
   const { decrementListCount, incrementListCount } = useLists();
 
   const listId = params.id as string;
@@ -37,12 +35,7 @@ export default function ListDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch list details and content
-  useEffect(() => {
-    fetchListAndContent();
-  }, [listId]);
-
-  const fetchListAndContent = async () => {
+  const fetchListAndContent = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -64,7 +57,12 @@ export default function ListDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [listId, showToast]);
+
+  // Fetch list details and content
+  useEffect(() => {
+    fetchListAndContent();
+  }, [fetchListAndContent]);
 
   const handleRemoveFromList = async (contentId: string) => {
     const previousContents = [...contents];
@@ -164,55 +162,23 @@ export default function ListDetailPage() {
 
   return (
     <div className="min-h-screen bg-[var(--color-bg-primary)]">
-      {/* Navigation Header */}
-      <nav className="sticky top-0 z-40 bg-[var(--color-bg-primary)] border-b border-[var(--color-border)] mb-6">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link
-              href="/dashboard"
-              className="font-serif text-2xl font-normal text-[var(--color-text-primary)]"
-            >
-              Content Queue
-            </Link>
+      <Navbar />
 
-            <div className="flex items-center gap-4">
-              <Link
-                href="/dashboard"
-                className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] px-3 py-2 rounded-none text-sm transition-colors"
-              >
-                Dashboard
-              </Link>
-              <Link
-                href="/lists"
-                className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] px-3 py-2 rounded-none text-sm transition-colors border-b-2 border-[var(--color-accent)]"
-              >
-                Lists
-              </Link>
-              <button
-                className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
-                onClick={logout}
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="mb-8">
+        <div className="space-y-4">
           {/* Back button */}
           <button
             onClick={() => router.push("/lists")}
-            className="text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] mb-6 flex items-center gap-2 text-sm transition-colors"
+            className="text-xs px-2 py-1 rounded-none border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:border-[var(--color-accent)] transition-colors"
           >
-            ← Back to Lists
+            ← Back
           </button>
 
-          <div className="flex justify-between items-start py-6 border-b border-[var(--color-border)]">
+          {/* Title and Add Content button */}
+          <div className="flex justify-between items-start pb-4 border-b border-[var(--color-border)]">
             <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
+              <div className="flex items-center gap-2 mb-1">
                 <h1 className="font-serif text-3xl font-normal text-[var(--color-text-primary)]">
                   {list.name}
                 </h1>
@@ -223,9 +189,11 @@ export default function ListDetailPage() {
                 )}
               </div>
               {list.description && (
-                <p className="text-[var(--color-text-secondary)] mt-2">{list.description}</p>
+                <p className="text-[var(--color-text-secondary)] text-sm mt-1">
+                  {list.description}
+                </p>
               )}
-              <p className="text-xs text-[var(--color-text-muted)] mt-3">
+              <p className="text-xs text-[var(--color-text-muted)] mt-2">
                 {contents.length} {contents.length === 1 ? "item" : "items"}
               </p>
             </div>
@@ -233,7 +201,7 @@ export default function ListDetailPage() {
             {/* Add Content button */}
             <button
               onClick={() => setIsAddContentModalOpen(true)}
-              className="text-sm px-4 py-2 rounded-none bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors whitespace-nowrap ml-4"
+              className="text-xs px-2 py-1 rounded-none border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:border-[var(--color-accent)] transition-colors whitespace-nowrap"
             >
               + Add Content
             </button>
@@ -246,12 +214,9 @@ export default function ListDetailPage() {
             <h3 className="font-serif text-xl font-normal text-[var(--color-text-primary)] mb-2">
               No content yet
             </h3>
-            <p className="text-[var(--color-text-secondary)] mb-6">
-              Add articles to this list to get started
-            </p>
             <button
               onClick={() => setIsAddContentModalOpen(true)}
-              className="px-6 py-2 text-sm rounded-none bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors"
+              className="text-xs px-2 py-1 rounded-none border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:border-[var(--color-accent)] transition-colors whitespace-nowrap"
             >
               Add Your First Item
             </button>

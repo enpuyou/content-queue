@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Playfair_Display } from "next/font/google";
+import { Inter, EB_Garamond } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ToastProvider } from "@/contexts/ToastContext";
@@ -11,14 +11,14 @@ const inter = Inter({
   variable: "--font-sans",
 });
 
-const playfair = Playfair_Display({
+const ebGaramond = EB_Garamond({
   subsets: ["latin"],
   variable: "--font-serif",
   weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
-  title: "Content Queue",
+  title: "sedi",
   description: "Your personal reading queue with AI-powered recommendations",
 };
 
@@ -28,7 +28,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
+    <html lang="en" className={`${inter.variable} ${ebGaramond.variable}`}>
       <body className={inter.className}>
         <ThemeProvider>
           <AuthProvider>

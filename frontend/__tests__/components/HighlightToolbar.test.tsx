@@ -100,8 +100,8 @@ describe("HighlightToolbar", () => {
       );
 
       const yellowButton = screen.getByLabelText(/yellow/i);
-      // The selected color should have a ring around it (check for ring class or aria-pressed)
-      expect(yellowButton).toHaveClass("border-gray-900");
+      // The selected color should have the scale-110 class applied
+      expect(yellowButton).toHaveClass("scale-110");
     });
 
     it("allows changing color before saving", async () => {
@@ -117,7 +117,7 @@ describe("HighlightToolbar", () => {
       fireEvent.click(greenButton);
 
       await waitFor(() => {
-        expect(greenButton).toHaveClass("border-gray-900");
+        expect(greenButton).toHaveClass("scale-110");
       });
     });
 
@@ -258,7 +258,7 @@ describe("HighlightToolbar", () => {
       );
 
       const blueButton = screen.getByLabelText(/blue/i);
-      expect(blueButton).toHaveClass("border-gray-900");
+      expect(blueButton).toHaveClass("scale-110");
     });
 
     it("shows existing note in edit mode", () => {
@@ -484,7 +484,7 @@ describe("HighlightToolbar", () => {
         screen.getByRole("button", { name: /^save$/i }),
       ).toBeInTheDocument();
       const yellowButton = screen.getByLabelText(/yellow/i);
-      expect(yellowButton).toHaveClass("border-gray-900"); // Back to default yellow
+      expect(yellowButton).toHaveClass("scale-110"); // Back to default yellow
     });
   });
 

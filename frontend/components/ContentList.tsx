@@ -256,8 +256,8 @@ export default function ContentList() {
         </div>
       )}
 
-      {/* Filter buttons - text-based with underline active state */}
-      <div className="flex gap-6 pb-4 border-b border-[var(--color-border)] overflow-x-auto">
+      {/* Filter buttons - action style */}
+      <div className="flex gap-1 pb-4 border-b border-[var(--color-border)] overflow-x-auto">
         {(["all", "unread", "read", "archived"] as const).map((filterType) => (
           <Link
             key={filterType}
@@ -266,10 +266,10 @@ export default function ContentList() {
                 ? "/dashboard"
                 : `/dashboard?filter=${filterType}`
             }
-            className={`text-sm font-medium whitespace-nowrap transition-colors pb-1 ${
+            className={`no-underline text-xs px-2 py-1 rounded-none border whitespace-nowrap transition-colors ${
               filter === filterType
-                ? "text-[var(--color-text-primary)] border-b-2 border-[var(--color-accent)]"
-                : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+                ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-accent)]"
+                : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
             }`}
           >
             {filterType.charAt(0).toUpperCase() + filterType.slice(1)}

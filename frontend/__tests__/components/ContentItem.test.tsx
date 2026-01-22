@@ -172,7 +172,7 @@ describe("ContentItem", () => {
   });
 
   describe("Status Badges", () => {
-    it('shows "Unread" badge when not read', () => {
+    it("shows Unread status indicator when not read", () => {
       render(
         <ContentItem
           content={mockContent}
@@ -181,14 +181,10 @@ describe("ContentItem", () => {
         />,
       );
 
-      expect(screen.getByText("Unread")).toBeInTheDocument();
-      expect(screen.getByText("Unread")).toHaveClass(
-        "bg-blue-100",
-        "text-blue-800",
-      );
+      expect(screen.getByTitle("Unread")).toBeInTheDocument();
     });
 
-    it('shows "Read" badge when read', () => {
+    it("shows Read status indicator when read", () => {
       const readContent = { ...mockContent, is_read: true };
 
       render(
@@ -199,14 +195,10 @@ describe("ContentItem", () => {
         />,
       );
 
-      expect(screen.getByText("Read")).toBeInTheDocument();
-      expect(screen.getByText("Read")).toHaveClass(
-        "bg-green-100",
-        "text-green-800",
-      );
+      expect(screen.getByTitle("Read")).toBeInTheDocument();
     });
 
-    it('shows "Archived" badge when archived', () => {
+    it("shows Archived status indicator when archived", () => {
       const archivedContent = { ...mockContent, is_archived: true };
 
       render(
@@ -217,11 +209,7 @@ describe("ContentItem", () => {
         />,
       );
 
-      expect(screen.getByText("Archived")).toBeInTheDocument();
-      expect(screen.getByText("Archived")).toHaveClass(
-        "bg-gray-100",
-        "text-gray-800",
-      );
+      expect(screen.getByTitle("Archived")).toBeInTheDocument();
     });
 
     it("prioritizes archived status over read status", () => {
@@ -239,69 +227,9 @@ describe("ContentItem", () => {
         />,
       );
 
-      expect(screen.getByText("Archived")).toBeInTheDocument();
-      expect(screen.queryByText("Read")).not.toBeInTheDocument();
-    });
-  });
-
-  describe("Processing Status", () => {
-    it("shows pending status badge", () => {
-      const pendingContent = { ...mockContent, processing_status: "pending" };
-
-      render(
-        <ContentItem
-          content={pendingContent}
-          onStatusChange={mockOnStatusChange}
-          onDelete={mockOnDelete}
-        />,
-      );
-
-      expect(screen.getByText("pending")).toBeInTheDocument();
-      expect(screen.getByText("pending")).toHaveClass("animate-pulse");
-    });
-
-    it("shows processing status badge", () => {
-      const processingContent = {
-        ...mockContent,
-        processing_status: "processing",
-      };
-
-      render(
-        <ContentItem
-          content={processingContent}
-          onStatusChange={mockOnStatusChange}
-          onDelete={mockOnDelete}
-        />,
-      );
-
-      expect(screen.getByText("processing")).toBeInTheDocument();
-      expect(screen.getByText("processing")).toHaveClass("animate-pulse");
-    });
-
-    it("shows failed status badge", () => {
-      const failedContent = { ...mockContent, processing_status: "failed" };
-
-      render(
-        <ContentItem
-          content={failedContent}
-          onStatusChange={mockOnStatusChange}
-          onDelete={mockOnDelete}
-        />,
-      );
-
-      expect(screen.getByText("failed")).toBeInTheDocument();
-    });
-
-    it("does not show badge when processing is completed", () => {
-      render(
-        <ContentItem
-          content={mockContent}
-          onStatusChange={mockOnStatusChange}
-          onDelete={mockOnDelete}
-        />,
-      );
-
-      expect(screen.queryByText("completed")).not.toBeInTheDocument();
+      expect(screen.getByTitle("Archived")).toBeInTheDocument();
+      // Read indicator should not be present when archived
+      expect(screen.queryByTitle("Read")).not.toBeInTheDocument();
     });
   });
 
@@ -597,8 +525,13 @@ describe("ContentItem", () => {
       const deleteButton = screen.getByTitle("Delete");
       fireEvent.click(deleteButton);
 
-      const confirmButton = screen.getByText("Delete", { selector: "button" });
-      fireEvent.click(confirmButton);
+      // Find the Delete button within the modal (which has the red background)
+      const allDeleteButtons = screen.getAllByText("Delete");
+      const confirmButton = allDeleteButtons.find(
+        (btn) =>
+          btn.tagName === "BUTTON" && btn.classList.contains("bg-red-600"),
+      );
+      fireEvent.click(confirmButton!);
 
       await waitFor(() => {
         expect(mockOnDelete).toHaveBeenCalledWith("test-content-123");

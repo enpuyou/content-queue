@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { contentAPI, listsAPI } from "@/lib/api";
 import { ContentItem } from "@/types";
 import { useToast } from "@/contexts/ToastContext";
@@ -28,16 +28,7 @@ export default function AddContentToListModal({
   const [fetching, setFetching] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Fetch all user's content when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      fetchAllContent();
-      setSelectedIds(new Set());
-      setSearchQuery("");
-    }
-  }, [isOpen]);
-
-  const fetchAllContent = async () => {
+  const fetchAllContent = useCallback(async () => {
     try {
       setFetching(true);
       const data = await contentAPI.getAll();
@@ -48,7 +39,16 @@ export default function AddContentToListModal({
     } finally {
       setFetching(false);
     }
-  };
+  }, [showToast]);
+
+  // Fetch all user's content when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchAllContent();
+      setSelectedIds(new Set());
+      setSearchQuery("");
+    }
+  }, [isOpen, fetchAllContent]);
 
   const handleToggleSelect = (id: string) => {
     const newSelected = new Set(selectedIds);
