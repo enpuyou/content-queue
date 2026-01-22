@@ -5,6 +5,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ToastProvider } from "@/contexts/ToastContext";
 import { ListsProvider } from "@/contexts/ListsContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { ThemeScript } from "./theme-script";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -29,6 +30,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${inter.variable} ${ebGaramond.variable}`}>
+      <head>
+        <ThemeScript />
+      </head>
       <body className={inter.className}>
         <ThemeProvider>
           <AuthProvider>

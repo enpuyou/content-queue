@@ -48,8 +48,28 @@ export default function ContentPage() {
       // Optimistic update
       setContent({ ...content, ...updates });
 
-      // Persist to backend
-      await contentAPI.update(contentId, updates);
+      // Persist to backend and get updated content with computed reading_status
+      const updatedContent = await contentAPI.update(contentId, updates);
+
+      // Update with the full response from backend
+      setContent(updatedContent);
+
+      // Update the cached content in sessionStorage so it reflects when navigating back
+      try {
+        const cachedData = sessionStorage.getItem("contentListCache");
+        if (cachedData) {
+          const cache = JSON.parse(cachedData);
+          if (cache.items && Array.isArray(cache.items)) {
+            cache.items = cache.items.map((item: ContentItem) =>
+              item.id === contentId ? updatedContent : item,
+            );
+            sessionStorage.setItem("contentListCache", JSON.stringify(cache));
+          }
+        }
+      } catch (cacheErr) {
+        // Silently fail - cache update is not critical
+        console.warn("Failed to update cache:", cacheErr);
+      }
     } catch (err) {
       console.error("Failed to update content:", err);
       // Revert on error

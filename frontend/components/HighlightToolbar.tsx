@@ -50,42 +50,21 @@ export default function HighlightToolbar({
     }
   }, [selection]);
 
-  console.log("HighlightToolbar render:", { hasSelection: !!selection });
-
   if (!selection) return null;
-
-  console.log("HighlightToolbar showing with selection:", selection);
 
   const handleSaveHighlight = async () => {
     try {
       setIsLoading(true);
 
       if (isEditing && selection.existingHighlightId) {
-        // Update existing highlight
-        console.log("Updating highlight:", {
-          highlightId: selection.existingHighlightId,
-          color: selectedColor,
-          note,
-        });
-
         await highlightsAPI.update(selection.existingHighlightId, {
           color: selectedColor,
           note: note || undefined,
         });
 
-        console.log("Highlight updated");
         showToast("Highlight updated", "success");
       } else {
-        // Create new highlight
-        console.log("Creating highlight:", {
-          contentId,
-          text: selection.text,
-          start_offset: selection.startOffset,
-          end_offset: selection.endOffset,
-          color: selectedColor,
-        });
-
-        const result = await highlightsAPI.create(contentId, {
+        const _result = await highlightsAPI.create(contentId, {
           text: selection.text,
           start_offset: selection.startOffset,
           end_offset: selection.endOffset,
@@ -93,7 +72,6 @@ export default function HighlightToolbar({
           note: note || undefined,
         });
 
-        console.log("Highlight created:", result);
         showToast("Highlight saved", "success");
       }
 
