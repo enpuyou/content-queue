@@ -77,49 +77,11 @@ export default function ContentItem({
   };
 
   /**
-   * Get a display-friendly status based on is_read and is_archived
-   * Returns both the label and color classes for the badge
-   */
-  const getStatusDisplay = () => {
-    if (content.is_archived) {
-      return { label: "Archived", colors: "bg-gray-100 text-gray-800" };
-    }
-    if (content.is_read) {
-      return { label: "Read", colors: "bg-green-100 text-green-800" };
-    }
-    return { label: "Unread", colors: "bg-blue-100 text-blue-800" };
-  };
-
-  /**
-   * Get processing status badge (when content is being extracted)
-   * Shows: pending, processing, completed, or failed
-   */
-  const getProcessingBadge = () => {
-    if (content.processing_status === "completed") return null;
-
-    const colors: Record<string, string> = {
-      pending: "bg-yellow-100 text-yellow-800",
-      processing: "bg-purple-100 text-purple-800",
-      failed: "bg-red-100 text-red-800",
-    };
-
-    return (
-      <span
-        className={`px-2 py-1 rounded-full text-xs font-medium ${colors[content.processing_status] || "bg-gray-100"}
-        ${content.processing_status === "processing" ? "animate-pulse" : ""}
-        ${content.processing_status === "pending" ? "animate-pulse" : ""}`}
-      >
-        {content.processing_status}
-      </span>
-    );
-  };
-
-  /**
    * Handle adding/removing tags
    */
   const handleUpdateTags = async (newTags: string[]) => {
     try {
-      await contentAPI.update(content.id, { tags: newTags } as any);
+      await contentAPI.update(content.id, { tags: newTags });
       showToast("Tags updated successfully", "success");
       // The parent component should re-fetch to show updated tags
       window.location.reload(); // Simple solution for now
@@ -150,10 +112,8 @@ export default function ContentItem({
     handleUpdateTags(newTags);
   };
 
-  const status = getStatusDisplay();
-
   return (
-    <div className="group py-6 border-b border-[var(--color-border-subtle)] last:border-b-0 transition-colors">
+    <div className="group py-6 px-4 border-b border-[var(--color-border-subtle)] last:border-b-0 transition-all duration-300 cursor-pointer hover:bg-[var(--color-bg-secondary)]">
       <div className="flex items-start gap-4">
         {/* Left side: Content info */}
         <div className="flex-1 min-w-0">
@@ -189,7 +149,7 @@ export default function ContentItem({
           )}
 
           {/* Tags - display and edit */}
-          {(content.tags && content.tags.length > 0) || isEditingTags ? (
+          {content.tags && content.tags.length > 0 ? (
             <div className="mb-3 flex items-center gap-2 flex-wrap">
               {content.tags &&
                 content.tags.map((tag, index) => (
@@ -246,39 +206,17 @@ export default function ContentItem({
             </div>
           ) : null}
 
-          {/* Edit Tags Button - show when not editing */}
-          {!isEditingTags && (
-            <button
-              onClick={() => setIsEditingTags(true)}
-              className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-accent)] mb-3"
-            >
-              + Tag
-            </button>
-          )}
-
-          {/* Inline action icons - appear on hover */}
-          <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+          {/* Action buttons - appear on hover */}
+          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity flex-wrap">
             {/* Mark as read/unread */}
             <button
               onClick={() =>
                 onStatusChange(content.id, { is_read: !content.is_read })
               }
-              className="p-1 text-[var(--color-text-faint)] hover:text-[var(--color-text-primary)] transition-colors"
+              className="text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"
               title={content.is_read ? "Mark as unread" : "Mark as read"}
             >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
+              {content.is_read ? "Unread" : "Read"}
             </button>
 
             {/* Archive/Unarchive */}
@@ -288,22 +226,10 @@ export default function ContentItem({
                   is_archived: !content.is_archived,
                 })
               }
-              className="p-1 text-[var(--color-text-faint)] hover:text-[var(--color-text-primary)] transition-colors"
+              className="text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"
               title={content.is_archived ? "Unarchive" : "Archive"}
             >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
-                />
-              </svg>
+              {content.is_archived ? "Unarchive" : "Archive"}
             </button>
 
             {/* Add to list - with dropdown */}
@@ -311,22 +237,10 @@ export default function ContentItem({
               <div className="relative">
                 <button
                   onClick={() => setShowListDropdown(!showListDropdown)}
-                  className="p-1 text-[var(--color-text-faint)] hover:text-[var(--color-text-primary)] transition-colors"
+                  className="text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"
                   title="Add to list"
                 >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 4v16m8-8H4"
-                    />
-                  </svg>
+                  + List
                 </button>
 
                 {/* List dropdown */}
@@ -357,48 +271,33 @@ export default function ContentItem({
               </div>
             )}
 
+            {/* Add Tag button */}
+            <button
+              onClick={() => setIsEditingTags(true)}
+              className="text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"
+              title="Add tag"
+            >
+              + Tag
+            </button>
+
             {/* Remove from list (only show when in a list detail page) */}
             {onRemoveFromList && (
               <button
                 onClick={onRemoveFromList}
-                className="p-1 text-[var(--color-text-faint)] hover:text-[var(--color-text-primary)] transition-colors"
+                className="text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"
                 title="Remove from list"
               >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
+                Remove
               </button>
             )}
 
             {/* Delete */}
             <button
               onClick={() => setShowDeleteModal(true)}
-              className="p-1 text-[var(--color-text-faint)] hover:text-[var(--color-text-primary)] transition-colors"
+              className="text-xs px-2 py-1 rounded-none bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
               title="Delete"
             >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                />
-              </svg>
+              Delete
             </button>
           </div>
         </div>

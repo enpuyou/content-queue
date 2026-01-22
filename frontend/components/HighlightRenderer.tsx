@@ -18,10 +18,13 @@ interface HighlightRendererProps {
 }
 
 const colorClasses: Record<string, string> = {
-  yellow: "bg-yellow-200 hover:bg-yellow-300",
-  green: "bg-green-200 hover:bg-green-300",
-  blue: "bg-blue-200 hover:bg-blue-300",
-  pink: "bg-pink-200 hover:bg-pink-300",
+  yellow:
+    "hover:opacity-80 transition-opacity cursor-pointer transition-colors",
+  green: "hover:opacity-80 transition-opacity cursor-pointer transition-colors",
+  blue: "hover:opacity-80 transition-opacity cursor-pointer transition-colors",
+  pink: "hover:opacity-80 transition-opacity cursor-pointer transition-colors",
+  purple:
+    "hover:opacity-80 transition-opacity cursor-pointer transition-colors",
 };
 
 export default function HighlightRenderer({
@@ -135,7 +138,8 @@ export default function HighlightRenderer({
 
         if (segment.highlight) {
           const span = document.createElement("span");
-          span.className = `${colorClasses[segment.highlight.color]} cursor-pointer transition-colors rounded px-0.5`;
+          span.className = colorClasses[segment.highlight.color];
+          span.style.backgroundColor = `var(--highlight-${segment.highlight.color})`;
           span.textContent = text;
           span.dataset.highlightId = segment.highlight.id;
           fragment.appendChild(span);

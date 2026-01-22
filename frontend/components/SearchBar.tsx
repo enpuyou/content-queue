@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useState, useRef, useEffect } from "react";
@@ -31,7 +32,10 @@ export default function SearchBar() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   /**
    * Debounced search - waits for user to stop typing
@@ -98,37 +102,47 @@ export default function SearchBar() {
   };
 
   return (
-    <div ref={searchRef} className="relative w-full max-w-2xl">
-      {/* Search Input */}
-      <div className="relative">
+    <div ref={searchRef} className="relative w-full">
+      {/* Search Input - Transparent by default, highlighted on hover/focus */}
+      <div
+        className="relative"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
         <input
+          ref={inputRef}
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search your content..."
-          className="w-full px-0 py-2 pr-10 border-0 border-b border-[var(--color-border)] bg-transparent rounded-none focus:outline-none focus:border-[var(--color-accent)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)]"
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          placeholder="Search..."
+          className="w-full px-3 py-2 border border-transparent bg-transparent rounded-none text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] transition-all focus:outline-none focus:border-[var(--color-accent)] focus:bg-[var(--color-bg-secondary)] hover:border-[var(--color-border)] hover:bg-[var(--color-bg-secondary)]"
         />
 
-        {/* Search Icon / Loading Spinner */}
-        <div className="absolute right-0 top-1/2 transform -translate-y-1/2">
-          {loading ? (
-            <div className="animate-spin h-5 w-5 border-2 border-[var(--color-accent)] border-t-transparent rounded-full"></div>
-          ) : (
-            <svg
-              className="h-5 w-5 text-[var(--color-text-faint)]"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-          )}
-        </div>
+        {/* Loading Spinner */}
+        {loading && (
+          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+            <div className="animate-spin h-4 w-4 border-2 border-[var(--color-accent)] border-t-transparent rounded-full"></div>
+          </div>
+        )}
+
+        {/* Search Icon - Only show on hover/focus */}
+        {!loading && (isHovered || isFocused) && (
+          <svg
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[var(--color-text-muted)] pointer-events-none transition-opacity"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
+        )}
       </div>
 
       {/* Results Dropdown */}

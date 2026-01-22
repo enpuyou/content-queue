@@ -11,7 +11,6 @@
  * - Form reset after success
  */
 
-import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
@@ -39,19 +38,19 @@ describe("AddContentForm", () => {
     it("renders form with URL input and submit button", () => {
       render(<AddContentForm onContentAdded={mockOnContentAdded} />);
 
-      expect(screen.getByLabelText(/url/i)).toBeInTheDocument();
       expect(
-        screen.getByPlaceholderText(/https:\/\/example.com\/article/i),
+        screen.getByPlaceholderText(/Paste article URL here/i),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("button", { name: /add to queue/i }),
+        screen.getByPlaceholderText(/Paste article URL here/i),
       ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /→/i })).toBeInTheDocument();
     });
 
     it("renders URL input with required attribute", () => {
       render(<AddContentForm onContentAdded={mockOnContentAdded} />);
 
-      const input = screen.getByLabelText(/url/i);
+      const input = screen.getByPlaceholderText(/Paste article URL here/i);
       expect(input).toBeRequired();
       expect(input).toHaveAttribute("type", "url");
     });
@@ -68,7 +67,7 @@ describe("AddContentForm", () => {
     it("allows user to type URL", async () => {
       render(<AddContentForm onContentAdded={mockOnContentAdded} />);
 
-      const input = screen.getByLabelText(/url/i);
+      const input = screen.getByPlaceholderText(/Paste article URL here/i);
       await userEvent.type(input, "https://example.com/article");
 
       expect(input).toHaveValue("https://example.com/article");
@@ -77,7 +76,7 @@ describe("AddContentForm", () => {
     it("updates input value on change", async () => {
       render(<AddContentForm onContentAdded={mockOnContentAdded} />);
 
-      const input = screen.getByLabelText(/url/i);
+      const input = screen.getByPlaceholderText(/Paste article URL here/i);
       await userEvent.type(input, "https://news.ycombinator.com");
 
       expect(input).toHaveValue("https://news.ycombinator.com");
@@ -98,9 +97,9 @@ describe("AddContentForm", () => {
 
       render(<AddContentForm onContentAdded={mockOnContentAdded} />);
 
-      const input = screen.getByLabelText(/url/i);
+      const input = screen.getByPlaceholderText(/Paste article URL here/i);
       const submitButton = screen.getByRole("button", {
-        name: /add to queue/i,
+        name: /→/i,
       });
 
       await userEvent.type(input, "https://example.com/article");
@@ -133,11 +132,11 @@ describe("AddContentForm", () => {
 
       render(<AddContentForm onContentAdded={mockOnContentAdded} />);
 
-      const input = screen.getByLabelText(/url/i);
+      const input = screen.getByPlaceholderText(/Paste article URL here/i);
       await userEvent.type(input, "https://example.com/article");
 
       const submitButton = screen.getByRole("button", {
-        name: /add to queue/i,
+        name: /→/i,
       });
       fireEvent.click(submitButton);
 
@@ -156,17 +155,17 @@ describe("AddContentForm", () => {
 
       render(<AddContentForm onContentAdded={mockOnContentAdded} />);
 
-      const input = screen.getByLabelText(/url/i);
+      const input = screen.getByPlaceholderText(/Paste article URL here/i);
       await userEvent.type(input, "https://example.com/article");
 
       const submitButton = screen.getByRole("button", {
-        name: /add to queue/i,
+        name: /→/i,
       });
       fireEvent.click(submitButton);
 
       // While loading
       await waitFor(() => {
-        expect(screen.getByText(/adding.../i)).toBeInTheDocument();
+        expect(screen.getByText(/\.\.\./)).toBeInTheDocument();
         expect(submitButton).toBeDisabled();
       });
 
@@ -183,7 +182,7 @@ describe("AddContentForm", () => {
 
       // After loading
       await waitFor(() => {
-        expect(screen.getByText(/add to queue/i)).toBeInTheDocument();
+        expect(screen.getByText(/→/)).toBeInTheDocument();
         expect(submitButton).not.toBeDisabled();
       });
     });
@@ -195,11 +194,11 @@ describe("AddContentForm", () => {
 
       render(<AddContentForm onContentAdded={mockOnContentAdded} />);
 
-      const input = screen.getByLabelText(/url/i);
+      const input = screen.getByPlaceholderText(/Paste article URL here/i);
       await userEvent.type(input, "https://example.com/article");
 
       const submitButton = screen.getByRole("button", {
-        name: /add to queue/i,
+        name: /→/i,
       });
       fireEvent.click(submitButton);
 
@@ -214,11 +213,11 @@ describe("AddContentForm", () => {
 
       render(<AddContentForm onContentAdded={mockOnContentAdded} />);
 
-      const input = screen.getByLabelText(/url/i);
+      const input = screen.getByPlaceholderText(/Paste article URL here/i);
       await userEvent.type(input, "https://example.com/article");
 
       const submitButton = screen.getByRole("button", {
-        name: /add to queue/i,
+        name: /→/i,
       });
       fireEvent.click(submitButton);
 
@@ -234,12 +233,12 @@ describe("AddContentForm", () => {
 
       render(<AddContentForm onContentAdded={mockOnContentAdded} />);
 
-      const input = screen.getByLabelText(/url/i);
+      const input = screen.getByPlaceholderText(/Paste article URL here/i);
       const testUrl = "https://example.com/article";
       await userEvent.type(input, testUrl);
 
       const submitButton = screen.getByRole("button", {
-        name: /add to queue/i,
+        name: /→/i,
       });
       fireEvent.click(submitButton);
 
@@ -253,11 +252,11 @@ describe("AddContentForm", () => {
 
       render(<AddContentForm onContentAdded={mockOnContentAdded} />);
 
-      const input = screen.getByLabelText(/url/i);
+      const input = screen.getByPlaceholderText(/Paste article URL here/i);
       await userEvent.type(input, "https://example.com/article");
 
       const submitButton = screen.getByRole("button", {
-        name: /add to queue/i,
+        name: /→/i,
       });
       fireEvent.click(submitButton);
 
@@ -275,11 +274,11 @@ describe("AddContentForm", () => {
 
       render(<AddContentForm onContentAdded={mockOnContentAdded} />);
 
-      const input = screen.getByLabelText(/url/i);
+      const input = screen.getByPlaceholderText(/Paste article URL here/i);
       await userEvent.type(input, "https://example.com/article");
 
       const submitButton = screen.getByRole("button", {
-        name: /add to queue/i,
+        name: /→/i,
       });
       fireEvent.click(submitButton);
 
@@ -296,7 +295,7 @@ describe("AddContentForm", () => {
       render(<AddContentForm onContentAdded={mockOnContentAdded} />);
 
       const submitButton = screen.getByRole("button", {
-        name: /add to queue/i,
+        name: /→/i,
       });
       fireEvent.click(submitButton);
 
@@ -330,11 +329,11 @@ describe("AddContentForm", () => {
           <AddContentForm onContentAdded={mockOnContentAdded} />,
         );
 
-        const input = screen.getByLabelText(/url/i);
+        const input = screen.getByPlaceholderText(/Paste article URL here/i);
         await userEvent.type(input, url);
 
         const submitButton = screen.getByRole("button", {
-          name: /add to queue/i,
+          name: /→/i,
         });
         fireEvent.click(submitButton);
 
@@ -354,7 +353,7 @@ describe("AddContentForm", () => {
       render(<AddContentForm onContentAdded={mockOnContentAdded} />);
 
       // Input should be focusable (though not auto-focused in tests)
-      const input = screen.getByLabelText(/url/i);
+      const input = screen.getByPlaceholderText(/Paste article URL here/i);
       expect(input).toBeInTheDocument();
       input.focus();
       expect(input).toHaveFocus();
@@ -373,11 +372,15 @@ describe("AddContentForm", () => {
 
       render(<AddContentForm onContentAdded={mockOnContentAdded} />);
 
-      const input = screen.getByLabelText(/url/i);
+      const input = screen.getByPlaceholderText(
+        /Paste article URL here/i,
+      ) as HTMLInputElement;
       await userEvent.type(input, "https://example.com/article{Enter}");
 
       await waitFor(() => {
-        expect(mockedContentAPI.create).toHaveBeenCalled();
+        expect(mockedContentAPI.create).toHaveBeenCalledWith({
+          url: "https://example.com/article",
+        });
       });
     });
 
@@ -390,11 +393,11 @@ describe("AddContentForm", () => {
 
       render(<AddContentForm onContentAdded={mockOnContentAdded} />);
 
-      const input = screen.getByLabelText(/url/i);
+      const input = screen.getByPlaceholderText(/Paste article URL here/i);
       await userEvent.type(input, "https://example.com/article");
 
       const submitButton = screen.getByRole("button", {
-        name: /add to queue/i,
+        name: /→/i,
       });
       fireEvent.click(submitButton);
 
@@ -436,20 +439,20 @@ describe("AddContentForm", () => {
       render(<AddContentForm onContentAdded={mockOnContentAdded} />);
 
       // 1. Type URL
-      const input = screen.getByLabelText(/url/i);
+      const input = screen.getByPlaceholderText(/Paste article URL here/i);
       await userEvent.type(input, "https://example.com/great-article");
       expect(input).toHaveValue("https://example.com/great-article");
 
       // 2. Submit
       const submitButton = screen.getByRole("button", {
-        name: /add to queue/i,
+        name: /→/i,
       });
       fireEvent.click(submitButton);
 
       // 3. Verify loading state
       await waitFor(() => {
         expect(submitButton).toBeDisabled();
-        expect(screen.getByText(/adding.../i)).toBeInTheDocument();
+        expect(screen.getByText(/\.\.\./)).toBeInTheDocument();
       });
 
       // 4. Verify success

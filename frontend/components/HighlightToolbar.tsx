@@ -20,11 +20,11 @@ interface HighlightToolbarProps {
 }
 
 const colors = [
-  { name: "yellow", bg: "bg-yellow-200", hex: "#fef08a" },
-  { name: "green", bg: "bg-green-200", hex: "#dcfce7" },
-  { name: "blue", bg: "bg-blue-200", hex: "#bfdbfe" },
-  { name: "pink", bg: "bg-pink-200", hex: "#fbcfe8" },
-  { name: "purple", bg: "bg-purple-200", hex: "#e9d5ff" },
+  { name: "yellow" },
+  { name: "green" },
+  { name: "blue" },
+  { name: "pink" },
+  { name: "purple" },
 ];
 
 export default function HighlightToolbar({
@@ -41,17 +41,14 @@ export default function HighlightToolbar({
   const { showToast } = useToast();
 
   // Reset state when selection changes
+  // We need to include all selection properties used in the effect
   useEffect(() => {
     if (selection) {
       setSelectedColor(selection.existingColor || "yellow");
       setNote(selection.existingNote || "");
       setShowNoteInput(!!selection.existingNote);
     }
-  }, [
-    selection?.existingHighlightId,
-    selection?.startOffset,
-    selection?.endOffset,
-  ]);
+  }, [selection]);
 
   console.log("HighlightToolbar render:", { hasSelection: !!selection });
 
@@ -146,11 +143,16 @@ export default function HighlightToolbar({
           <button
             key={color.name}
             onClick={() => setSelectedColor(color.name)}
-            className={`w-6 h-6 rounded-none border-2 transition-all ${color.bg} ${
+            className={`w-6 h-6 rounded-none border-2 transition-all ${
               selectedColor === color.name
                 ? "border-[var(--color-text-primary)] scale-110"
                 : "border-[var(--color-border)] opacity-60 hover:opacity-100"
             }`}
+            style={
+              {
+                backgroundColor: `var(--highlight-${color.name})`,
+              } as React.CSSProperties
+            }
             title={color.name}
             aria-label={color.name}
           />
@@ -168,7 +170,7 @@ export default function HighlightToolbar({
       {/* Note Input */}
       {(showNoteInput || isEditing) && (
         <textarea
-          placeholder={isEditing ? "Edit note..." : "Add a note (optional)"}
+          placeholder={isEditing ? "Edit note..." : "Add a note"}
           value={note}
           onChange={(e) => setNote(e.target.value)}
           className="w-full mb-3 px-2 py-1 text-sm border border-[var(--color-border)] bg-transparent rounded-none focus:outline-none focus:border-[var(--color-accent)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] resize-none"

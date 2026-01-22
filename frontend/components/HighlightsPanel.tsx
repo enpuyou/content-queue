@@ -20,20 +20,12 @@ interface HighlightsPanelProps {
   onHighlightUpdated: () => void;
 }
 
-const colorClasses: Record<string, string> = {
-  yellow: "bg-yellow-200",
-  green: "bg-green-200",
-  blue: "bg-blue-200",
-  pink: "bg-pink-200",
-  purple: "bg-purple-200",
-};
-
 const colorOptions = [
-  { name: "yellow", bg: "bg-yellow-200" },
-  { name: "green", bg: "bg-green-200" },
-  { name: "blue", bg: "bg-blue-200" },
-  { name: "pink", bg: "bg-pink-200" },
-  { name: "purple", bg: "bg-purple-200" },
+  { name: "yellow", style: "background-color: var(--highlight-yellow);" },
+  { name: "green", style: "background-color: var(--highlight-green);" },
+  { name: "blue", style: "background-color: var(--highlight-blue);" },
+  { name: "pink", style: "background-color: var(--highlight-pink);" },
+  { name: "purple", style: "background-color: var(--highlight-purple);" },
 ];
 
 export default function HighlightsPanel({
@@ -151,7 +143,12 @@ export default function HighlightsPanel({
             >
               {/* Highlighted Text */}
               <div
-                className={`${colorClasses[isEditing ? editColor : highlight.color]} p-2 rounded-none mb-2 cursor-pointer text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]`}
+                className="p-2 rounded-none mb-2 cursor-pointer text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                style={
+                  {
+                    backgroundColor: `var(--highlight-${isEditing ? editColor : highlight.color})`,
+                  } as React.CSSProperties
+                }
                 onClick={() => !isEditing && onHighlightClick(highlight)}
                 onKeyDown={(e) => {
                   if ((e.key === "Enter" || e.key === " ") && !isEditing) {
@@ -178,11 +175,16 @@ export default function HighlightsPanel({
                       <button
                         key={color.name}
                         onClick={() => setEditColor(color.name)}
-                        className={`w-6 h-6 rounded-none border-2 transition-all ${color.bg} ${
+                        className={`w-6 h-6 rounded-none border-2 transition-all ${
                           editColor === color.name
                             ? "border-[var(--color-text-primary)] scale-110"
                             : "border-[var(--color-border)] opacity-60 hover:opacity-100"
                         }`}
+                        style={
+                          {
+                            backgroundColor: `var(--highlight-${color.name})`,
+                          } as React.CSSProperties
+                        }
                         title={color.name}
                         aria-label={`Select color ${color.name}`}
                       />

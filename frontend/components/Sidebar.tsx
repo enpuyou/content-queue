@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { listsAPI } from "@/lib/api";
@@ -30,11 +30,7 @@ export default function Sidebar() {
   const [loading, setLoading] = useState(true);
   const { listCounts, setListCount } = useLists();
 
-  useEffect(() => {
-    fetchLists();
-  }, []);
-
-  const fetchLists = async () => {
+  const fetchLists = useCallback(async () => {
     try {
       const data = await listsAPI.getAll();
       setLists(data);
@@ -46,7 +42,11 @@ export default function Sidebar() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [setListCount]);
+
+  useEffect(() => {
+    fetchLists();
+  }, [fetchLists]);
 
   /**
    * Helper to determine if a link is active
@@ -90,7 +90,7 @@ export default function Sidebar() {
         {/* App Title */}
         <div className="px-4">
           <h1 className="font-serif text-2xl font-normal text-[var(--color-text-primary)] tracking-tight">
-            Content Queue
+            sedi
           </h1>
         </div>
 

@@ -1,25 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useState, useEffect, useCallback } from "react";
+import { useParams } from "next/navigation";
 import Reader from "@/components/Reader";
 import { contentAPI } from "@/lib/api";
 import { ContentItem } from "@/types";
 
 export default function ContentPage() {
   const params = useParams();
-  const router = useRouter();
   const contentId = params.id as string;
 
   const [content, setContent] = useState<ContentItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchContent();
-  }, [contentId]);
-
-  const fetchContent = async () => {
+  const fetchContent = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -34,7 +29,11 @@ export default function ContentPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [contentId]);
+
+  useEffect(() => {
+    fetchContent();
+  }, [fetchContent]);
 
   const handleStatusChange = async (updates: {
     is_read?: boolean;

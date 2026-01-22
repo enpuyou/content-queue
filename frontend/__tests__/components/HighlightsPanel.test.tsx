@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Unit tests for the HighlightsPanel component.
  *
@@ -121,7 +120,7 @@ describe("HighlightsPanel", () => {
       expect(screen.getByText("Third highlight")).toBeInTheDocument();
     });
 
-    it("displays color badges for each highlight", () => {
+    it("displays color styling for each highlight", () => {
       render(
         <HighlightsPanel
           highlights={mockHighlights}
@@ -135,13 +134,16 @@ describe("HighlightsPanel", () => {
       const highlights = screen.getAllByRole("listitem");
       expect(highlights).toHaveLength(3);
 
-      // Each should have a color indicator
-      expect(screen.getByText("First highlight text")).toHaveClass(
-        "bg-yellow-200",
-      );
-      expect(screen.getByText("Second highlight with a note")).toHaveClass(
-        "bg-green-200",
-      );
+      // Each should have a color applied via inline style
+      const firstHighlight = screen.getByText("First highlight text");
+      expect(firstHighlight).toHaveStyle({
+        backgroundColor: "var(--highlight-yellow)",
+      });
+
+      const secondHighlight = screen.getByText("Second highlight with a note");
+      expect(secondHighlight).toHaveStyle({
+        backgroundColor: "var(--highlight-green)",
+      });
     });
 
     it("displays notes for highlights that have them", () => {
@@ -478,7 +480,7 @@ describe("HighlightsPanel", () => {
       fireEvent.click(copyButton);
 
       await waitFor(() => {
-        const expectedMarkdown =
+        const _expectedMarkdown =
           "> First highlight\n\nNote 1\n\n---\n\n" +
           "> Second highlight\n\n---\n\n";
 

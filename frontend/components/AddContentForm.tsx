@@ -48,38 +48,33 @@ export default function AddContentForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-2">
       {error && (
         <div className="text-[var(--color-text-secondary)] border-l-2 border-red-400 pl-4 bg-transparent py-3">
           {error}
         </div>
       )}
 
-      <div>
-        <label
-          htmlFor="url"
-          className="block text-xs font-medium text-[var(--color-text-muted)] mb-2 uppercase tracking-wider"
-        >
-          URL *
-        </label>
+      <div className="flex items-center gap-2">
         <input
           type="url"
           id="url"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="https://example.com/article"
+          placeholder="Paste article URL here..."
           required
-          className="w-full px-0 py-2 border-0 border-b border-[var(--color-border)] bg-transparent rounded-none focus:outline-none focus:border-[var(--color-accent)] placeholder-[var(--color-text-faint)]"
+          className="flex-1 px-3 py-2 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] rounded-none hover:bg-[var(--color-bg-tertiary)] focus:outline-none focus:border-[var(--color-accent)] placeholder-[var(--color-text-muted)] transition-all"
         />
-      </div>
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full bg-[var(--color-accent)] text-white py-2 px-4 rounded-none hover:bg-[var(--color-accent-hover)] focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-[var(--color-accent)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-      >
-        {loading ? "Adding..." : "Add to Queue"}
-      </button>
+        <button
+          type="submit"
+          disabled={loading}
+          className="px-3 py-2 bg-[var(--color-accent)] text-white rounded-none hover:bg-[var(--color-accent-hover)] focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-[var(--color-accent)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+          title="Add to Queue"
+        >
+          {loading ? "..." : "→"}
+        </button>
+      </div>
     </form>
   );
 }

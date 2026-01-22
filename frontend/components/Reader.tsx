@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -8,6 +9,17 @@ import { useTheme } from "@/contexts/ThemeContext";
 import HighlightToolbar from "./HighlightToolbar";
 import HighlightRenderer from "./HighlightRenderer";
 import HighlightsPanel from "./HighlightsPanel";
+import ThemeToggle from "./ThemeToggle";
+
+interface ExtendedSelection {
+  text: string;
+  startOffset: number;
+  endOffset: number;
+  position: { x: number; y: number };
+  existingHighlightId?: string;
+  existingColor?: string;
+  existingNote?: string;
+}
 
 interface ReaderProps {
   content: ContentItem;
@@ -37,14 +49,9 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
   >([]);
   const [loadingSimilar, setLoadingSimilar] = useState(false);
 
-  const [selection, setSelection] = useState<{
-    text: string;
-    startOffset: number;
-    endOffset: number;
-    position: { x: number; y: number };
-  } | null>(null);
+  const [selection, setSelection] = useState<ExtendedSelection | null>(null);
 
-  const [isCreatingHighlight, setIsCreatingHighlight] = useState(false);
+  const [_isCreatingHighlight, _setIsCreatingHighlight] = useState(false);
 
   // Highlights state
   const [highlights, setHighlights] = useState<
@@ -57,7 +64,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
       note?: string;
     }>
   >([]);
-  const [loadingHighlights, setLoadingHighlights] = useState(false);
+  const [_loadingHighlights, setLoadingHighlights] = useState(false);
 
   // Store original plain text for offset calculation
   const [originalPlainText, setOriginalPlainText] = useState<string>("");
@@ -161,6 +168,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
         window.scrollTo({ top: scrollTo, behavior: "smooth" });
       }, 100);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [content.id]); // Only run when article changes
 
   // highlight
@@ -175,7 +183,8 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
       const selection = window.getSelection();
 
       // Check if user clicked on an existing highlight (without selecting new text)
-      if (!selection || selection.toString().length === 0) {
+      const selectedText = selection?.toString().trim();
+      if (!selection || !selectedText || selectedText.length === 0) {
         // Check if the click was on a highlighted span
         if (target.dataset.highlightId) {
           const clickedHighlight = highlights.find(
@@ -195,7 +204,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
               existingHighlightId: clickedHighlight.id,
               existingColor: clickedHighlight.color,
               existingNote: clickedHighlight.note,
-            } as any);
+            });
             return;
           }
         }
@@ -223,6 +232,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
 
     document.addEventListener("mouseup", handleMouseUp);
     return () => document.removeEventListener("mouseup", handleMouseUp);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [highlights]);
 
   /**
@@ -241,9 +251,9 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
       setSimilarArticles(results);
       setShowSimilar(true);
     } catch (error) {
-      console.error("Failed to find similar articles:", error);
+      console.error("Failed to find related articles:", error);
       alert(
-        "Failed to find similar articles. This article may not have embeddings yet.",
+        "Failed to find related articles. This article may not have embeddings yet.",
       );
     } finally {
       setLoadingSimilar(false);
@@ -289,8 +299,19 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
     const selection = window.getSelection();
     if (!selection || selection.toString().length === 0) return null;
 
-    // Get selected text
-    const selectedText = selection.toString();
+    // Get selected text and trim whitespace
+    let selectedText = selection.toString();
+    const leadingWhitespace = selectedText.search(/\S/);
+    const trailingWhitespace = selectedText.search(/\S(?!.*\S)/);
+
+    if (leadingWhitespace >= 0 && trailingWhitespace >= 0) {
+      selectedText = selectedText.substring(
+        leadingWhitespace,
+        trailingWhitespace + 1,
+      );
+    }
+
+    if (selectedText.length === 0) return null;
 
     // If we don't have original plain text yet, extract it on the fly
     let plainText = originalPlainText;
@@ -395,43 +416,51 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
             {/* Back Button */}
             <a
               href="/dashboard"
-              className={`${linkColorClasses} text-sm font-medium hover:opacity-70 transition-opacity`}
+              className="text-xs px-2 py-1 rounded-none border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:border-[var(--color-accent)] transition-colors"
             >
               ← Back to Queue
             </a>
 
             {/* Reading Controls */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               {/* Font Size Control */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-[var(--color-text-muted)]">
-                  Size:
-                </span>
-                <div className="flex gap-1">
-                  {(["small", "medium", "large"] as const).map((size) => (
-                    <button
-                      key={size}
-                      onClick={() => setFontSize(size)}
-                      className={`px-2 py-1 rounded-none text-xs font-medium transition-colors ${
-                        fontSize === size
-                          ? "bg-[var(--color-border)] text-[var(--color-text-primary)]"
-                          : "bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
-                      }`}
+              <div className="flex items-center gap-1">
+                {(["small", "medium", "large"] as const).map((size) => (
+                  <button
+                    key={size}
+                    onClick={() => setFontSize(size)}
+                    className={`w-6 h-6 flex items-center justify-center rounded-none font-medium transition-colors ${
+                      fontSize === size
+                        ? "bg-[var(--color-border)] text-[var(--color-text-primary)]"
+                        : "bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+                    }`}
+                  >
+                    <span
+                      className={
+                        size === "small"
+                          ? "text-xs"
+                          : size === "medium"
+                            ? "text-sm"
+                            : "text-base"
+                      }
                     >
-                      {size === "small" ? "A" : size === "medium" ? "A" : "A"}
-                    </button>
-                  ))}
-                </div>
+                      A
+                    </span>
+                  </button>
+                ))}
               </div>
 
+              {/* Theme Toggle */}
+              <ThemeToggle />
+
               {/* Action Buttons */}
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1 flex-wrap">
                 <button
                   onClick={() => setShowHighlightsPanel(!showHighlightsPanel)}
-                  className={`text-sm px-3 py-1.5 rounded-none transition-colors ${
+                  className={`text-xs px-2 py-1 rounded-none border transition-colors ${
                     showHighlightsPanel
-                      ? "bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)]"
-                      : "bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+                      ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-accent)]"
+                      : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
                   }`}
                 >
                   {showHighlightsPanel ? "Hide" : "Show"} Highlights{" "}
@@ -441,10 +470,10 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
                   onClick={() =>
                     onStatusChange({ is_archived: !content.is_archived })
                   }
-                  className={`text-sm px-3 py-1.5 rounded-none transition-colors ${
+                  className={`text-xs px-2 py-1 rounded-none border transition-colors ${
                     content.is_archived
-                      ? "bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)]"
-                      : "bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+                      ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-accent)]"
+                      : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
                   }`}
                 >
                   {content.is_archived ? "Unarchive" : "Archive"}
@@ -452,13 +481,13 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
                 <button
                   onClick={handleFindSimilar}
                   disabled={loadingSimilar}
-                  className="text-sm px-3 py-1.5 rounded-none transition-colors bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="text-xs px-2 py-1 rounded-none border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:border-[var(--color-accent)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {loadingSimilar
                     ? "Loading..."
                     : showSimilar
-                      ? "Hide Similar"
-                      : "Find Similar"}
+                      ? "Hide Related"
+                      : "Find Related"}
                 </button>
               </div>
             </div>
@@ -469,7 +498,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
       {/* Highlights Panel Sidebar */}
       {showHighlightsPanel && (
         <div
-          className={`fixed right-0 top-0 h-full w-80 ${themeClasses} border-l border-[var(--color-border)] shadow-xl z-20 overflow-hidden flex flex-col`}
+          className={`fixed right-0 top-16 h-[calc(100vh-4rem)] w-80 ${themeClasses} border-l border-[var(--color-border)] shadow-xl z-20 overflow-hidden flex flex-col`}
         >
           <HighlightsPanel
             highlights={highlights}
@@ -481,9 +510,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
       )}
 
       {/* Article Content */}
-      <article
-        className={`max-w-2xl mx-auto px-4 py-8 transition-all ${showHighlightsPanel ? "mr-80" : ""}`}
-      >
+      <article className={`max-w-2xl mx-auto px-4 py-8`}>
         {/* Article Header */}
         <header className="mb-12">
           <h1
@@ -548,7 +575,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
         {/* Main Content */}
         <div
           id="reader-content"
-          className={`prose-editorial max-w-none ${fontSizeClasses[fontSize]} leading-relaxed text-[var(--color-text-secondary)]`}
+          className={`max-w-none ${fontSizeClasses[fontSize]} leading-relaxed text-[var(--color-text-secondary)]`}
         >
           {content.full_text ? (
             <HighlightRenderer
