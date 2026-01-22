@@ -72,13 +72,15 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
   // Highlights panel visibility
   const [showHighlightsPanel, setShowHighlightsPanel] = useState(false);
 
+  // Navbar auto-hide state
+  const [showNavbar, setShowNavbar] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
+
   // Fetch highlights when article loads
   const fetchHighlights = useCallback(async () => {
     try {
       setLoadingHighlights(true);
-      console.log("Fetching highlights for content:", content.id);
       const data = await highlightsAPI.getByContent(content.id);
-      console.log("Highlights fetched:", data);
       setHighlights(data);
     } catch (error) {
       console.error("Failed to load highlights:", error);
@@ -104,23 +106,12 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
     const doc = parser.parseFromString(content.full_text, "text/html");
     const plainText = doc.body.innerText || doc.body.textContent || "";
     setOriginalPlainText(plainText);
-    console.log("Original plain text extracted:", {
-      length: plainText.length,
-      preview: plainText.substring(0, 100),
-    });
   }, [content.full_text, content.id]); // Also depend on content.id to refresh on article change
 
-  // Auto-mark as read when user opens the article
-  useEffect(() => {
-    if (!content.is_read) {
-      // Wait 2 seconds before marking as read (ensures user is actually reading)
-      const timer = setTimeout(() => {
-        onStatusChange({ is_read: true });
-      }, 2000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [content.is_read, onStatusChange]);
+  // Removed auto-mark as read on opening
+  // Articles are now marked as read only when:
+  // 1. User clicks "Read" button
+  // 2. User scrolls to >= 90% (handled in backend)
 
   // Track scroll position and save periodically
   useEffect(() => {
@@ -132,6 +123,16 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
       const docHeight =
         document.documentElement.scrollHeight - window.innerHeight;
       const scrollPercent = docHeight > 0 ? scrollTop / docHeight : 0;
+
+      // Navbar auto-hide logic
+      if (scrollTop > lastScrollY && scrollTop > 100) {
+        // Scrolling down & past 100px - hide navbar
+        setShowNavbar(false);
+      } else {
+        // Scrolling up or at top - show navbar
+        setShowNavbar(true);
+      }
+      setLastScrollY(scrollTop);
 
       // Debounce: save position 1 second after user stops scrolling
       clearTimeout(saveTimeout);
@@ -152,7 +153,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
       window.removeEventListener("scroll", handleScroll);
       clearTimeout(saveTimeout);
     };
-  }, [content.id, content.read_position, onStatusChange]);
+  }, [content.id, content.read_position, onStatusChange, lastScrollY]);
 
   // Restore scroll position when article loads
   useEffect(() => {
@@ -334,13 +335,6 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
     const exactMatchIndex = plainText.indexOf(selectedText);
 
     if (exactMatchIndex !== -1) {
-      console.log("getTextOffsets (exact match):", {
-        selectedText: selectedText.substring(0, 50),
-        startOffset: exactMatchIndex,
-        endOffset: exactMatchIndex + selectedText.length,
-        plainTextLength: plainText.length,
-      });
-
       return {
         selectedText,
         startOffset: exactMatchIndex,
@@ -367,13 +361,6 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
     if (contextIndex !== -1) {
       const startOffset = contextIndex + contextBefore.length;
       const endOffset = startOffset + selectedText.length;
-
-      console.log("getTextOffsets (context match):", {
-        selectedText: selectedText.substring(0, 50),
-        startOffset,
-        endOffset,
-        plainTextLength: plainText.length,
-      });
 
       return { selectedText, startOffset, endOffset };
     }
@@ -409,17 +396,20 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
       />
       {/* Sticky Header with Controls */}
       <div
-        className={`sticky top-0 z-10 ${themeClasses} border-b border-[var(--color-border)] shadow-sm`}
+        className={`fixed top-0 left-0 right-0 z-10 ${themeClasses} border-b border-[var(--color-border)] shadow-sm transition-transform duration-300 ${
+          showNavbar ? "translate-y-0" : "-translate-y-full"
+        }`}
       >
         <div className="max-w-2xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             {/* Back Button */}
-            <a
+            <Link
               href="/dashboard"
+              scroll={false}
               className="text-xs px-2 py-1 rounded-none border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:border-[var(--color-accent)] transition-colors"
             >
               ← Back to Queue
-            </a>
+            </Link>
 
             {/* Reading Controls */}
             <div className="flex items-center gap-3">
@@ -510,7 +500,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
       )}
 
       {/* Article Content */}
-      <article className={`max-w-2xl mx-auto px-4 py-8`}>
+      <article className={`max-w-2xl mx-auto px-4 py-8 pt-24`}>
         {/* Article Header */}
         <header className="mb-12">
           <h1
@@ -581,9 +571,6 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
             <HighlightRenderer
               html={content.full_text}
               highlights={highlights}
-              onHighlightClick={(highlight) => {
-                console.log("Clicked highlight:", highlight);
-              }}
             />
           ) : (
             <div className="text-center py-12 opacity-60">

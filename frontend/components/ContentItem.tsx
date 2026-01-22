@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ContentItem as ContentItemType } from "@/types";
 import ConfirmModal from "./ConfirmModal";
 import StatusIndicator from "./StatusIndicator";
@@ -25,6 +26,8 @@ interface ContentItemProps {
     updates: { is_read?: boolean; is_archived?: boolean },
   ) => void;
   onDelete: (id: string) => void;
+  // Called when content is updated (e.g., tags change)
+  onUpdate?: (updatedContent: ContentItemType) => void;
   // Optional: for list detail page
   onRemoveFromList?: () => void;
   // Optional: for adding to lists
@@ -36,6 +39,7 @@ export default function ContentItem({
   content,
   onStatusChange,
   onDelete,
+  onUpdate,
   onRemoveFromList,
   availableLists,
   onAddToList,
@@ -50,6 +54,7 @@ export default function ContentItem({
   const [isEditingTags, setIsEditingTags] = useState(false);
   const [tagInput, setTagInput] = useState("");
   const { showToast } = useToast();
+  const router = useRouter();
 
   useEffect(() => {
     setMounted(true);
@@ -81,10 +86,14 @@ export default function ContentItem({
    */
   const handleUpdateTags = async (newTags: string[]) => {
     try {
-      await contentAPI.update(content.id, { tags: newTags });
+      const updatedContent = await contentAPI.update(content.id, {
+        tags: newTags,
+      });
       showToast("Tags updated successfully", "success");
-      // The parent component should re-fetch to show updated tags
-      window.location.reload(); // Simple solution for now
+      // Notify parent component of the update
+      if (onUpdate) {
+        onUpdate(updatedContent);
+      }
     } catch (error) {
       console.error("Failed to update tags:", error);
       showToast("Failed to update tags", "error");
@@ -112,17 +121,36 @@ export default function ContentItem({
     handleUpdateTags(newTags);
   };
 
+  const handleContainerClick = (e: React.MouseEvent) => {
+    // Don't navigate if clicking on interactive elements
+    const target = e.target as HTMLElement;
+    if (
+      target.tagName === "BUTTON" ||
+      target.tagName === "INPUT" ||
+      target.tagName === "A" ||
+      target.closest("button") ||
+      target.closest("input") ||
+      target.closest("a")
+    ) {
+      return;
+    }
+    // Save scroll position before navigating
+    sessionStorage.setItem("contentListScrollPos", window.scrollY.toString());
+    // Navigate to reader using Next.js router (preserves cache)
+    router.push(`/content/${content.id}`);
+  };
+
   return (
-    <div className="group py-6 px-4 border-b border-[var(--color-border-subtle)] last:border-b-0 transition-all duration-300 cursor-pointer hover:bg-[var(--color-bg-secondary)]">
+    <div
+      onClick={handleContainerClick}
+      className="group py-6 px-4 border-b border-[var(--color-border-subtle)] last:border-b-0 transition-all duration-300 cursor-pointer hover:bg-[var(--color-bg-secondary)]"
+    >
       <div className="flex items-start gap-4">
         {/* Left side: Content info */}
         <div className="flex-1 min-w-0">
           {/* Metadata: status, date, reading time */}
           <div className="flex items-center gap-3 mb-2 text-xs text-[var(--color-text-muted)]">
-            <StatusIndicator
-              isRead={content.is_read}
-              isArchived={content.is_archived}
-            />
+            <StatusIndicator readingStatus={content.reading_status} />
             <span className="tracking-wide">
               {formatDate(content.created_at)}
             </span>
@@ -135,7 +163,16 @@ export default function ContentItem({
           </div>
 
           {/* Title - clickable, links to reader view */}
-          <Link href={`/content/${content.id}`} className="block mb-2">
+          <Link
+            href={`/content/${content.id}`}
+            className="block mb-2"
+            onClick={() => {
+              sessionStorage.setItem(
+                "contentListScrollPos",
+                window.scrollY.toString(),
+              );
+            }}
+          >
             <h3 className="font-serif text-xl font-medium text-[var(--color-text-primary)] hover:text-[var(--color-accent)] transition-colors">
               {content.title || "Untitled"}
             </h3>
@@ -149,27 +186,26 @@ export default function ContentItem({
           )}
 
           {/* Tags - display and edit */}
-          {content.tags && content.tags.length > 0 ? (
+          {content.tags && content.tags.length > 0 && (
             <div className="mb-3 flex items-center gap-2 flex-wrap">
-              {content.tags &&
-                content.tags.map((tag, index) => (
-                  <span
-                    key={index}
-                    className="text-xs text-[var(--color-text-muted)] border-b border-[var(--color-border)] pb-0.5 flex items-center gap-1"
-                  >
-                    {tag}
-                    {isEditingTags && (
-                      <button
-                        onClick={() => handleRemoveTag(tag)}
-                        className="text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] ml-1"
-                      >
-                        ×
-                      </button>
-                    )}
-                  </span>
-                ))}
+              {content.tags.map((tag, index) => (
+                <span
+                  key={index}
+                  className="text-xs text-[var(--color-text-muted)] border-b border-[var(--color-border)] pb-0.5 flex items-center gap-1"
+                >
+                  {tag}
+                  {isEditingTags && (
+                    <button
+                      onClick={() => handleRemoveTag(tag)}
+                      className="text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] ml-1"
+                    >
+                      ×
+                    </button>
+                  )}
+                </span>
+              ))}
 
-              {/* Tag Input */}
+              {/* Tag Input - only show when editing */}
               {isEditingTags && (
                 <div className="flex items-center gap-1">
                   <input
@@ -204,7 +240,44 @@ export default function ContentItem({
                 </div>
               )}
             </div>
-          ) : null}
+          )}
+
+          {/* Tag Input for items with no tags - only show when editing */}
+          {(!content.tags || content.tags.length === 0) && isEditingTags && (
+            <div className="mb-3 flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1">
+                <input
+                  type="text"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddTag();
+                    }
+                  }}
+                  placeholder="Add tag..."
+                  className="px-2 py-0.5 text-xs border-0 border-b border-[var(--color-border)] bg-transparent rounded-none focus:outline-none focus:border-[var(--color-accent)]"
+                  autoFocus
+                />
+                <button
+                  onClick={handleAddTag}
+                  className="text-xs px-2 py-0.5 bg-[var(--color-accent)] text-white rounded-none hover:bg-[var(--color-accent-hover)]"
+                >
+                  Add
+                </button>
+                <button
+                  onClick={() => {
+                    setIsEditingTags(false);
+                    setTagInput("");
+                  }}
+                  className="text-xs px-2 py-0.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Action buttons - appear on hover */}
           <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity flex-wrap">

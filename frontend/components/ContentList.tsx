@@ -11,13 +11,17 @@ import { useProcessingPolling } from "@/hooks/useProcessingPolling";
 import { useLists } from "@/contexts/ListsContext";
 
 /**
- * Filter type matching the backend's boolean flags:
- * - 'all': Show everything (unread, read, non-archived)
- * - 'unread': is_read = false, is_archived = false
- * - 'read': is_read = true, is_archived = false
- * - 'archived': is_archived = true (regardless of read status)
+ * Filter type matching the reading status values:
+ * - 'all': Show everything (unread, in_progress, read, non-archived)
+ * - 'unread': reading_status = 'unread'
+ * - 'in_progress': reading_status = 'in_progress'
+ * - 'read': reading_status = 'read'
+ * - 'archived': is_archived = true (regardless of reading status)
  */
-type FilterType = "all" | "unread" | "read" | "archived";
+type FilterType = "all" | "unread" | "in_progress" | "read" | "archived";
+
+const CACHE_KEY = "contentListCache";
+const CACHE_DURATION = 30000; // 30 seconds
 
 export default function ContentList() {
   // Toast context for showing success/error messages
@@ -27,11 +31,48 @@ export default function ContentList() {
   // Get URL search params to read filter from URL
   const searchParams = useSearchParams();
 
+  // Helper to get cached data from sessionStorage
+  const getCachedData = () => {
+    try {
+      const cached = sessionStorage.getItem(CACHE_KEY);
+      if (!cached) return null;
+      const data = JSON.parse(cached);
+      const now = Date.now();
+      if (data.timestamp && now - data.timestamp < CACHE_DURATION) {
+        return data;
+      }
+      // Cache expired
+      sessionStorage.removeItem(CACHE_KEY);
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
+  // Helper to set cached data in sessionStorage
+  const setCachedData = (items: ContentItemType[], total: number) => {
+    try {
+      sessionStorage.setItem(
+        CACHE_KEY,
+        JSON.stringify({
+          items,
+          total,
+          timestamp: Date.now(),
+        }),
+      );
+    } catch {
+      // Silently fail if sessionStorage is full
+    }
+  };
+
   // State for storing the content items from the backend
-  const [contents, setContents] = useState<ContentItemType[]>([]);
+  const initialCache = getCachedData();
+  const [contents, setContents] = useState<ContentItemType[]>(
+    initialCache?.items || [],
+  );
 
   // Loading state - true while fetching data
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialCache);
 
   // Error state - stores error message if fetch fails
   const [error, setError] = useState<string | null>(null);
@@ -52,10 +93,37 @@ export default function ContentList() {
    * useEffect Hook - Runs when component mounts (empty dependency array [])
    * This is where we fetch data from the API on initial page load
    */
+
   useEffect(() => {
     fetchContents();
     fetchAvailableLists();
-  }, [filter]); // Empty array = run once on mount
+  }, [filter]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /**
+   * Restore scroll position when navigating back
+   * Scroll position is saved by ContentItem when user clicks to navigate
+   */
+  useEffect(() => {
+    // Disable browser's automatic scroll restoration
+    if ("scrollRestoration" in window.history) {
+      window.history.scrollRestoration = "manual";
+    }
+
+    // Restore scroll position on mount
+    const savedScrollPos = sessionStorage.getItem("contentListScrollPos");
+    if (savedScrollPos) {
+      const scrollY = parseInt(savedScrollPos, 10);
+
+      // Immediate scroll
+      window.scrollTo(0, scrollY);
+
+      // Delayed fallback to ensure it works after DOM renders
+      setTimeout(() => {
+        window.scrollTo(0, scrollY);
+        sessionStorage.removeItem("contentListScrollPos");
+      }, 100);
+    }
+  }, []); // Only run on mount
 
   /**
    * Polling hook - automatically updates items when processing completes
@@ -87,9 +155,21 @@ export default function ContentList() {
    * Fetches content from the backend API
    * Uses the contentAPI.getAll() helper from lib/api.ts
    * Backend returns: { items: ContentItem[], total: number, skip: number, limit: number }
+   *
+   * Now includes caching to avoid unnecessary refetches on navigation
    */
   const fetchContents = async () => {
     try {
+      // Check if we have fresh cached data
+      const cachedData = getCachedData();
+      if (cachedData) {
+        // Use cached data
+        setContents(cachedData.items);
+        setTotal(cachedData.total);
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       setError(null);
 
@@ -99,6 +179,9 @@ export default function ContentList() {
       // Backend returns { items, total, skip, limit }
       setContents(response.items);
       setTotal(response.total);
+
+      // Update cache
+      setCachedData(response.items, response.total);
     } catch (err) {
       console.error("Failed to fetch contents:", err);
       setError("Failed to load your content. Please try again.");
@@ -138,14 +221,25 @@ export default function ContentList() {
 
     try {
       // OPTIMISTIC UPDATE: Update UI immediately for better UX
-      setContents(
-        contents.map((content) =>
+      setContents((prevContents) =>
+        prevContents.map((content) =>
           content.id === id ? { ...content, ...updates } : content,
         ),
       );
 
-      // Call the backend to persist the change
-      await contentAPI.update(id, updates);
+      // Call the backend to persist the change - get the updated item
+      const updatedContent = await contentAPI.update(id, updates);
+
+      // Update with the backend response to ensure reading_status is correct
+      setContents((prevContents) => {
+        const updated = prevContents.map((content) =>
+          content.id === id ? updatedContent : content,
+        );
+        // Update cache
+        setCachedData(updated, total);
+        return updated;
+      });
+
       showToast("Updated successfully", "success");
     } catch (err) {
       console.error("Failed to update content:", err);
@@ -181,6 +275,21 @@ export default function ContentList() {
   };
 
   /**
+   * Handles updating a content item
+   * Updates the item in the contents list when properties change
+   */
+  const handleUpdate = (updatedContent: ContentItemType) => {
+    setContents((prevContents) => {
+      const updated = prevContents.map((content) =>
+        content.id === updatedContent.id ? updatedContent : content,
+      );
+      // Update cache
+      setCachedData(updated, total);
+      return updated;
+    });
+  };
+
+  /**
    * Handles adding a content item to a list
    */
   const handleAddToList = async (contentId: string, listId: string) => {
@@ -199,19 +308,21 @@ export default function ContentList() {
   };
 
   /**
-   * Client-side filtering based on backend's boolean flags
-   * Backend uses is_read and is_archived, not a status enum
+   * Client-side filtering based on reading_status
+   * Uses reading_status computed field from backend
    */
   const filteredContents = contents.filter((content) => {
     switch (filter) {
       case "unread":
-        return !content.is_read && !content.is_archived;
+        return content.reading_status === "unread";
+      case "in_progress":
+        return content.reading_status === "in_progress";
       case "read":
-        return content.is_read && !content.is_archived;
+        return content.reading_status === "read";
       case "archived":
-        return content.is_archived;
+        return content.reading_status === "archived";
       default: // 'all'
-        return !content.is_archived; // Show all non-archived items
+        return content.reading_status !== "archived"; // Show all non-archived items
     }
   });
 
@@ -222,13 +333,16 @@ export default function ContentList() {
   const getCount = (filterType: FilterType): number => {
     switch (filterType) {
       case "unread":
-        return contents.filter((c) => !c.is_read && !c.is_archived).length;
+        return contents.filter((c) => c.reading_status === "unread").length;
+      case "in_progress":
+        return contents.filter((c) => c.reading_status === "in_progress")
+          .length;
       case "read":
-        return contents.filter((c) => c.is_read && !c.is_archived).length;
+        return contents.filter((c) => c.reading_status === "read").length;
       case "archived":
-        return contents.filter((c) => c.is_archived).length;
+        return contents.filter((c) => c.reading_status === "archived").length;
       default:
-        return contents.filter((c) => !c.is_archived).length;
+        return contents.filter((c) => c.reading_status !== "archived").length;
     }
   };
 
@@ -258,24 +372,28 @@ export default function ContentList() {
 
       {/* Filter buttons - action style */}
       <div className="flex gap-1 pb-4 border-b border-[var(--color-border)] overflow-x-auto">
-        {(["all", "unread", "read", "archived"] as const).map((filterType) => (
-          <Link
-            key={filterType}
-            href={
-              filterType === "all"
-                ? "/dashboard"
-                : `/dashboard?filter=${filterType}`
-            }
-            className={`no-underline text-xs px-2 py-1 rounded-none border whitespace-nowrap transition-colors ${
-              filter === filterType
-                ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-accent)]"
-                : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
-            }`}
-          >
-            {filterType.charAt(0).toUpperCase() + filterType.slice(1)}
-            {filterType !== "all" && ` (${getCount(filterType)})`}
-          </Link>
-        ))}
+        {(["all", "unread", "in_progress", "read", "archived"] as const).map(
+          (filterType) => (
+            <Link
+              key={filterType}
+              href={
+                filterType === "all"
+                  ? "/dashboard"
+                  : `/dashboard?filter=${filterType}`
+              }
+              className={`no-underline text-xs px-2 py-1 rounded-none border whitespace-nowrap transition-colors ${
+                filter === filterType
+                  ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-accent)]"
+                  : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
+              }`}
+            >
+              {filterType === "in_progress"
+                ? "In Progress"
+                : filterType.charAt(0).toUpperCase() + filterType.slice(1)}
+              {filterType !== "all" && ` (${getCount(filterType)})`}
+            </Link>
+          ),
+        )}
       </div>
 
       {/* Total count display */}
@@ -300,6 +418,7 @@ export default function ContentList() {
               content={content}
               onStatusChange={handleStatusChange}
               onDelete={handleDelete}
+              onUpdate={handleUpdate}
               availableLists={availableLists}
               onAddToList={(listId) => handleAddToList(content.id, listId)}
             />

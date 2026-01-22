@@ -17,6 +17,26 @@ from app.schemas.content import (
 from app.tasks.extraction import extract_metadata
 
 
+def compute_reading_status(
+    is_read: bool, read_position: float | None, is_archived: bool
+) -> str:
+    """
+    Compute reading status based on read flags and position.
+
+    - 'archived': if item is archived
+    - 'read': if is_read flag is True OR read_position >= 0.9
+    - 'in_progress': if read_position > 0 and < 0.9
+    - 'unread': if read_position is 0 or None
+    """
+    if is_archived:
+        return "archived"
+    if is_read or (read_position and read_position >= 0.9):
+        return "read"
+    if read_position and read_position > 0:
+        return "in_progress"
+    return "unread"
+
+
 router = APIRouter(prefix="/content", tags=["content"])
 
 
@@ -206,14 +226,22 @@ async def update_content_item(
         item.is_read = update_data.is_read
         if update_data.is_read:
             item.read_at = datetime.utcnow()
+            # Clear read_position when manually marking as read
+            item.read_position = 0.0
         else:
             item.read_at = None
+            # Clear read_position when manually marking as unread
+            item.read_position = 0.0
 
     if update_data.is_archived is not None:
         item.is_archived = update_data.is_archived
 
     if update_data.read_position is not None:
         item.read_position = update_data.read_position
+        # Auto-mark as read if scrolled to near the end
+        if item.read_position >= 0.9 and not item.is_read:
+            item.is_read = True
+            item.read_at = datetime.utcnow()
 
     if update_data.tags is not None:
         item.tags = update_data.tags

@@ -37,15 +37,9 @@ export default function HighlightRenderer({
 
   useEffect(() => {
     if (highlights.length === 0) {
-      console.log("HighlightRenderer: No highlights, using plain HTML");
       setRenderedHtml(html);
       return;
     }
-
-    console.log("HighlightRenderer: Applying highlights", {
-      highlightsCount: highlights.length,
-      highlights,
-    });
 
     // Parse HTML fresh every time
     const parser = new DOMParser();

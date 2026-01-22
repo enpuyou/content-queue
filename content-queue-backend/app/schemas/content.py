@@ -1,5 +1,5 @@
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, computed_field
 from datetime import datetime
 from uuid import UUID
 
@@ -36,6 +36,37 @@ class ContentItemResponse(BaseModel):
     processing_status: str
     created_at: datetime
     updated_at: datetime
+
+    @computed_field  # type: ignore
+    @property
+    def reading_status(self) -> str:
+        """
+        Compute reading status from is_read, read_position, and is_archived.
+
+        Priority:
+        1. Archived items are always "archived"
+        2. Items explicitly marked as read stay "read" (don't change based on position)
+        3. Items with position >= 0.9 are "read" (auto-mark as complete)
+        4. Items with position > 0 are "in_progress"
+        5. Otherwise "unread"
+        """
+        if self.is_archived:
+            return "archived"
+
+        # If explicitly marked as read, keep it read regardless of position
+        if self.is_read:
+            return "read"
+
+        # Check read_position (handle None case explicitly)
+        if self.read_position is not None:
+            # Auto-mark as read if scrolled to near the end
+            if self.read_position >= 0.9:
+                return "read"
+            # Show as in-progress if started but not finished
+            if self.read_position > 0:
+                return "in_progress"
+
+        return "unread"
 
     class Config:
         from_attributes = True

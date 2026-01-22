@@ -30,6 +30,19 @@ jest.mock("next/link", () => {
   return MockLink;
 });
 
+// Mock Next.js navigation hooks
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    prefetch: jest.fn(),
+  }),
+  useSearchParams: () => ({
+    get: jest.fn(),
+  }),
+  usePathname: () => "/",
+}));
+
 // Mock the API module
 jest.mock("../../lib/api");
 const mockedContentAPI = contentAPI as jest.Mocked<typeof contentAPI>;
@@ -62,6 +75,7 @@ describe("ContentItem", () => {
 
     is_read: false,
     is_archived: false,
+    reading_status: "unread",
     processing_status: "completed",
     created_at: new Date("2024-01-15T10:00:00Z").toISOString(),
     updated_at: new Date("2024-01-15T10:00:00Z").toISOString(),
@@ -185,7 +199,11 @@ describe("ContentItem", () => {
     });
 
     it("shows Read status indicator when read", () => {
-      const readContent = { ...mockContent, is_read: true };
+      const readContent = {
+        ...mockContent,
+        is_read: true,
+        reading_status: "read" as const,
+      };
 
       render(
         <ContentItem
@@ -199,7 +217,11 @@ describe("ContentItem", () => {
     });
 
     it("shows Archived status indicator when archived", () => {
-      const archivedContent = { ...mockContent, is_archived: true };
+      const archivedContent = {
+        ...mockContent,
+        is_archived: true,
+        reading_status: "archived" as const,
+      };
 
       render(
         <ContentItem
@@ -217,6 +239,7 @@ describe("ContentItem", () => {
         ...mockContent,
         is_read: true,
         is_archived: true,
+        reading_status: "archived" as const,
       };
 
       render(
