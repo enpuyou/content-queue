@@ -133,9 +133,9 @@ export default function ListDetailPage() {
 
   if (loading) {
     return (
-      <div className="max-w-6xl mx-auto p-6">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center py-12">
-          <div className="text-gray-500">Loading list...</div>
+          <div className="text-[var(--color-text-muted)]">Loading list...</div>
         </div>
       </div>
     );
@@ -143,17 +143,17 @@ export default function ListDetailPage() {
 
   if (error || !list) {
     return (
-      <div className="max-w-6xl mx-auto p-6">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center py-12">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+          <h2 className="font-serif text-2xl font-normal text-[var(--color-text-primary)] mb-4">
             List Not Found
           </h2>
-          <p className="text-gray-600 mb-6">
+          <p className="text-[var(--color-text-secondary)] mb-6">
             {error || "This list could not be loaded."}
           </p>
           <button
             onClick={() => router.push("/lists")}
-            className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors"
+            className="px-6 py-2 text-sm rounded-none bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors"
           >
             Back to Lists
           </button>
@@ -163,14 +163,14 @@ export default function ListDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[var(--color-bg-primary)]">
       {/* Navigation Header */}
-      <nav className="bg-white shadow-sm mb-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <nav className="sticky top-0 z-40 bg-[var(--color-bg-primary)] border-b border-[var(--color-border)] mb-6">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <Link
               href="/dashboard"
-              className="text-2xl font-bold text-gray-900"
+              className="font-serif text-2xl font-normal text-[var(--color-text-primary)]"
             >
               Content Queue
             </Link>
@@ -178,18 +178,18 @@ export default function ListDetailPage() {
             <div className="flex items-center gap-4">
               <Link
                 href="/dashboard"
-                className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] px-3 py-2 rounded-none text-sm transition-colors"
               >
                 Dashboard
               </Link>
               <Link
                 href="/lists"
-                className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] px-3 py-2 rounded-none text-sm transition-colors border-b-2 border-[var(--color-accent)]"
               >
                 Lists
               </Link>
               <button
-                className="text-gray-600 hover:text-gray-900"
+                className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
                 onClick={logout}
               >
                 Logout
@@ -199,41 +199,41 @@ export default function ListDetailPage() {
         </div>
       </nav>
 
-      <div className="max-w-6xl mx-auto p-6">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
           {/* Back button */}
           <button
             onClick={() => router.push("/lists")}
-            className="text-blue-600 hover:text-blue-800 mb-4 flex items-center gap-2"
+            className="text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] mb-6 flex items-center gap-2 text-sm transition-colors"
           >
             ← Back to Lists
           </button>
 
-          <div className="flex justify-between items-start">
+          <div className="flex justify-between items-start py-6 border-b border-[var(--color-border)]">
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-3xl font-bold text-gray-900">
+                <h1 className="font-serif text-3xl font-normal text-[var(--color-text-primary)]">
                   {list.name}
                 </h1>
                 {list.is_shared && (
-                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                  <span className="text-xs px-2 py-1 rounded-none border border-[var(--color-border)] text-[var(--color-text-muted)]">
                     Shared
                   </span>
                 )}
               </div>
               {list.description && (
-                <p className="text-gray-600 mt-2">{list.description}</p>
+                <p className="text-[var(--color-text-secondary)] mt-2">{list.description}</p>
               )}
-              <p className="text-sm text-gray-500 mt-2">
+              <p className="text-xs text-[var(--color-text-muted)] mt-3">
                 {contents.length} {contents.length === 1 ? "item" : "items"}
               </p>
             </div>
 
-            {/* Add Content button - will implement in next step */}
+            {/* Add Content button */}
             <button
               onClick={() => setIsAddContentModalOpen(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+              className="text-sm px-4 py-2 rounded-none bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors whitespace-nowrap ml-4"
             >
               + Add Content
             </button>
@@ -242,16 +242,16 @@ export default function ListDetailPage() {
 
         {/* Empty state */}
         {contents.length === 0 && (
-          <div className="text-center py-12 bg-gray-50 rounded-lg">
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
+          <div className="text-center py-12 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] rounded-none">
+            <h3 className="font-serif text-xl font-normal text-[var(--color-text-primary)] mb-2">
               No content yet
             </h3>
-            <p className="text-gray-600 mb-6">
+            <p className="text-[var(--color-text-secondary)] mb-6">
               Add articles to this list to get started
             </p>
             <button
               onClick={() => setIsAddContentModalOpen(true)}
-              className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors"
+              className="px-6 py-2 text-sm rounded-none bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors"
             >
               Add Your First Item
             </button>
@@ -260,7 +260,7 @@ export default function ListDetailPage() {
 
         {/* Content list */}
         {contents.length > 0 && (
-          <div className="space-y-4">
+          <div>
             {contents.map((content) => (
               <ContentItem
                 key={content.id}

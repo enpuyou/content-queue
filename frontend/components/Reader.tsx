@@ -257,8 +257,10 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
   };
 
   // Use CSS variables for theming - color changes automatically with global theme
-  const themeClasses = "bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]";
-  const linkColorClasses = "text-[var(--color-accent)] hover:text-[var(--color-accent-hover)]";
+  const themeClasses =
+    "bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]";
+  const linkColorClasses =
+    "text-[var(--color-accent)] hover:text-[var(--color-accent-hover)]";
 
   const scrollToHighlight = (highlight: {
     id: string;
@@ -402,7 +404,9 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
             <div className="flex items-center gap-4">
               {/* Font Size Control */}
               <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-[var(--color-text-muted)]">Size:</span>
+                <span className="text-xs font-medium text-[var(--color-text-muted)]">
+                  Size:
+                </span>
                 <div className="flex gap-1">
                   {(["small", "medium", "large"] as const).map((size) => (
                     <button
@@ -591,7 +595,9 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
                       />
                     )}
                     <div className="flex-1 min-w-0">
-                      <h3 className={`font-serif font-medium mb-1 ${linkColorClasses}`}>
+                      <h3
+                        className={`font-serif font-medium mb-1 ${linkColorClasses}`}
+                      >
                         {item.title || "Untitled"}
                       </h3>
                       {item.description && (

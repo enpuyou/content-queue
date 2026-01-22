@@ -8,7 +8,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 
 const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-sans"
+  variable: "--font-sans",
 });
 
 const playfair = Playfair_Display({

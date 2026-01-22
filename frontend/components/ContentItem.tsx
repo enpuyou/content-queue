@@ -159,8 +159,13 @@ export default function ContentItem({
         <div className="flex-1 min-w-0">
           {/* Metadata: status, date, reading time */}
           <div className="flex items-center gap-3 mb-2 text-xs text-[var(--color-text-muted)]">
-            <StatusIndicator isRead={content.is_read} isArchived={content.is_archived} />
-            <span className="tracking-wide">{formatDate(content.created_at)}</span>
+            <StatusIndicator
+              isRead={content.is_read}
+              isArchived={content.is_archived}
+            />
+            <span className="tracking-wide">
+              {formatDate(content.created_at)}
+            </span>
             {content.reading_time_minutes && (
               <>
                 <span>·</span>

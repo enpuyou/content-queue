@@ -143,7 +143,10 @@ export default function Sidebar() {
           {!loading && lists.length === 0 && (
             <div className="px-4 py-2 text-sm text-[var(--color-text-muted)]">
               No lists yet.{" "}
-              <Link href="/lists" className="text-[var(--color-accent)] hover:text-[var(--color-accent-hover)]">
+              <Link
+                href="/lists"
+                className="text-[var(--color-accent)] hover:text-[var(--color-accent-hover)]"
+              >
                 Create one
               </Link>
             </div>
