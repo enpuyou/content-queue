@@ -57,6 +57,10 @@ describe("HighlightToolbar", () => {
         />,
       );
 
+      // Expand toolbar
+      const highlightBtn = screen.getByRole("button", { name: /highlight/i });
+      fireEvent.click(highlightBtn);
+
       // Should show truncated text
       expect(
         screen.getByText(/"selected text for highlighting"/),
@@ -83,6 +87,10 @@ describe("HighlightToolbar", () => {
         />,
       );
 
+      // Expand toolbar
+      const highlightBtn = screen.getByRole("button", { name: /highlight/i });
+      fireEvent.click(highlightBtn);
+
       const colors = ["yellow", "green", "blue", "pink", "purple"];
       colors.forEach((color) => {
         const colorButton = screen.getByLabelText(new RegExp(color, "i"));
@@ -99,6 +107,10 @@ describe("HighlightToolbar", () => {
         />,
       );
 
+      // Expand toolbar
+      const highlightBtn = screen.getByRole("button", { name: /highlight/i });
+      fireEvent.click(highlightBtn);
+
       const yellowButton = screen.getByLabelText(/yellow/i);
       // The selected color should have the scale-110 class applied
       expect(yellowButton).toHaveClass("scale-110");
@@ -112,6 +124,10 @@ describe("HighlightToolbar", () => {
           onClose={mockOnClose}
         />,
       );
+
+      // Expand toolbar
+      const highlightBtn = screen.getByRole("button", { name: /highlight/i });
+      fireEvent.click(highlightBtn);
 
       const greenButton = screen.getByLabelText(/green/i);
       fireEvent.click(greenButton);
@@ -129,6 +145,10 @@ describe("HighlightToolbar", () => {
           onClose={mockOnClose}
         />,
       );
+
+      // Expand toolbar
+      const highlightBtn = screen.getByRole("button", { name: /highlight/i });
+      fireEvent.click(highlightBtn);
 
       const addNoteButton = screen.getByRole("button", { name: /add note/i });
       fireEvent.click(addNoteButton);
@@ -158,6 +178,10 @@ describe("HighlightToolbar", () => {
           onHighlightCreated={mockOnHighlightCreated}
         />,
       );
+
+      // Expand toolbar
+      const highlightBtn = screen.getByRole("button", { name: /highlight/i });
+      fireEvent.click(highlightBtn);
 
       // Select green color
       const greenButton = screen.getByLabelText(/green/i);
@@ -202,6 +226,10 @@ describe("HighlightToolbar", () => {
           onClose={mockOnClose}
         />,
       );
+
+      // Expand toolbar
+      const highlightBtn = screen.getByRole("button", { name: /highlight/i });
+      fireEvent.click(highlightBtn);
 
       const saveButton = screen.getByRole("button", { name: /^save$/i });
       fireEvent.click(saveButton);
@@ -414,6 +442,10 @@ describe("HighlightToolbar", () => {
         />,
       );
 
+      // Expand toolbar
+      let highlightBtn = screen.getByRole("button", { name: /highlight/i });
+      fireEvent.click(highlightBtn);
+
       // Add a note to first selection
       const addNoteButton = screen.getByRole("button", { name: /add note/i });
       fireEvent.click(addNoteButton);
@@ -430,12 +462,15 @@ describe("HighlightToolbar", () => {
         />,
       );
 
+      // Expand toolbar again (state resets)
+      highlightBtn = screen.getByRole("button", { name: /highlight/i });
+      fireEvent.click(highlightBtn);
+
       // Note should be cleared
       const newNoteInput = screen.queryByPlaceholderText(/add a note/i);
-      // Note input should not be visible anymore (or empty if visible)
-      if (newNoteInput) {
-        expect(newNoteInput).toHaveValue("");
-      }
+      // Note input should not be visible anymore (or empty if visible depending on logic, but default is no input)
+      // Actually button says "Add Note" so input is hidden
+      expect(newNoteInput).not.toBeInTheDocument();
     });
 
     it("resets state when moving from edit mode to create mode", () => {
@@ -479,6 +514,10 @@ describe("HighlightToolbar", () => {
         />,
       );
 
+      // Expand toolbar
+      const highlightBtn = screen.getByRole("button", { name: /highlight/i });
+      fireEvent.click(highlightBtn);
+
       // Should be in create mode with reset state
       expect(
         screen.getByRole("button", { name: /^save$/i }),
@@ -506,9 +545,11 @@ describe("HighlightToolbar", () => {
       );
 
       const toolbar = container.firstChild as HTMLElement;
+      // Position for collapsed state is slightly different (no -150 offset)
+      // style={{ left: `${selection.position.x}px`, top: `${selection.position.y - 40}px` }}
       expect(toolbar).toHaveStyle({
-        left: "50px",
-        top: "240px",
+        left: "200px",
+        top: "260px",
       });
     });
   });
@@ -529,6 +570,10 @@ describe("HighlightToolbar", () => {
           onClose={mockOnClose}
         />,
       );
+
+      // Expand toolbar
+      const highlightBtn = screen.getByRole("button", { name: /highlight/i });
+      fireEvent.click(highlightBtn);
 
       const closeButton = screen.getByText("✕");
       fireEvent.click(closeButton);

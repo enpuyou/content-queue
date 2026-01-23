@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState } from "react";
 
 interface Highlight {
   id: string;
@@ -27,16 +27,19 @@ const colorClasses: Record<string, string> = {
     "hover:opacity-80 transition-opacity cursor-pointer transition-colors",
 };
 
-export default function HighlightRenderer({
+const HighlightRenderer = ({
   html,
   highlights,
   onHighlightClick,
-}: HighlightRendererProps) {
+}: HighlightRendererProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [renderedHtml, setRenderedHtml] = useState<string>(html);
 
   useEffect(() => {
-    if (highlights.length === 0) {
+    // Combine existing highlights with temporary selection if present
+    const activeHighlights = [...highlights];
+
+    if (activeHighlights.length === 0) {
       setRenderedHtml(html);
       return;
     }
@@ -71,7 +74,7 @@ export default function HighlightRenderer({
       const nodeText = node.textContent || "";
 
       // Find all highlights that overlap with this text node
-      const overlappingHighlights = highlights
+      const overlappingHighlights = activeHighlights
         .filter((h) => h.start_offset < endChar && h.end_offset > startChar)
         .sort((a, b) => a.start_offset - b.start_offset); // Sort by start position
 
@@ -133,9 +136,11 @@ export default function HighlightRenderer({
         if (segment.highlight) {
           const span = document.createElement("span");
           span.className = colorClasses[segment.highlight.color];
-          span.style.backgroundColor = `var(--highlight-${segment.highlight.color})`;
+          if (segment.highlight.color !== "temp-selection") {
+            span.style.backgroundColor = `var(--highlight-${segment.highlight.color})`;
+            span.dataset.highlightId = segment.highlight.id; // Only add ID for real highlights
+          }
           span.textContent = text;
-          span.dataset.highlightId = segment.highlight.id;
           fragment.appendChild(span);
         } else {
           fragment.appendChild(document.createTextNode(text));
@@ -167,4 +172,7 @@ export default function HighlightRenderer({
       }}
     />
   );
-}
+};
+
+// Use memo to prevent re-renders when parent state changes but props are stable
+export default React.memo(HighlightRenderer);

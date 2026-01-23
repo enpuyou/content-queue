@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { ContentItem } from "@/types";
 import { searchAPI, highlightsAPI } from "@/lib/api";
@@ -9,6 +9,12 @@ import { useTheme } from "@/contexts/ThemeContext";
 import HighlightToolbar from "./HighlightToolbar";
 import HighlightRenderer from "./HighlightRenderer";
 import HighlightsPanel from "./HighlightsPanel";
+
+const fontSizeClasses = {
+  small: "text-sm md:text-base",
+  medium: "text-base md:text-lg",
+  large: "text-lg md:text-xl",
+};
 import ThemeToggle from "./ThemeToggle";
 
 interface ExtendedSelection {
@@ -186,14 +192,28 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
       // Clear any pending timeout
       clearTimeout(selectionTimeout);
 
+      // Check if click was on the toolbar - if so, ignore completely
+      const target = e?.target as HTMLElement | undefined;
+
+      // CRITICAL FIX: If the target is no longer in the document (unmounted),
+      // it means we clicked something that triggered a re-render (like the highlight button)
+      // We MUST ignore this event to prevent clearing the selection
+      if (target && !document.contains(target)) {
+        return;
+      }
+
+      // We need to check closely up the DOM tree for the toolbar
+      // The toolbar might be mounted in a portal or high up
+      const isToolbarClick =
+        target?.closest(".highlight-toolbar") ||
+        target?.closest("button")?.textContent?.includes("Highlight"); // Safety check for our new button
+
+      if (isToolbarClick) {
+        return;
+      }
+
       // Small delay to ensure selection is complete
       selectionTimeout = setTimeout(() => {
-        // Check if click was on the toolbar - if so, ignore
-        const target = e?.target as HTMLElement | undefined;
-        if (target?.closest(".highlight-toolbar")) {
-          return;
-        }
-
         const selection = window.getSelection();
 
         // Check if user clicked on an existing highlight (without selecting new text)
@@ -222,7 +242,12 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
               return;
             }
           }
-          setSelection(null);
+
+          // Only clear if we explicitly clicked elsewhere on the content
+          // And verify we aren't interacting with tooltips
+          if (!target?.closest(".highlight-tooltip")) {
+            setSelection(null);
+          }
           return;
         }
 
@@ -287,40 +312,37 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
     }
   };
 
-  const fontSizeClasses = {
-    small: "text-base",
-    medium: "text-lg",
-    large: "text-xl",
-  };
-
   // Use CSS variables for theming - color changes automatically with global theme
   const themeClasses =
     "bg-[var(--color-bg-primary)] text-[var(--color-text-primary)]";
   const linkColorClasses =
     "text-[var(--color-accent)] hover:text-[var(--color-accent-hover)]";
 
-  const scrollToHighlight = (highlight: {
-    id: string;
-    text: string;
-    start_offset: number;
-    end_offset: number;
-    color: string;
-    note?: string;
-  }) => {
-    // Find the span element with this highlight ID
-    const highlightEl = document.querySelector(
-      `[data-highlight-id="${highlight.id}"]`,
-    );
+  const scrollToHighlight = useCallback(
+    (highlight: {
+      id: string;
+      text: string;
+      start_offset: number;
+      end_offset: number;
+      color: string;
+      note?: string;
+    }) => {
+      // Find the span element with this highlight ID
+      const highlightEl = document.querySelector(
+        `[data-highlight-id="${highlight.id}"]`,
+      );
 
-    if (highlightEl) {
-      highlightEl.scrollIntoView({ behavior: "smooth", block: "center" });
-      // Flash animation to draw attention
-      highlightEl.classList.add("ring-2", "ring-blue-500");
-      setTimeout(() => {
-        highlightEl.classList.remove("ring-2", "ring-blue-500");
-      }, 1500);
-    }
-  };
+      if (highlightEl) {
+        highlightEl.scrollIntoView({ behavior: "smooth", block: "center" });
+        // Flash animation to draw attention
+        highlightEl.classList.add("ring-2", "ring-blue-500");
+        setTimeout(() => {
+          highlightEl.classList.remove("ring-2", "ring-blue-500");
+        }, 1500);
+      }
+    },
+    [],
+  );
 
   const getTextOffsets = () => {
     const selection = window.getSelection();
@@ -609,30 +631,42 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
           </div>
         )}
 
-        {/* Main Content */}
-        <div
-          id="reader-content"
-          className={`max-w-none ${fontSizeClasses[fontSize]} leading-relaxed text-[var(--color-text-secondary)]`}
-        >
-          {content.full_text ? (
-            <HighlightRenderer
-              html={content.full_text}
-              highlights={highlights}
-            />
-          ) : (
-            <div className="text-center py-12 opacity-60">
-              <p>Full content not available yet.</p>
-              <p className="text-sm mt-2">
-                {content.processing_status === "processing" &&
-                  "Content is being extracted..."}
-                {content.processing_status === "pending" &&
-                  "Content extraction is pending..."}
-                {content.processing_status === "failed" &&
-                  "Content extraction failed. Please visit the original URL."}
-              </p>
+        {/* Main Content - Memoized to prevent re-renders loosing selection */}
+        {useMemo(
+          () => (
+            <div
+              id="reader-content"
+              className={`max-w-none ${fontSizeClasses[fontSize]} leading-relaxed text-[var(--color-text-secondary)]`}
+            >
+              {content.full_text ? (
+                <HighlightRenderer
+                  html={content.full_text}
+                  highlights={highlights}
+                  onHighlightClick={scrollToHighlight}
+                />
+              ) : (
+                <div className="text-center py-12 opacity-60">
+                  <p>Full content not available yet.</p>
+                  <p className="text-sm mt-2">
+                    {content.processing_status === "processing" &&
+                      "Content is being extracted..."}
+                    {content.processing_status === "pending" &&
+                      "Content extraction is pending..."}
+                    {content.processing_status === "failed" &&
+                      "Content extraction failed. Please visit the original URL."}
+                  </p>
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          ),
+          [
+            content.full_text,
+            content.processing_status,
+            highlights,
+            fontSize,
+            scrollToHighlight,
+          ],
+        )}
 
         {/* Similar Articles Section */}
         {showSimilar && similarArticles.length > 0 && (

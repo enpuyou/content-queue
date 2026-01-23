@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useToast } from "@/contexts/ToastContext";
 import { highlightsAPI } from "@/lib/api";
+import { Highlighter } from "lucide-react";
 
 interface HighlightToolbarProps {
   selection: {
@@ -38,6 +39,7 @@ export default function HighlightToolbar({
   const [note, setNote] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [showNoteInput, setShowNoteInput] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const { showToast } = useToast();
 
   // Reset state when selection changes
@@ -47,6 +49,7 @@ export default function HighlightToolbar({
       setSelectedColor(selection.existingColor || "yellow");
       setNote(selection.existingNote || "");
       setShowNoteInput(!!selection.existingNote);
+      setIsExpanded(!!selection.existingHighlightId);
     }
   }, [selection]);
 
@@ -106,6 +109,27 @@ export default function HighlightToolbar({
       setIsLoading(false);
     }
   };
+
+  if (!isExpanded) {
+    return (
+      <div
+        className="highlight-toolbar fixed z-50"
+        style={{
+          left: `${selection.position.x}px`,
+          top: `${selection.position.y - 40}px`,
+          transform: "translateX(-50%)",
+        }}
+      >
+        <button
+          onClick={() => setIsExpanded(true)}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] border border-[var(--color-border)] shadow-md hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-all transform hover:scale-105"
+        >
+          <Highlighter size={14} />
+          <span className="text-sm font-medium">Highlight</span>
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div
