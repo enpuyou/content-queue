@@ -480,9 +480,9 @@ button:focus-visible {
     margin-bottom: 0.75rem;
   }
 
-  /* Wider content area on mobile */
+  /* Increased padding for mobile - more breathing room */
   main {
-    padding: 1rem;
+    padding: 1.25rem;
   }
 
   /* More breathing room for modals on mobile */
@@ -725,4 +725,24 @@ a {
     background-color 0.2s ease,
     border-color 0.2s ease,
     box-shadow 0.2s ease;
+}
+
+/* Hide scrollbar but keep functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Override for navbar and filter buttons to ensure proper centering */
+.navbar-button,
+.filter-button {
+  display: inline-block !important;
+  text-align: center !important;
+  vertical-align: middle !important;
+  line-height: 1 !important;
+  /* Override .text-xs line-height */
 }

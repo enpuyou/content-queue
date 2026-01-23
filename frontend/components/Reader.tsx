@@ -124,15 +124,21 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
         document.documentElement.scrollHeight - window.innerHeight;
       const scrollPercent = docHeight > 0 ? scrollTop / docHeight : 0;
 
-      // Navbar auto-hide logic
-      if (scrollTop > lastScrollY && scrollTop > 100) {
-        // Scrolling down & past 100px - hide navbar
-        setShowNavbar(false);
-      } else {
-        // Scrolling up or at top - show navbar
-        setShowNavbar(true);
+      // Navbar auto-hide logic with threshold to prevent flicker
+      const SCROLL_THRESHOLD = 10; // Minimum scroll distance to trigger
+      const deltaY = scrollTop - lastScrollY;
+
+      // Only update navbar visibility if scroll delta exceeds threshold
+      if (Math.abs(deltaY) > SCROLL_THRESHOLD) {
+        if (deltaY > 0 && scrollTop > 100) {
+          // Scrolling down & past 100px - hide navbar
+          setShowNavbar(false);
+        } else if (deltaY < 0 || scrollTop < 50) {
+          // Scrolling up or near top - show navbar
+          setShowNavbar(true);
+        }
+        setLastScrollY(scrollTop);
       }
-      setLastScrollY(scrollTop);
 
       // Debounce: save position 1 second after user stops scrolling
       clearTimeout(saveTimeout);
@@ -172,67 +178,87 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [content.id]); // Only run when article changes
 
-  // highlight
+  // highlight - improved for mobile
   useEffect(() => {
-    const handleMouseUp = (e: MouseEvent) => {
-      // Check if click was on the toolbar - if so, ignore
-      const target = e.target as HTMLElement;
-      if (target.closest(".highlight-toolbar")) {
-        return;
-      }
+    let selectionTimeout: NodeJS.Timeout;
 
-      const selection = window.getSelection();
+    const handleSelection = (e?: Event) => {
+      // Clear any pending timeout
+      clearTimeout(selectionTimeout);
 
-      // Check if user clicked on an existing highlight (without selecting new text)
-      const selectedText = selection?.toString().trim();
-      if (!selection || !selectedText || selectedText.length === 0) {
-        // Check if the click was on a highlighted span
-        if (target.dataset.highlightId) {
-          const clickedHighlight = highlights.find(
-            (h) => h.id === target.dataset.highlightId,
-          );
-          if (clickedHighlight) {
-            // Show toolbar for editing this highlight
-            const rect = target.getBoundingClientRect();
-            setSelection({
-              text: clickedHighlight.text,
-              startOffset: clickedHighlight.start_offset,
-              endOffset: clickedHighlight.end_offset,
-              position: {
-                x: rect.left + rect.width / 2,
-                y: rect.top - 10,
-              },
-              existingHighlightId: clickedHighlight.id,
-              existingColor: clickedHighlight.color,
-              existingNote: clickedHighlight.note,
-            });
-            return;
-          }
+      // Small delay to ensure selection is complete
+      selectionTimeout = setTimeout(() => {
+        // Check if click was on the toolbar - if so, ignore
+        const target = e?.target as HTMLElement | undefined;
+        if (target?.closest(".highlight-toolbar")) {
+          return;
         }
-        setSelection(null);
-        return;
-      }
 
-      const offsets = getTextOffsets();
-      if (!offsets) return;
+        const selection = window.getSelection();
 
-      // Get toolbar position (show near selection)
-      const range = selection.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
+        // Check if user clicked on an existing highlight (without selecting new text)
+        const selectedText = selection?.toString().trim();
+        if (!selection || !selectedText || selectedText.length === 0) {
+          // Check if the click was on a highlighted span
+          if (target?.dataset.highlightId) {
+            const clickedHighlight = highlights.find(
+              (h) => h.id === target.dataset.highlightId,
+            );
+            if (clickedHighlight) {
+              // Show toolbar for editing this highlight
+              const rect = target.getBoundingClientRect();
+              setSelection({
+                text: clickedHighlight.text,
+                startOffset: clickedHighlight.start_offset,
+                endOffset: clickedHighlight.end_offset,
+                position: {
+                  x: rect.left + rect.width / 2,
+                  y: rect.top - 10,
+                },
+                existingHighlightId: clickedHighlight.id,
+                existingColor: clickedHighlight.color,
+                existingNote: clickedHighlight.note,
+              });
+              return;
+            }
+          }
+          setSelection(null);
+          return;
+        }
 
-      setSelection({
-        text: offsets.selectedText,
-        startOffset: offsets.startOffset,
-        endOffset: offsets.endOffset,
-        position: {
-          x: rect.left + rect.width / 2,
-          y: rect.top - 10, // Above selection
-        },
-      });
+        const offsets = getTextOffsets();
+        if (!offsets) return;
+
+        // Get toolbar position (show near selection)
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+
+        setSelection({
+          text: offsets.selectedText,
+          startOffset: offsets.startOffset,
+          endOffset: offsets.endOffset,
+          position: {
+            x: rect.left + rect.width / 2,
+            y: rect.top - 10, // Above selection
+          },
+        });
+      }, 100); // Small delay for mobile selection to complete
     };
 
+    const handleMouseUp = (e: MouseEvent) => handleSelection(e);
+    const handleTouchEnd = (e: TouchEvent) => handleSelection(e);
+
+    // Use selectionchange for better mobile support
+    document.addEventListener("selectionchange", handleSelection);
     document.addEventListener("mouseup", handleMouseUp);
-    return () => document.removeEventListener("mouseup", handleMouseUp);
+    document.addEventListener("touchend", handleTouchEnd);
+
+    return () => {
+      clearTimeout(selectionTimeout);
+      document.removeEventListener("selectionchange", handleSelection);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.removeEventListener("touchend", handleTouchEnd);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [highlights]);
 
@@ -401,20 +427,30 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
         }`}
       >
         <div className="max-w-2xl mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            {/* Back Button */}
+          <div className="flex items-center justify-between gap-2">
+            {/* Back Button - shorter text on mobile, dynamic destination */}
             <Link
-              href="/dashboard"
+              href={
+                typeof window !== "undefined"
+                  ? sessionStorage.getItem("readerReturnPath") || "/dashboard"
+                  : "/dashboard"
+              }
               scroll={false}
-              className="text-xs px-2 py-1 rounded-none border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:border-[var(--color-accent)] transition-colors"
+              className="text-xs px-2 py-1.5 rounded-none border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:border-[var(--color-accent)] transition-colors whitespace-nowrap flex-shrink-0 flex items-center"
+              onClick={() => {
+                // Clear the return path after using it
+                if (typeof window !== "undefined") {
+                  sessionStorage.removeItem("readerReturnPath");
+                }
+              }}
             >
-              ← Back to Queue
+              ← Back
             </Link>
 
             {/* Reading Controls */}
-            <div className="flex items-center gap-3">
-              {/* Font Size Control */}
-              <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Font Size Control - hidden on mobile */}
+              <div className="hidden md:flex items-center gap-1">
                 {(["small", "medium", "large"] as const).map((size) => (
                   <button
                     key={size}
@@ -443,8 +479,9 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
               {/* Theme Toggle */}
               <ThemeToggle />
 
-              {/* Action Buttons */}
+              {/* Action Buttons - condensed on mobile */}
               <div className="flex items-center gap-1 flex-wrap">
+                {/* Highlights button - icon only on mobile */}
                 <button
                   onClick={() => setShowHighlightsPanel(!showHighlightsPanel)}
                   className={`text-xs px-2 py-1 rounded-none border transition-colors ${
@@ -452,15 +489,23 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
                       ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-accent)]"
                       : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
                   }`}
+                  title={`${showHighlightsPanel ? "Hide" : "Show"} Highlights`}
                 >
-                  {showHighlightsPanel ? "Hide" : "Show"} Highlights{" "}
-                  {highlights.length > 0 && `(${highlights.length})`}
+                  <span className="hidden sm:inline">
+                    {showHighlightsPanel ? "Hide" : "Show"} Highlights{" "}
+                    {highlights.length > 0 && `(${highlights.length})`}
+                  </span>
+                  <span className="sm:hidden">
+                    ✎{highlights.length > 0 && ` ${highlights.length}`}
+                  </span>
                 </button>
+
+                {/* Archive button */}
                 <button
                   onClick={() =>
                     onStatusChange({ is_archived: !content.is_archived })
                   }
-                  className={`text-xs px-2 py-1 rounded-none border transition-colors ${
+                  className={`text-xs px-2 py-1 rounded-none border transition-colors whitespace-nowrap ${
                     content.is_archived
                       ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-accent)]"
                       : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
@@ -468,10 +513,12 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
                 >
                   {content.is_archived ? "Unarchive" : "Archive"}
                 </button>
+
+                {/* Find Related - hidden on mobile */}
                 <button
                   onClick={handleFindSimilar}
                   disabled={loadingSimilar}
-                  className="text-xs px-2 py-1 rounded-none border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:border-[var(--color-accent)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="hidden sm:inline-block text-xs px-2 py-1 rounded-none border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:border-[var(--color-accent)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {loadingSimilar
                     ? "Loading..."
@@ -500,7 +547,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
       )}
 
       {/* Article Content */}
-      <article className={`max-w-2xl mx-auto px-4 py-8 pt-24`}>
+      <article className={`max-w-2xl mx-auto px-5 sm:px-6 lg:px-8 py-8 pt-28`}>
         {/* Article Header */}
         <header className="mb-12">
           <h1

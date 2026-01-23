@@ -51,18 +51,18 @@ export default function ListBlockCard({
   return (
     <Link href={`/lists/${id}`}>
       <div
-        className="relative h-48 border border-[var(--color-border)] rounded-none bg-[var(--color-bg-secondary)] hover:border-[var(--color-accent)] transition-all cursor-pointer overflow-hidden group"
+        className="relative aspect-square max-w-xs mx-auto border border-[var(--color-border)] rounded-none bg-[var(--color-bg-secondary)] hover:border-[var(--color-accent)] transition-all cursor-pointer overflow-hidden group"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
         {/* Base Content */}
-        <div className="p-6 h-full flex flex-col justify-between items-center text-center">
+        <div className="p-4 h-full flex flex-col justify-between items-center text-center">
           <div className="flex-1 w-full">
-            <h3 className="font-serif text-lg font-normal text-[var(--color-text-primary)] line-clamp-2">
+            <h3 className="font-serif text-base font-normal text-[var(--color-text-primary)] line-clamp-2">
               {name}
             </h3>
             {description && (
-              <p className="text-sm text-[var(--color-text-muted)] mt-2 line-clamp-1">
+              <p className="text-xs text-[var(--color-text-muted)] mt-1 line-clamp-1">
                 {description}
               </p>
             )}

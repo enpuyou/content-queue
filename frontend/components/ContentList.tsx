@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import ContentItem from "./ContentItem";
+import ContentCard from "./ContentCard";
 import { contentAPI, listsAPI } from "@/lib/api";
 import { ContentItem as ContentItemType, List } from "@/types";
 import { useToast } from "@/contexts/ToastContext";
@@ -371,7 +372,7 @@ export default function ContentList() {
       )}
 
       {/* Filter buttons - action style */}
-      <div className="flex gap-1 pb-4 border-b border-[var(--color-border)] overflow-x-auto">
+      <div className="flex gap-1 pb-4 border-b border-[var(--color-border)] overflow-x-auto scrollbar-hide snap-x snap-mandatory">
         {(["all", "unread", "in_progress", "read", "archived"] as const).map(
           (filterType) => (
             <Link
@@ -381,7 +382,7 @@ export default function ContentList() {
                   ? "/dashboard"
                   : `/dashboard?filter=${filterType}`
               }
-              className={`no-underline text-xs px-2 py-1 rounded-none border whitespace-nowrap transition-colors ${
+              className={`filter-button no-underline text-xs px-2 py-0.5 leading-none rounded-none border whitespace-nowrap flex-shrink-0 snap-start transition-colors inline-flex items-center justify-center ${
                 filter === filterType
                   ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-accent)]"
                   : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
@@ -411,19 +412,37 @@ export default function ContentList() {
           </p>
         </div>
       ) : (
-        <div className="divide-y divide-[var(--color-border-subtle)]">
-          {filteredContents.map((content) => (
-            <ContentItem
-              key={content.id}
-              content={content}
-              onStatusChange={handleStatusChange}
-              onDelete={handleDelete}
-              onUpdate={handleUpdate}
-              availableLists={availableLists}
-              onAddToList={(listId) => handleAddToList(content.id, listId)}
-            />
-          ))}
-        </div>
+        <>
+          {/* Mobile: Card layout */}
+          <div className="sm:hidden grid gap-4">
+            {filteredContents.map((content) => (
+              <ContentCard
+                key={content.id}
+                content={content}
+                onStatusChange={handleStatusChange}
+                onDelete={handleDelete}
+                onUpdate={handleUpdate}
+                availableLists={availableLists}
+                onAddToList={(listId) => handleAddToList(content.id, listId)}
+              />
+            ))}
+          </div>
+
+          {/* Desktop: List layout */}
+          <div className="hidden sm:block divide-y divide-[var(--color-border-subtle)]">
+            {filteredContents.map((content) => (
+              <ContentItem
+                key={content.id}
+                content={content}
+                onStatusChange={handleStatusChange}
+                onDelete={handleDelete}
+                onUpdate={handleUpdate}
+                availableLists={availableLists}
+                onAddToList={(listId) => handleAddToList(content.id, listId)}
+              />
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { listsAPI, contentAPI } from "@/lib/api";
 import { useToast } from "@/contexts/ToastContext";
 import ContentItem from "@/components/ContentItem";
+import ContentCard from "@/components/ContentCard";
 import AddContentToListModal from "@/components/AddContentToListModal";
 import { ContentItem as ContentItemType } from "@/types";
 import { useLists } from "@/contexts/ListsContext";
@@ -225,17 +226,35 @@ export default function ListDetailPage() {
 
         {/* Content list */}
         {contents.length > 0 && (
-          <div>
-            {contents.map((content) => (
-              <ContentItem
-                key={content.id}
-                content={content}
-                onStatusChange={handleStatusChange}
-                onDelete={handleDelete}
-                onRemoveFromList={() => handleRemoveFromList(content.id)}
-              />
-            ))}
-          </div>
+          <>
+            {/* Mobile: Card layout */}
+            <div className="sm:hidden grid gap-4">
+              {contents.map((content) => (
+                <ContentCard
+                  key={content.id}
+                  content={content}
+                  onStatusChange={handleStatusChange}
+                  onDelete={handleDelete}
+                  onRemoveFromList={() => handleRemoveFromList(content.id)}
+                  returnPath={`/lists/${listId}`}
+                />
+              ))}
+            </div>
+
+            {/* Desktop: List layout */}
+            <div className="hidden sm:block divide-y divide-[var(--color-border-subtle)]">
+              {contents.map((content) => (
+                <ContentItem
+                  key={content.id}
+                  content={content}
+                  onStatusChange={handleStatusChange}
+                  onDelete={handleDelete}
+                  onRemoveFromList={() => handleRemoveFromList(content.id)}
+                  returnPath={`/lists/${listId}`}
+                />
+              ))}
+            </div>
+          </>
         )}
         {/* Add Content Modal */}
         <AddContentToListModal

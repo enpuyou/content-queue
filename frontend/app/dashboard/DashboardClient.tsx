@@ -17,7 +17,7 @@ export default function DashboardClient() {
     <div className="min-h-screen bg-[var(--color-bg-primary)]">
       <Navbar />
 
-      <main className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-2xl mx-auto px-5 sm:px-6 lg:px-8 py-8">
         <div className="space-y-4">
           {/* Header with Title and Add Form */}
           <div>

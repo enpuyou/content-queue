@@ -25,7 +25,7 @@ export default function Navbar() {
   return (
     <nav className="relative w-full bg-[var(--color-bg-primary)] border-b border-[var(--color-border)]">
       <div className="px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between w-full gap-8 h-20">
+        <div className="flex items-center justify-between w-full gap-4 sm:gap-8 h-20">
           {/* Left: Logo and Search */}
           <div className="flex items-center gap-6 flex-1">
             <Link
@@ -42,54 +42,57 @@ export default function Navbar() {
           {/* Right: Navigation Links, Theme Toggle and Logout (Desktop) */}
           <div className="hidden md:flex items-center gap-2">
             <ThemeToggle />
-            <Link
-              href="/dashboard"
-              className={`no-underline text-xs px-2 py-1 rounded-none border transition-colors ${
+            <button
+              onClick={() => (window.location.href = "/dashboard")}
+              className={`text-xs px-2 py-1.5 leading-none rounded-none border transition-colors ${
                 isQueueActive
                   ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-accent)]"
                   : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
               }`}
             >
               Queue
-            </Link>
-            <Link
-              href="/lists"
-              className={`no-underline text-xs px-2 py-1 rounded-none border transition-colors ${
+            </button>
+            <button
+              onClick={() => (window.location.href = "/lists")}
+              className={`text-xs px-2 py-1.5 leading-none rounded-none border transition-colors ${
                 isListsActive
                   ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-accent)]"
                   : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
               }`}
             >
               Lists
-            </Link>
+            </button>
             <button
-              className="text-xs px-2 py-1 rounded-none border bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] transition-colors border-[var(--color-border)] hover:border-red-600 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400"
+              className="text-xs px-2 py-1.5 leading-none rounded-none border bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] transition-colors border-[var(--color-border)] hover:border-red-600 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400"
               onClick={logout}
             >
               Logout
             </button>
           </div>
 
-          {/* Mobile Menu Button */}
-          <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="md:hidden text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
-            aria-label="Toggle mobile menu"
-          >
-            <svg
-              className="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+          {/* Mobile: Theme Toggle and Menu Button */}
+          <div className="flex md:hidden items-center gap-2">
+            <ThemeToggle />
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors p-1"
+              aria-label="Toggle mobile menu"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 6h16M4 12h16M4 18h16"
-              />
-            </svg>
-          </button>
+              <svg
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -111,42 +114,38 @@ export default function Navbar() {
 
               {/* Navigation Links */}
               <div className="flex flex-col gap-2">
-                <Link
-                  href="/dashboard"
-                  onClick={closeMobileMenu}
-                  className={`no-underline text-xs px-2 py-1 rounded-none border transition-colors block ${
+                <button
+                  onClick={() => {
+                    window.location.href = "/dashboard";
+                    closeMobileMenu();
+                  }}
+                  className={`w-full text-xs px-2 py-1 leading-none rounded-none border transition-colors ${
                     isQueueActive
                       ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-accent)]"
                       : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
                   }`}
                 >
                   Queue
-                </Link>
-                <Link
-                  href="/lists"
-                  onClick={closeMobileMenu}
-                  className={`no-underline text-xs px-2 py-1 rounded-none border transition-colors block ${
+                </button>
+                <button
+                  onClick={() => {
+                    window.location.href = "/lists";
+                    closeMobileMenu();
+                  }}
+                  className={`w-full text-xs px-2 py-1 leading-none rounded-none border transition-colors ${
                     isListsActive
                       ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-accent)]"
                       : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
                   }`}
                 >
                   Lists
-                </Link>
-              </div>
-
-              {/* Theme Toggle */}
-              <div className="flex items-center justify-between py-2">
-                <span className="text-xs text-[var(--color-text-muted)]">
-                  Theme
-                </span>
-                <ThemeToggle />
+                </button>
               </div>
 
               {/* Logout Button */}
               <button
                 onClick={handleLogout}
-                className="w-full text-xs px-2 py-1 rounded-none border bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] transition-colors border-[var(--color-border)] hover:border-red-600 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400"
+                className="w-full text-xs px-2 py-1 leading-none rounded-none border bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] transition-colors border-[var(--color-border)] hover:border-red-600 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400"
               >
                 Logout
               </button>
