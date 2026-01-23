@@ -175,7 +175,7 @@ export default function ContentCard({
                   }
                 }}
                 placeholder="Add tag..."
-                className="px-2 py-0.5 text-xs border border-[var(--color-border)] bg-transparent focus:outline-none focus:border-[var(--color-accent)] flex-1 min-w-[100px]"
+                className="px-2 py-1 text-xs border border-[var(--color-border)] bg-transparent focus:outline-none focus:border-[var(--color-accent)] flex-1 min-w-[100px]"
                 autoFocus
                 onClick={(e) => e.stopPropagation()}
               />
@@ -184,7 +184,7 @@ export default function ContentCard({
                   e.stopPropagation();
                   handleAddTag();
                 }}
-                className="text-xs px-2 py-0.5 bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)]"
+                className="text-xs px-2 py-1 bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)]"
               >
                 Add
               </button>
@@ -194,7 +194,7 @@ export default function ContentCard({
                   setIsEditingTags(false);
                   setTagInput("");
                 }}
-                className="text-xs px-2 py-0.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+                className="text-xs px-2 py-1 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
               >
                 Done
               </button>

@@ -382,7 +382,7 @@ export default function ContentList() {
                   ? "/dashboard"
                   : `/dashboard?filter=${filterType}`
               }
-              className={`filter-button no-underline text-xs px-2 py-0.5 leading-none rounded-none border whitespace-nowrap flex-shrink-0 snap-start transition-colors inline-flex items-center justify-center ${
+              className={`no-underline text-xs px-2 py-1.5 leading-none rounded-none border whitespace-nowrap flex-shrink-0 snap-start transition-colors inline-flex items-center justify-center ${
                 filter === filterType
                   ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-accent)]"
                   : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
