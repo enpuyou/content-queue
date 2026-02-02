@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Unit tests for AddContentForm component.
  *
@@ -146,12 +145,23 @@ describe("AddContentForm", () => {
     });
 
     it("shows loading state during submission", async () => {
-      // Create a promise we can control
-      let resolveCreate: any;
-      const createPromise = new Promise((resolve) => {
-        resolveCreate = resolve;
-      });
-      mockedContentAPI.create.mockReturnValue(createPromise as any);
+      // Use a simple delayed promise instead of manually controlled one
+      mockedContentAPI.create.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            setTimeout(() => {
+              resolve({
+                id: "new-content-123",
+                original_url: "https://example.com/article",
+                processing_status: "pending",
+                is_read: false,
+                is_archived: false,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              });
+            }, 100);
+          }),
+      );
 
       render(<AddContentForm onContentAdded={mockOnContentAdded} />);
 
@@ -167,17 +177,6 @@ describe("AddContentForm", () => {
       await waitFor(() => {
         expect(screen.getByText(/\.\.\./)).toBeInTheDocument();
         expect(submitButton).toBeDisabled();
-      });
-
-      // Resolve the promise
-      resolveCreate({
-        id: "new-content-123",
-        original_url: "https://example.com/article",
-        processing_status: "pending",
-        is_read: false,
-        is_archived: false,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
       });
 
       // After loading
@@ -385,11 +384,22 @@ describe("AddContentForm", () => {
     });
 
     it("disables button during submission to prevent double-submit", async () => {
-      let resolveCreate: any;
-      const createPromise = new Promise((resolve) => {
-        resolveCreate = resolve;
-      });
-      mockedContentAPI.create.mockReturnValue(createPromise as any);
+      mockedContentAPI.create.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            setTimeout(() => {
+              resolve({
+                id: "new-content-123",
+                original_url: "https://example.com/article",
+                processing_status: "pending",
+                is_read: false,
+                is_archived: false,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              });
+            }, 100);
+          }),
+      );
 
       render(<AddContentForm onContentAdded={mockOnContentAdded} />);
 
@@ -411,15 +421,9 @@ describe("AddContentForm", () => {
       // Should only be called once
       expect(mockedContentAPI.create).toHaveBeenCalledTimes(1);
 
-      // Resolve
-      resolveCreate({
-        id: "new-content-123",
-        original_url: "https://example.com/article",
-        processing_status: "pending",
-        is_read: false,
-        is_archived: false,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+      // Wait for completion
+      await waitFor(() => {
+        expect(submitButton).not.toBeDisabled();
       });
     });
   });

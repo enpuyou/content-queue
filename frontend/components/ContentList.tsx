@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { useSearchParams } from "next/navigation";
 import ContentItem from "./ContentItem";
 import ContentCard from "./ContentCard";
@@ -24,7 +24,11 @@ type FilterType = "all" | "unread" | "in_progress" | "read" | "archived";
 const CACHE_KEY = "contentListCache";
 const CACHE_DURATION = 30000; // 30 seconds
 
-export default function ContentList() {
+export interface ContentListRef {
+  addNewItem: (item: ContentItemType) => void;
+}
+
+const ContentList = forwardRef<ContentListRef>((props, ref) => {
   // Toast context for showing success/error messages
   const { showToast } = useToast();
   const { incrementListCount, decrementListCount } = useLists();
@@ -89,6 +93,20 @@ export default function ContentList() {
 
   // Pagination state - backend returns total count
   const [total, setTotal] = useState(0);
+
+  /**
+   * Expose method to parent component for adding new items optimistically
+   */
+  useImperativeHandle(ref, () => ({
+    addNewItem: (newItem: ContentItemType) => {
+      // Add to the beginning of the list (most recent first)
+      setContents((prev) => [newItem, ...prev]);
+      setTotal((prev) => prev + 1);
+
+      // Clear cache so next fetch is fresh
+      sessionStorage.removeItem(CACHE_KEY);
+    },
+  }));
 
   /**
    * useEffect Hook - Runs when component mounts (empty dependency array [])
@@ -446,4 +464,8 @@ export default function ContentList() {
       )}
     </div>
   );
-}
+});
+
+ContentList.displayName = "ContentList";
+
+export default ContentList;

@@ -91,6 +91,21 @@ export default function ContentCard({
     router.push(`/content/${content.id}`);
   };
 
+  // Show processing states with helpful messages
+  const isProcessing =
+    content.processing_status === "pending" ||
+    content.processing_status === "processing";
+  const hasFailed = content.processing_status === "failed";
+  const hasMinimalData = !content.title && !content.description;
+
+  // Check if content was added within last 10 minutes
+  const isJustAdded = () => {
+    const now = new Date();
+    const createdAt = new Date(content.created_at);
+    const diffMinutes = (now.getTime() - createdAt.getTime()) / (1000 * 60);
+    return diffMinutes < 10;
+  };
+
   return (
     <div
       onClick={handleCardClick}
@@ -108,28 +123,90 @@ export default function ContentCard({
 
         {/* Content */}
         <div className="flex-1 min-w-0">
+          {/* Processing Status Badge */}
+          {isProcessing && (
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-xs text-[var(--color-text-muted)] italic">
+                {content.processing_status === "pending" &&
+                  "Finding your article..."}
+                {content.processing_status === "processing" &&
+                  "Preparing your article..."}
+              </span>
+              <div className="flex gap-1">
+                <span className="inline-block w-1.5 h-1.5 bg-[var(--color-accent)] rounded-full animate-pulse"></span>
+                <span className="inline-block w-1.5 h-1.5 bg-[var(--color-accent)] rounded-full animate-pulse [animation-delay:0.2s]"></span>
+                <span className="inline-block w-1.5 h-1.5 bg-[var(--color-accent)] rounded-full animate-pulse [animation-delay:0.4s]"></span>
+              </div>
+            </div>
+          )}
+
           {/* Status and metadata */}
-          <div className="flex items-center gap-2 mb-2 text-xs text-[var(--color-text-muted)]">
-            <StatusIndicator readingStatus={content.reading_status} />
-            {content.reading_time_minutes && (
-              <>
-                <span>·</span>
-                <span>{content.reading_time_minutes} min read</span>
-              </>
-            )}
-          </div>
+          {!isProcessing && (
+            <div className="flex items-center gap-2 mb-2 text-xs text-[var(--color-text-muted)]">
+              {hasFailed ? (
+                <>
+                  <span className="inline-block w-2 h-2 rounded-full bg-red-500 flex-shrink-0"></span>
+                  <span className="text-xs px-2 py-0.5 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800">
+                    Failed to extract
+                  </span>
+                </>
+              ) : (
+                <StatusIndicator readingStatus={content.reading_status} />
+              )}
+              {isJustAdded() ? (
+                <span>Just now</span>
+              ) : (
+                <span>{new Date(content.created_at).toLocaleDateString()}</span>
+              )}
+              {content.reading_time_minutes && (
+                <>
+                  <span>·</span>
+                  <span>{content.reading_time_minutes} min read</span>
+                </>
+              )}
+            </div>
+          )}
 
           {/* Title */}
           <h3 className="font-serif text-lg font-medium text-[var(--color-text-primary)] mb-1 line-clamp-2">
-            {content.title || "Untitled"}
+            {(() => {
+              // Show helpful title based on state
+              if (isProcessing && hasMinimalData) {
+                return "Loading article...";
+              }
+              if (content.title) {
+                return content.title;
+              }
+              if (hasFailed) {
+                return "We couldn't load your article";
+              }
+              return "Untitled";
+            })()}
           </h3>
 
           {/* Description */}
-          {content.description && (
+          {content.description ? (
             <p className="text-sm text-[var(--color-text-muted)] line-clamp-2 mb-2">
               {content.description}
             </p>
-          )}
+          ) : isProcessing ? (
+            <p className="text-sm text-[var(--color-text-faint)] italic line-clamp-2 mb-2">
+              Extracting content from {new URL(content.original_url).hostname}
+              ...
+            </p>
+          ) : hasFailed ? (
+            <p className="text-sm text-[var(--color-text-muted)] line-clamp-2 mb-2">
+              <a
+                href={content.original_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[var(--color-accent)] hover:underline"
+                onClick={(e) => e.stopPropagation()}
+              >
+                View original
+              </a>
+            </p>
+          ) : null}
 
           {/* Tags */}
           {content.tags && content.tags.length > 0 && (

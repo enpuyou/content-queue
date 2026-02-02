@@ -1,16 +1,19 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useRef, Suspense } from "react";
 import AddContentForm from "@/components/AddContentForm";
 import ContentList from "@/components/ContentList";
 import Navbar from "@/components/Navbar";
+import { ContentItem } from "@/types";
 
 export default function DashboardClient() {
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const contentListRef = useRef<{ addNewItem: (item: ContentItem) => void }>(
+    null,
+  );
 
-  const handleContentAdded = () => {
-    // Trigger refresh of content list
-    setRefreshTrigger((prev) => prev + 1);
+  const handleContentAdded = (newItem: ContentItem) => {
+    // Pass the new item to ContentList for optimistic update
+    contentListRef.current?.addNewItem(newItem);
   };
 
   return (
@@ -39,7 +42,7 @@ export default function DashboardClient() {
                 </div>
               }
             >
-              <ContentList key={refreshTrigger} />
+              <ContentList ref={contentListRef} />
             </Suspense>
           </div>
         </div>

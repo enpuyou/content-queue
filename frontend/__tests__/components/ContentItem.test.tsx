@@ -13,7 +13,6 @@
  * - Processing status display
  */
 
-import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
@@ -52,10 +51,6 @@ const mockShowToast = jest.fn();
 jest.mock("../../contexts/ToastContext", () => ({
   useToast: () => ({ showToast: mockShowToast }),
 }));
-
-// Mock window.location.reload
-delete (window as any).location;
-(window as any).location = { reload: jest.fn() };
 
 describe("ContentItem", () => {
   const mockOnStatusChange = jest.fn();
@@ -692,25 +687,44 @@ describe("ContentItem", () => {
   });
 
   describe("Date Formatting", () => {
-    it("shows relative date for today", () => {
-      const todayContent = {
+    it("shows 'Just now' for recently added content (within 10 minutes)", () => {
+      const recentContent = {
         ...mockContent,
-        created_at: new Date().toISOString(),
+        created_at: new Date().toISOString(), // Just created
       };
 
       render(
         <ContentItem
-          content={todayContent}
+          content={recentContent}
           onStatusChange={mockOnStatusChange}
           onDelete={mockOnDelete}
         />,
       );
 
-      // After hydration, should show "Today"
-      // Note: In tests, we may not see "Today" due to server rendering
-      expect(
-        screen.getByText(/today|[0-9]{4}-[0-9]{2}-[0-9]{2}/i),
-      ).toBeInTheDocument();
+      // Should show "Just now" for content added within 10 minutes
+      expect(screen.getByText(/just now/i)).toBeInTheDocument();
+    });
+
+    it("shows formatted date for older content (more than 10 minutes old)", () => {
+      // Content created 1 day ago
+      const oneDayAgo = new Date();
+      oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+
+      const olderContent = {
+        ...mockContent,
+        created_at: oneDayAgo.toISOString(),
+      };
+
+      render(
+        <ContentItem
+          content={olderContent}
+          onStatusChange={mockOnStatusChange}
+          onDelete={mockOnDelete}
+        />,
+      );
+
+      // Should show "Yesterday" for content from yesterday
+      expect(screen.getByText(/yesterday/i)).toBeInTheDocument();
     });
   });
 });

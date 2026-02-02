@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { contentAPI } from "@/lib/api";
 import { useToast } from "@/contexts/ToastContext";
+import { ContentItem } from "@/types";
 
 interface AddContentFormProps {
-  onContentAdded: () => void;
+  onContentAdded: (newItem: ContentItem) => void;
 }
 
 export default function AddContentForm({
@@ -22,7 +23,8 @@ export default function AddContentForm({
     setError("");
 
     try {
-      await contentAPI.create({ url });
+      // API returns the newly created content item
+      const newItem = await contentAPI.create({ url });
 
       // Reset form
       setUrl("");
@@ -30,8 +32,8 @@ export default function AddContentForm({
       // Show success toast
       showToast("Article added successfully!", "success");
 
-      // Notify parent component
-      onContentAdded();
+      // Notify parent component with the new item
+      onContentAdded(newItem);
     } catch (err) {
       // Extract the actual error message from the Error object
       const errorMessage =
@@ -41,7 +43,6 @@ export default function AddContentForm({
 
       setError(errorMessage);
       showToast(errorMessage, "error");
-      console.error(err);
     } finally {
       setLoading(false);
     }
