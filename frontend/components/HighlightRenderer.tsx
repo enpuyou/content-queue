@@ -16,7 +16,10 @@ interface Highlight {
 interface HighlightRendererProps {
   html: string;
   highlights: Highlight[];
-  onHighlightClick?: (highlight: Highlight) => void;
+  onHighlightClick?: (
+    highlight: Highlight,
+    clickedElement?: HTMLElement,
+  ) => void;
 }
 
 const colorClasses: Record<string, string> = {

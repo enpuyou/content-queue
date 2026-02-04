@@ -1006,15 +1006,16 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
                       // Highlight the paragraph after the header
                       const nextEl = el.nextElementSibling;
                       if (nextEl && nextEl.tagName === "P") {
+                        const pElement = nextEl as HTMLElement;
                         const computedStyle = getComputedStyle(
                           document.documentElement,
                         );
                         const accentColor = computedStyle
                           .getPropertyValue("--color-accent")
                           .trim();
-                        nextEl.style.color = accentColor;
+                        pElement.style.color = accentColor;
                         setTimeout(() => {
-                          nextEl.style.color = "";
+                          pElement.style.color = "";
                         }, 800);
                       }
                     }
