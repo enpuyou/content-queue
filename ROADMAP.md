@@ -192,29 +192,144 @@ The most fundamental shift—from consuming to capturing.
 
 ---
 
+## Phase H: Production Polish Sprint (ACTIVE)
+**Goal**: Make the app ready for real users — beautiful, functional, and warm.
+
+> Detailed implementation specs in `IMPLEMENTATION_PLAN.md`
+
+### H.1 Warm Microcopy ✏️
+- [ ] Replace all "Loading..." → "Finding your articles...", "Preparing your article...", etc.
+- [ ] Second person, warm verbs throughout
+
+### H.2 Settings Page + Reading Controls 📐
+- [ ] New `ReadingSettingsContext` (persists to localStorage)
+- [ ] `/settings` page with controls: theme (light/dark/sepia), font family, font size, content width, line height, letter spacing, bionic reading toggle
+- [ ] Sepia theme CSS variables
+- [ ] Apply settings globally in Reader
+- [ ] Beautiful defaults (serif, medium, comfortable)
+
+### H.3 Focus Mode + Reader Enhancements 🔭
+- [ ] Paragraph focus mode (dim non-current paragraphs via IntersectionObserver)
+- [ ] Reading progress indicator (top bar + optional circular)
+- [ ] Heading hierarchy with anchor links
+- [ ] Bionic reading engine (`lib/bionicReading.ts`) — toggled in settings, not reader
+
+### H.4 Mobile Highlight Bottom Sheet 📱
+- [ ] Detect mobile → show "Highlight" button BELOW iOS native menu
+- [ ] Bottom sheet with: text preview, color picker (large touch targets), note input, save/cancel
+- [ ] Backdrop dismissal, slide-up animation, `pb-safe` for notch
+- [ ] All `rounded-none` — consistent editorial style
+
+### H.5 Article TLDR (LLM-Generated) 🤖
+- [ ] Backend: `tldr` column on ContentItem + Celery task using gpt-4o-mini
+- [ ] Chain into extraction pipeline (after full text extraction)
+- [ ] Frontend: collapsible "Show TLDR" button in Reader
+
+### H.6 Highlight Distillation 🧬
+- [ ] Backend: POST endpoint that synthesizes 3+ highlights via LLM
+- [ ] Writes in second person ("You highlighted...", "The key tension you noticed...")
+- [ ] Frontend: "Distill My Highlights" button in HighlightsPanel
+
+### H.7 Lists as Projects 📂
+- [ ] Backend: `notes` column on List model (Markdown text)
+- [ ] Frontend: collapsible project notes textarea with auto-save (debounce 1.5s)
+- [ ] Placeholder: "Research question, context, or notes for this project..."
+
+### H.8 PDF Support + Scraper Hardening 📄
+- [ ] Backend: PDF upload endpoint + PyMuPDF extraction task
+- [ ] Frontend: "Upload PDF" button alongside URL input
+- [ ] Twitter/X: Use oembed API for tweet/thread extraction
+- [ ] Scraper: User-Agent rotation, fallback chain (trafilatura → newspaper3k → BeautifulSoup)
+- [ ] Paywall detection + Googlebot UA fallback for NYTimes/WSJ/etc.
+
+### H.9 Email-to-Save 📧
+- [ ] Backend: `email_token` field on User (unique, indexed)
+- [ ] Webhook endpoint (`/webhook/email`) for SendGrid/Resend inbound parse
+- [ ] Extract URLs from email body, save as content; save full email if no URLs
+- [ ] Frontend: Show unique email address in Settings with copy button
+- [ ] DNS: MX record pointing to SendGrid/Resend
+
+### H.10 Profile / Reflections Page 📊
+- [ ] Backend: `/analytics/activity` endpoint (daily reads, highlights, weekly stats)
+- [ ] Frontend: `/profile` page with:
+  - Weekly stats cards (articles read, highlights, reading time)
+  - GitHub-style heatmap calendar (react-activity-calendar)
+  - Subtle accent colors matching theme
+- [ ] Add "Profile" link to Navbar
+
+---
+
+## Future Concepts (Research & Brainstorming)
+
+### 1. Novel LLM Features
+*Move from "Passive Consumption" to "Active Thinking"*
+
+*   **Socratic Reading Partner**: After reading ~70% of an article, surface thinking prompts — questions that challenge assumptions, connect to past reading, ask "what if the opposite were true?"
+*   **Tension Detector**: Find contradictions across articles using embedding similarity on claims. Show: "This conflicts with something you read 2 weeks ago."
+*   **Ghost Questions**: "Ask the article" — questions you'd ask the author. Uses article content as context.
+*   **Progressive Summarization Assistant**: Help users distill highlights layer by layer (bold key phrases → summarize in own words)
+*   **"What Would I Think?" Mode**: Before reading, show how a new article relates to existing highlights/beliefs
+*   **Dynamic Knowledge Graph**: Visual graph linking entities across articles
+*   **"Counter-Argument" Generator**: "Steel-man" opposing views
+*   **Active Learning**: Auto-generated flashcards from highlights (spaced repetition)
+
+### 2. Unique Workflows
+*   **The Waiting Room**: Show only 3 articles per day. "47 more are waiting. They'll be here when you're ready."
+*   **Reading Rituals**: Morning Pages Mode (coffee timer), Evening Digest (review highlights), Weekly Reflection
+*   **Serendipity Mode**: Button that surfaces a random highlight from 6+ months ago
+*   **Reading Moods**: Tag articles with emotional intent (🧘 Contemplative, ⚡ Energizing, 🌙 Before Sleep, 🔥 Challenge, 💡 Practical)
+*   **Marginalia System**: Show notes in the margin like handwritten annotations in a physical book
+*   **Sunday Review**: Weekly curated "issue" from your own backlog
+*   **Quiet Mode**: No notification badges or anxiety-inducing counts
+
+### 3. Expanded Inputs
+*   **YouTube**: "Read" videos via transcript extraction (yt-dlp already in dependencies)
+*   **Podcast Transcripts**: RSS feed → audio → whisper transcription
+*   **Book Notes**: Kindle sync / manual chapter structure
+*   **Voice Memos**: Recording → transcription → knowledge block
+*   **Personal Notes**: Plain text entries (not from URLs)
+*   **Newsletter Pipeline**: Auto-forward newsletters → extract → searchable
+
+### 4. Experience Elevators
+*   **Real-time Estimates**: Reading time based on actual scroll speed
+*   **Progressive Cleanup**: "Hide" finished sections
+*   **Audio Mode**: Text-to-speech with highlight-along-as-read
+*   **The Thinking Canvas**: Spatially arrange highlights and notes (Kinopio-inspired)
+*   **Night Mode**: Auto-switch after sunset
+
+### 5. Profile & Reflections
+*   **Year in Reading**: Annual reflection ("142 articles saved, 89 actually read — that's honest, not failure")
+*   **Reading DNA**: Topic cluster visualization
+*   **Forgotten Gems**: "Articles you saved but never finished. Maybe now's the time?"
+*   **Your Words**: Word cloud from your notes/highlights
+*   **The Constellation**: Knowledge graph visualization of connected ideas
+*   **Input/Output Ratio**: Track "Active Reading" (highlighted) vs passive consumption
+
+### 6. Platform Expansion
+*   **Export as Second Brain**: Full export to Obsidian vault, Notion database, Markdown archive
+*   **Chrome Extension**: One-click save + quick highlight (Plasmo framework)
+*   **PWA / Offline**: Service worker for offline reading, IndexedDB for article storage
+*   **Research Projects**: Workspaces with a research question, aggregated highlights, emerging themes
+
+### 7. Design Principles
+*   **Quiet, not silent.** Subtle personality, not sterile minimalism.
+*   **Slow, not sluggish.** Intentional friction, not broken UX.
+*   **Deep, not complex.** Power for those who want it, hidden for those who don't.
+*   **Warm, not cold.** Human language, not corporate speak ("I've read this" not "Mark as read").
+*   **Yours, not ours.** Your data, your knowledge, exportable always.
+
+---
+
 ## Priority Options
 
-Based on what's completed and the Signal vision, here are your options:
+### Current Priority: Phase H (Production Polish Sprint)
+Execute tasks H.1–H.10 in dependency order. See `IMPLEMENTATION_PLAN.md` for complete specs.
 
-### Option 1: Highlights First (Recommended)
-**Why**: Foundation for everything. Makes the app immediately more useful.
-**Scope**: Phase A only (~3-4 sessions)
-**Result**: Active reading experience
-
-### Option 2: Full Claims Pipeline
-**Why**: The differentiator. "See what you believe."
-**Scope**: Phase A + B (~6-8 sessions)
-**Result**: Extract and verify ideas from reading
-
-### Option 3: Design Overhaul First
-**Why**: Set the visual foundation before adding features.
-**Scope**: Phase F (~2-3 sessions)
-**Result**: Beautiful, calm interface
-
-### Option 4: Extension + Highlights
-**Why**: Two high-impact features that work together.
-**Scope**: Phase A + G (~5-6 sessions)
-**Result**: Complete capture → engage loop
+### After Phase H
+1. **Phase B: Claims Extraction** — The differentiator. "See what you believe."
+2. **Phase C: Connections** — Patterns across reading.
+3. **Phase G: Chrome Extension** — Acquisition channel.
+4. **Phase D: Workspaces** — Deep research mode.
 
 ---
 
@@ -276,6 +391,8 @@ components/
 
 ## Current Status
 
-**Last completed**: Sidebar list count auto-updates, hover-reveal actions on content cards
+**Last completed**: Highlights (Phase A ~70%), mobile compatibility fixes, landing UI
 
-**Recommended next**: **Phase A - Highlights** (the foundation for active reading)
+**Active sprint**: **Phase H — Production Polish Sprint** (10 tasks, see `IMPLEMENTATION_PLAN.md`)
+
+**Skills being developed**: LLM integration, Celery task chains, PDF processing, email infrastructure, advanced CSS/typography, mobile-first UX, data visualization, web scraping hardening, React context patterns, product design thinking

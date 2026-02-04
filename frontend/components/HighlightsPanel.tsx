@@ -169,16 +169,16 @@ export default function HighlightsPanel({
               {/* Note Section */}
               {isEditing ? (
                 <div className="space-y-2 mb-2">
-                  {/* Color Picker */}
-                  <div className="flex gap-2">
+                  {/* Color Picker - matches toolbar style */}
+                  <div className="flex gap-1">
                     {colorOptions.map((color) => (
                       <button
                         key={color.name}
                         onClick={() => setEditColor(color.name)}
-                        className={`w-6 h-6 rounded-none border-2 transition-all ${
+                        className={`w-6 h-6 border transition-all ${
                           editColor === color.name
-                            ? "border-[var(--color-text-primary)] scale-110"
-                            : "border-[var(--color-border)] opacity-60 hover:opacity-100"
+                            ? "border-[var(--color-text-primary)]"
+                            : "border-transparent hover:border-[var(--color-accent)]"
                         }`}
                         style={
                           {
@@ -196,14 +196,14 @@ export default function HighlightsPanel({
                     value={editNote}
                     onChange={(e) => setEditNote(e.target.value)}
                     placeholder="Add a note..."
-                    className="w-full px-2 py-1 text-sm border border-[var(--color-border)] bg-transparent rounded-none focus:outline-none focus:border-[var(--color-accent)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] resize-none"
-                    rows={3}
+                    className="w-full px-2 py-1 text-sm border border-[var(--color-border)] bg-transparent focus:outline-none focus:border-[var(--color-accent)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] resize-none"
+                    rows={5}
                     aria-label="Edit note"
                   />
                 </div>
               ) : (
                 highlight.note && (
-                  <div className="text-xs text-[var(--color-text-secondary)] italic mb-2 pl-2 border-l-2 border-[var(--color-border)]">
+                  <div className="text-xs text-[var(--color-text-secondary)] mb-2 p-2 bg-[var(--color-bg-secondary)]">
                     {highlight.note}
                   </div>
                 )
@@ -215,14 +215,14 @@ export default function HighlightsPanel({
                   <>
                     <button
                       onClick={() => handleSaveEdit(highlight.id)}
-                      className="text-xs px-2 py-1 rounded-none bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors"
+                      className="text-xs px-3 py-1.5 rounded-none border border-[var(--color-accent)] text-[var(--color-accent)] hover:text-[var(--color-text-primary)] transition-colors"
                       aria-label="Save"
                     >
                       Save
                     </button>
                     <button
                       onClick={handleCancelEdit}
-                      className="text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"
+                      className="text-xs px-3 py-1.5 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"
                       aria-label="Cancel"
                     >
                       Cancel

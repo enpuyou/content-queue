@@ -181,10 +181,10 @@ def extract_full_content(self, content_item_id: str):
             no_fallback=False,
         )
 
-        # Convert XML to clean HTML
+        # Convert XML to clean HTML, passing original HTML to preserve header hierarchy
         if xml_content:
             logger.debug(f"Extracted XML, length: {len(xml_content)}")
-            html_text = xml_to_html(xml_content)
+            html_text = xml_to_html(xml_content, original_html=downloaded)
             logger.debug(
                 f"Converted to HTML, length: {len(html_text) if html_text else 0}"
             )
@@ -258,8 +258,29 @@ def extract_full_content(self, content_item_id: str):
         return {"content_item_id": content_item_id, "status": "failed", "error": str(e)}
 
 
-def xml_to_html(xml_content: str) -> str:
-    """Convert trafilatura XML output to clean HTML"""
+def xml_to_html(xml_content: str, original_html: bytes = None) -> str:
+    """
+    Convert trafilatura XML output to clean HTML, preserving original header hierarchy.
+
+    EXTRACTION PRINCIPLES:
+    1. IGNORE: Navigation, headers, footers, sidebars - anything NOT in main content
+    2. PRESERVE: All main content including:
+       - Full paragraphs with inline links, emphasis, and formatting
+       - Images with captions
+       - Lists (ordered and unordered)
+       - Code blocks and quotes
+    3. FILTER DUPLICATES:
+       - Skip page title if it appears as a header in content
+       - Skip meta description if it appears as first paragraph
+    4. NORMALIZE HEADERS:
+       - Remove title-matching headers
+       - Map remaining headers to H2-H4 range (max 3 levels)
+       - Preserve relative hierarchy
+    5. SKIP NAVIGATION:
+       - Filter keywords: search, menu, sign in, login, get premium, subscribe, toggle, ⌘
+       - Skip very short headers (<3 chars)
+       - Skip headers before first substantial paragraph (100+ chars)
+    """
     from bs4 import BeautifulSoup as BS
 
     try:
@@ -268,28 +289,295 @@ def xml_to_html(xml_content: str) -> str:
         # Find the main content node
         main = soup.find("main") or soup
 
+        # Extract original header hierarchy and images from source HTML if available
+        original_header_map = {}
+        original_images = []
+        if original_html:
+            try:
+                original_soup = BS(original_html, "html.parser")
+
+                # Extract headers
+                for h in original_soup.find_all(["h1", "h2", "h3", "h4", "h5", "h6"]):
+                    text = h.get_text(strip=True).lower()
+                    level = int(h.name[1])  # Extract number from h1, h2, etc.
+                    # Store normalized text -> original level mapping
+                    # Use first occurrence if duplicates exist
+                    if text and len(text) > 3 and text not in original_header_map:
+                        original_header_map[text] = level
+
+                # Extract images with their context (for better matching)
+                # Look for content images (not icons, logos, etc.)
+                for img in original_soup.find_all("img"):
+                    src = img.get("src", "")
+                    alt = img.get("alt", "")
+                    # Skip small images (likely icons/logos)
+                    width = img.get("width", "")
+                    if width and width.isdigit() and int(width) < 50:
+                        continue
+                    if src and not any(
+                        x in src.lower() for x in ["icon", "logo", "avatar", "badge"]
+                    ):
+                        # Get caption from figcaption or nearby text
+                        caption = ""
+                        parent = img.parent
+                        if parent and parent.name == "figure":
+                            figcaption = parent.find("figcaption")
+                            if figcaption:
+                                caption = figcaption.get_text(strip=True)
+
+                        original_images.append(
+                            {"src": src, "alt": alt, "caption": caption}
+                        )
+
+                logger.debug(
+                    f"Extracted {len(original_header_map)} headers and {len(original_images)} images from original HTML"
+                )
+            except Exception as e:
+                logger.warning(f"Could not extract original header hierarchy: {e}")
+
         # Convert XML tags to HTML
         html_parts = []
 
+        # Determine which hierarchy source to use
+        use_original_hierarchy = len(original_header_map) > 0
+
+        if use_original_hierarchy:
+            # Calculate normalization offset from original headers
+            all_levels = list(original_header_map.values())
+            min_level = min(all_levels) if all_levels else 2
+            offset = min_level - 2  # Shift so smallest becomes H2
+            logger.info(
+                f"Using original HTML hierarchy: {len(original_header_map)} headers, min_level={min_level}, offset={offset}"
+            )
+        else:
+            # Fallback: Analyze XML rend attributes
+            header_levels = []
+            for h in main.find_all("head"):
+                rend = h.get("rend", "")
+                if rend.startswith("h") and rend[1:].isdigit():
+                    header_levels.append(int(rend[1:]))
+
+            offset = 0
+            if header_levels:
+                min_level = min(header_levels)
+                offset = min_level - 2
+                logger.info(
+                    f"Using XML rend hierarchy: {len(header_levels)} headers, min_level={min_level}, offset={offset}"
+                )
+            else:
+                logger.warning("No header hierarchy found in XML, defaulting all to H2")
+
+        # Track if we've seen substantial content (to skip title/breadcrumb headers)
+        seen_substantial_content = False
+        SUBSTANTIAL_TEXT_LENGTH = 100  # Characters
+
+        # Get page title and description to filter out duplicates
+        page_title = None
+        page_title_words = set()
+        page_description = None
+        if original_html:
+            try:
+                title_soup = BS(original_html, "html.parser")
+
+                # Get title
+                title_tag = title_soup.find("title")
+                if title_tag:
+                    page_title = title_tag.get_text(strip=True).lower()
+                    # Extract significant words from title (>4 chars)
+                    page_title_words = {w for w in page_title.split() if len(w) > 4}
+
+                # Get description (og:description or meta description)
+                desc_tag = title_soup.find(
+                    "meta", property="og:description"
+                ) or title_soup.find("meta", attrs={"name": "description"})
+                if desc_tag and desc_tag.get("content"):
+                    page_description = desc_tag["content"].strip().lower()
+
+            except Exception:
+                pass
+
+        # First pass: collect headers and filter title duplicates
+        headers_to_process = []
+        for elem in main.find_all(recursive=False):
+            if elem.name == "head":
+                text = elem.get_text(strip=True)
+                if text and len(text) >= 3:
+                    text_lower = text.lower()
+
+                    # Skip navigation keywords
+                    nav_keywords = [
+                        "search",
+                        "menu",
+                        "sign in",
+                        "log in",
+                        "login",
+                        "get premium",
+                        "subscribe",
+                        "navigation",
+                        "skip to",
+                        "toggle",
+                        "⌘",
+                    ]
+                    if any(keyword in text_lower for keyword in nav_keywords):
+                        continue
+
+                    # Skip if this header matches the page title
+                    if page_title and (
+                        text_lower in page_title
+                        or page_title in text_lower
+                        or
+                        # Check if header contains significant title words
+                        any(word in text_lower for word in page_title_words)
+                    ):
+                        logger.debug(
+                            f"Skipping title-matching header: '{text[:40]}...'"
+                        )
+                        continue
+
+                    # Get level
+                    normalized_text = text_lower
+                    if (
+                        use_original_hierarchy
+                        and normalized_text in original_header_map
+                    ):
+                        raw_level = original_header_map[normalized_text]
+                    else:
+                        rend = elem.get("rend", "h2")
+                        raw_level = 2
+                        if rend.startswith("h") and rend[1:].isdigit():
+                            raw_level = int(rend[1:])
+
+                    headers_to_process.append((elem, text, raw_level))
+
+        # Renormalize header levels after filtering
+        # Find min level and map to H2-H4 range
+        if headers_to_process:
+            min_header_level = min(h[2] for h in headers_to_process)
+            max_header_level = max(h[2] for h in headers_to_process)
+            level_range = max_header_level - min_header_level + 1
+
+            # Adjust offset to start at H2
+            new_offset = min_header_level - 2
+
+            # If more than 3 levels, collapse
+            if level_range > 3:
+                logger.info(f"Collapsing {level_range} header levels to 3")
+                header_level_map = {}
+                for _, _, raw_level in headers_to_process:
+                    if raw_level not in header_level_map:
+                        # Map to 2, 3, or 4
+                        new_level = 2 + min(2, len(header_level_map))
+                        header_level_map[raw_level] = new_level
+            else:
+                # Simple offset mapping
+                header_level_map = {
+                    raw_level: raw_level - new_offset
+                    for raw_level in range(min_header_level, max_header_level + 1)
+                }
+
+        # Second pass: output content with normalized headers
+        header_index = 0
         for elem in main.find_all(recursive=False):
             if elem.name == "p":
-                text = elem.get_text(strip=True)
-                if text:
-                    html_parts.append(f"<p>{text}</p>")
+                # Preserve inline elements (links, emphasis) within paragraphs
+                # Recursively process all inline elements
+                def process_inline_elements(element):
+                    """Recursively process inline elements to preserve structure"""
+                    result = []
+                    for child in element.children:
+                        if isinstance(child, str):
+                            # Plain text - preserve spacing
+                            text = str(child)
+                            if text.strip():
+                                result.append(text)
+                        elif child.name == "ref":
+                            # Link (trafilatura uses <ref> for links)
+                            link_text = child.get_text(
+                                strip=False
+                            )  # Preserve internal spacing
+                            link_href = child.get("target", "#")
+                            result.append(f'<a href="{link_href}">{link_text}</a>')
+                        elif child.name == "hi":
+                            # Highlighted/emphasized text - may contain nested elements
+                            hi_text = child.get_text(strip=False)
+                            rend = child.get("rend", "")
+                            if rend in ["#b", "b"]:
+                                result.append(f"<strong>{hi_text}</strong>")
+                            elif rend in ["#i", "i"]:
+                                result.append(f"<em>{hi_text}</em>")
+                            else:
+                                result.append(hi_text)
+                        else:
+                            # Recursively handle nested elements
+                            result.extend(process_inline_elements(child))
+                    return result
+
+                p_html_parts = process_inline_elements(elem)
+                paragraph_html = "".join(p_html_parts).strip()
+
+                if paragraph_html:
+                    # Skip if this paragraph matches the meta description
+                    # (to avoid duplicating description in both header and content)
+                    if page_description:
+                        # Remove HTML tags for comparison
+                        para_text = (
+                            BS(f"<p>{paragraph_html}</p>", "html.parser")
+                            .get_text()
+                            .lower()
+                        )
+                        if (
+                            para_text == page_description
+                            or page_description in para_text
+                        ):
+                            logger.debug(
+                                f"Skipping description paragraph: '{paragraph_html[:40]}...'"
+                            )
+                            # Still mark as substantial content
+                            if len(paragraph_html) >= SUBSTANTIAL_TEXT_LENGTH:
+                                seen_substantial_content = True
+                            continue
+
+                    html_parts.append(f"<p>{paragraph_html}</p>")
+                    # Mark as substantial content if paragraph is long enough
+                    if len(paragraph_html) >= SUBSTANTIAL_TEXT_LENGTH:
+                        seen_substantial_content = True
             elif elem.name == "head":
-                text = elem.get_text(strip=True)
-                if text:
-                    # Determine heading level based on attributes or default to h2
-                    html_parts.append(f"<h2>{text}</h2>")
+                # Skip headers that appear before first substantial paragraph
+                if not seen_substantial_content:
+                    continue
+
+                # Check if this is one of our pre-processed headers
+                if header_index < len(headers_to_process):
+                    stored_elem, stored_text, raw_level = headers_to_process[
+                        header_index
+                    ]
+                    if stored_elem == elem:
+                        # Use the pre-computed normalized level
+                        new_level = header_level_map.get(raw_level, 2)
+                        # Clamp to H2-H4
+                        new_level = max(2, min(4, new_level))
+                        html_parts.append(f"<h{new_level}>{stored_text}</h{new_level}>")
+                        header_index += 1
             elif elem.name == "list":
                 items = elem.find_all("item")
                 if items:
-                    html_parts.append("<ul>")
+                    # Check if list should be ordered (numbered)
+                    # Trafilatura uses 'type' attribute or we can check the 'rend' attribute
+                    list_type = elem.get("type", "")
+                    list_rend = elem.get("rend", "")
+
+                    # Determine if ordered or unordered
+                    is_ordered = (
+                        list_type == "ordered" or "ordered" in list_rend.lower()
+                    )
+
+                    list_tag = "ol" if is_ordered else "ul"
+                    html_parts.append(f"<{list_tag}>")
                     for item in items:
                         text = item.get_text(strip=True)
                         if text:
                             html_parts.append(f"<li>{text}</li>")
-                    html_parts.append("</ul>")
+                    html_parts.append(f"</{list_tag}>")
             elif elem.name == "quote":
                 text = elem.get_text(strip=True)
                 if text:
@@ -297,11 +585,29 @@ def xml_to_html(xml_content: str) -> str:
             elif elem.name == "graphic":
                 src = elem.get("src")
                 alt = elem.get("alt", "")
+                title = elem.get("title", "")
+
                 if src:
+                    # Check if next element is a caption (common pattern in XML)
+                    caption = ""
+                    next_elem = elem.find_next_sibling()
+                    if (
+                        next_elem
+                        and next_elem.name in ["p", "hi"]
+                        and len(next_elem.get_text(strip=True)) < 200
+                    ):
+                        # Short paragraph after image is likely a caption
+                        caption_text = next_elem.get_text(strip=True)
+                        if caption_text:
+                            caption = f'<figcaption style="text-align:center; font-size:0.9em; color:var(--color-text-muted); margin-top:0.5em; font-style:italic;">{caption_text}</figcaption>'
+
+                    # Wrap in figure tag
                     html_parts.append(
-                        f'<img src="{src}" alt="{alt}" style="max-width:100%; height:auto;"/>'
+                        f'<figure style="margin:1.5em 0; text-align:center;">'
+                        f'<img src="{src}" alt="{alt}" title="{title}" style="max-width:100%; height:auto; border-radius:4px;"/>'
+                        f"{caption}"
+                        f"</figure>"
                     )
-                # TODO: Improve Image Handling
 
         if html_parts:
             return "\n".join(html_parts)

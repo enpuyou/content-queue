@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useToast } from "@/contexts/ToastContext";
 import { highlightsAPI } from "@/lib/api";
-import { Highlighter } from "lucide-react";
 
 interface HighlightToolbarProps {
   selection: {
@@ -18,201 +17,232 @@ interface HighlightToolbarProps {
   contentId: string;
   onClose: () => void;
   onHighlightCreated?: () => void;
+  showNote: boolean;
+  onToggleNote: (isOpen: boolean) => void;
 }
 
-const colors = [
-  { name: "yellow" },
-  { name: "green" },
-  { name: "blue" },
-  { name: "pink" },
-  { name: "purple" },
-];
+const colors = ["yellow", "green", "blue", "pink", "purple"];
 
 export default function HighlightToolbar({
   selection,
   contentId,
   onClose,
   onHighlightCreated,
+  showNote,
+  onToggleNote,
 }: HighlightToolbarProps) {
   const isEditing = !!selection?.existingHighlightId;
-  const [selectedColor, setSelectedColor] = useState<string>("yellow");
+  const hasExistingNote = !!selection?.existingNote;
   const [note, setNote] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
-  const [showNoteInput, setShowNoteInput] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
   const { showToast } = useToast();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Reset state when selection changes
-  // We need to include all selection properties used in the effect
   useEffect(() => {
     if (selection) {
-      setSelectedColor(selection.existingColor || "yellow");
       setNote(selection.existingNote || "");
-      setShowNoteInput(!!selection.existingNote);
-      setIsExpanded(!!selection.existingHighlightId);
     }
   }, [selection]);
 
+  useEffect(() => {
+    if (showNote && textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, [showNote]);
+
   if (!selection) return null;
 
-  const handleSaveHighlight = async () => {
+  // Position below the selection, centered
+  const getPosition = () => {
+    const viewportWidth =
+      typeof window !== "undefined" ? window.innerWidth : 800;
+
+    // Estimate width to prevent overflow
+    // Mobile: ~130px -> increased for "Remove" text
+    // Desktop: ~230px -> increased for "Remove" text
+    const isMobile = viewportWidth < 640;
+    const estimatedWidth = isMobile ? 240 : 320;
+
+    let x = selection.position.x - estimatedWidth / 2;
+    if (x < 8) x = 8;
+    if (x + estimatedWidth > viewportWidth - 8)
+      x = viewportWidth - estimatedWidth - 8;
+
+    const y = selection.position.y + 8;
+
+    return { x, y };
+  };
+
+  const pos = getPosition();
+
+  const handleHighlight = async (color: string) => {
+    if (isLoading) return;
+
     try {
       setIsLoading(true);
 
       if (isEditing && selection.existingHighlightId) {
         await highlightsAPI.update(selection.existingHighlightId, {
-          color: selectedColor,
+          color,
           note: note || undefined,
         });
-
-        showToast("Highlight updated", "success");
       } else {
-        const _result = await highlightsAPI.create(contentId, {
+        await highlightsAPI.create(contentId, {
           text: selection.text,
           start_offset: selection.startOffset,
           end_offset: selection.endOffset,
-          color: selectedColor,
+          color,
           note: note || undefined,
         });
-
-        showToast("Highlight saved", "success");
       }
 
+      showToast(isEditing ? "Updated" : "Saved", "success");
       onHighlightCreated?.();
+
+      // Clear native selection to prevent "wrong native highlight" artifacts
+      window.getSelection()?.removeAllRanges();
+
       onClose();
     } catch (error) {
-      console.error("Error saving highlight:", error);
-      showToast(
-        error instanceof Error ? error.message : "Failed to save highlight",
-        "error",
-      );
+      console.error("Error:", error);
+      showToast("Failed to save", "error");
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleDeleteHighlight = async () => {
-    if (!selection.existingHighlightId) return;
-
-    if (!confirm("Remove this highlight?")) return;
+  const handleDelete = async () => {
+    if (!selection.existingHighlightId || isLoading) return;
 
     try {
       setIsLoading(true);
       await highlightsAPI.delete(selection.existingHighlightId);
-      showToast("Highlight removed", "success");
+      showToast("Removed", "success");
       onHighlightCreated?.();
+
+      // Clear native selection
+      window.getSelection()?.removeAllRanges();
+
       onClose();
     } catch (error) {
-      console.error("Error deleting highlight:", error);
-      showToast("Failed to remove highlight", "error");
+      console.error("Error:", error);
+      showToast("Failed to remove", "error");
     } finally {
       setIsLoading(false);
     }
   };
 
-  if (!isExpanded) {
-    return (
-      <div
-        className="highlight-toolbar fixed z-50"
-        style={{
-          left: `${selection.position.x}px`,
-          top: `${selection.position.y - 40}px`,
-          transform: "translateX(-50%)",
-        }}
-      >
-        <button
-          onClick={() => setIsExpanded(true)}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] border border-[var(--color-border)] shadow-md hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition-all transform hover:scale-105"
-        >
-          <Highlighter size={14} />
-          <span className="text-sm font-medium">Highlight</span>
-        </button>
-      </div>
-    );
-  }
+  // Desktop/Mobile: Auto width to fit content (prevent overflow)
+  // Use min-content so the toolbar size is determined by the buttons row,
+  // and the note preview wraps to match that width.
+  const toolbarStyleWidth = "min-content";
 
   return (
     <div
-      className="highlight-toolbar fixed z-50 bg-[var(--color-bg-primary)] rounded-none border border-[var(--color-border)] shadow-lg p-3 max-w-sm"
-      style={{
-        left: `${Math.max(20, selection.position.x - 150)}px`,
-        top: `${selection.position.y - 60}px`,
-      }}
+      className="highlight-toolbar fixed z-50 animate-fade-in"
+      style={{ left: pos.x, top: pos.y, width: toolbarStyleWidth }}
     >
-      {/* Color Picker */}
-      <div className="flex gap-2 mb-3">
+      {/* Main toolbar - smaller on mobile */}
+      <div className="flex items-center flex-nowrap bg-[var(--color-bg-primary)] border border-[var(--color-border)] shadow-sm p-1.5 gap-1.5 sm:p-1 sm:gap-1 leading-none w-max">
+        {/* Color swatches */}
         {colors.map((color) => (
           <button
-            key={color.name}
-            onClick={() => setSelectedColor(color.name)}
-            className={`w-6 h-6 rounded-none border-2 transition-all ${
-              selectedColor === color.name
-                ? "border-[var(--color-text-primary)] scale-110"
-                : "border-[var(--color-border)] opacity-60 hover:opacity-100"
-            }`}
-            style={
-              {
-                backgroundColor: `var(--highlight-${color.name})`,
-              } as React.CSSProperties
-            }
-            title={color.name}
-            aria-label={color.name}
+            key={color}
+            onClick={() => handleHighlight(color)}
+            disabled={isLoading}
+            className={`
+              transition-all border disabled:opacity-40 box-border block
+              hover:saturate-200 hover:scale-105 shrink-0
+              ${
+                isEditing && selection.existingColor === color
+                  ? "border-[var(--color-text-primary)]"
+                  : "border-transparent hover:border-[var(--color-accent)]"
+              }
+              w-[18px] h-[18px] min-w-[18px] min-h-[18px]
+              sm:w-[26px] sm:h-[26px] sm:min-w-[26px] sm:min-h-[26px]
+            `}
+            style={{ backgroundColor: `var(--highlight-${color})` }}
+            aria-label={color}
           />
         ))}
-      </div>
 
-      {/* Preview of selected text */}
-      <div className="mb-3 p-2 bg-[var(--color-bg-secondary)] rounded-none text-sm max-h-20 overflow-y-auto border border-[var(--color-border)]">
-        <p className="text-[var(--color-text-secondary)] font-medium">
-          "{selection.text.substring(0, 100)}
-          {selection.text.length > 100 ? "..." : ""}"
-        </p>
-      </div>
+        {/* Divider - Desktop only */}
+        <div className="hidden sm:block w-px h-4 sm:h-5 bg-[var(--color-border)] mx-0.5" />
 
-      {/* Note Input */}
-      {(showNoteInput || isEditing) && (
-        <textarea
-          placeholder={isEditing ? "Edit note..." : "Add a note"}
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          className="w-full mb-3 px-2 py-1 text-sm border border-[var(--color-border)] bg-transparent rounded-none focus:outline-none focus:border-[var(--color-accent)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] resize-none"
-          rows={2}
-        />
-      )}
-
-      {/* Action Buttons */}
-      <div className="flex gap-2">
-        {!isEditing && (
-          <button
-            onClick={() => setShowNoteInput(!showNoteInput)}
-            className="flex-1 text-sm px-2 py-1.5 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"
-          >
-            {showNoteInput ? "✓ Note" : "Add Note"}
-          </button>
-        )}
+        {/* Desktop: Note button (Hidden on Mobile) */}
         <button
-          onClick={handleSaveHighlight}
+          onClick={() => onToggleNote(!showNote)}
           disabled={isLoading}
-          className="flex-1 text-sm px-2 py-1.5 rounded-none bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className={`
+            hidden sm:block text-xs px-2 py-1 border transition-colors whitespace-nowrap shrink-0
+            ${
+              showNote || hasExistingNote
+                ? "border-[var(--color-accent)] text-[var(--color-text-primary)]"
+                : "border-[var(--color-border)] text-[var(--color-text-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-text-primary)]"
+            }
+          `}
         >
-          {isLoading ? "Saving..." : isEditing ? "Update" : "Save"}
+          Note
         </button>
+
+        {/* Remove button - Only shown when editing */}
         {isEditing && (
           <button
-            onClick={handleDeleteHighlight}
+            onClick={handleDelete}
             disabled={isLoading}
-            className="flex-1 text-sm px-2 py-1.5 rounded-none bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`
+             text-[10px] sm:text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 border transition-colors whitespace-nowrap shrink-0
+             min-h-[18px] sm:min-h-[26px] flex items-center
+             border-[var(--color-border)] text-[var(--color-text-muted)] hover:border-red-400 hover:text-red-500
+          `}
           >
-            Unhighlight
+            Remove
           </button>
         )}
-        <button
-          onClick={onClose}
-          className="text-sm px-2 py-1.5 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"
-        >
-          ✕
-        </button>
       </div>
+
+      {/* Note editor panel - Desktop only */}
+      {showNote && (
+        <div className="hidden sm:block mt-1 p-2 bg-[var(--color-bg-primary)] border border-[var(--color-border)] shadow-sm animate-fade-in w-0 min-w-full">
+          <textarea
+            ref={textareaRef}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Add a note..."
+            className="w-full px-2 py-2 text-sm bg-transparent border-none outline-none resize-none text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] overscroll-y-contain min-w-0"
+            rows={6}
+          />
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              onClick={() => onToggleNote(false)}
+              className="text-xs px-3 py-1.5 border border-[var(--color-border)] text-[var(--color-text-muted)] hover:border-[var(--color-accent)] transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() =>
+                handleHighlight(selection.existingColor || "yellow")
+              }
+              disabled={isLoading}
+              className="text-xs px-3 py-1.5 border border-[var(--color-accent)] text-[var(--color-accent)] hover:bg-[var(--color-accent)] hover:text-white transition-colors disabled:opacity-50"
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Existing note preview - Desktop only */}
+      {hasExistingNote && !showNote && (
+        <div
+          onClick={() => onToggleNote(true)}
+          className="hidden sm:block mt-1 p-3 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] shadow-sm cursor-pointer hover:border-[var(--color-accent)] transition-colors animate-fade-in w-0 min-w-full"
+        >
+          <p className="text-xs text-[var(--color-text-secondary)] line-clamp-6 break-words">
+            {selection.existingNote}
+          </p>
+        </div>
+      )}
     </div>
   );
 }

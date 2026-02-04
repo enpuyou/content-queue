@@ -1,5 +1,5 @@
 from typing import Optional
-from pydantic import BaseModel, computed_field
+from pydantic import BaseModel, computed_field, ConfigDict
 from datetime import datetime
 from uuid import UUID
 
@@ -68,8 +68,7 @@ class ContentItemResponse(BaseModel):
 
         return "unread"
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ContentItemDetail(ContentItemResponse):

@@ -1,14 +1,9 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  ReactNode,
-} from "react";
+import { createContext, useContext, ReactNode } from "react";
+import { useReadingSettings } from "./ReadingSettingsContext";
 
-type Theme = "light" | "dark";
+type Theme = "light" | "dark" | "sepia";
 
 interface ThemeContextType {
   theme: Theme;
@@ -19,39 +14,23 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("light");
-  const [mounted, setMounted] = useState(false);
-
-  // Read from localStorage on mount
-  useEffect(() => {
-    const stored = localStorage.getItem("theme") as Theme | null;
-    if (stored) {
-      setThemeState(stored);
-    } else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-      setThemeState("dark");
-    }
-    setMounted(true);
-  }, []);
-
-  // Apply theme class to html element
-  useEffect(() => {
-    if (mounted) {
-      document.documentElement.classList.remove("light", "dark");
-      document.documentElement.classList.add(theme);
-      localStorage.setItem("theme", theme);
-    }
-  }, [theme, mounted]);
+  // Delegate to ReadingSettingsContext to avoid conflicts
+  const { settings, updateSetting } = useReadingSettings();
 
   const toggleTheme = () => {
-    setThemeState((prev) => (prev === "light" ? "dark" : "light"));
+    // Toggle between light and dark (skip sepia in toggle)
+    const newTheme = settings.theme === "light" ? "dark" : "light";
+    updateSetting("theme", newTheme);
   };
 
   const setTheme = (newTheme: Theme) => {
-    setThemeState(newTheme);
+    updateSetting("theme", newTheme);
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
+    <ThemeContext.Provider
+      value={{ theme: settings.theme, toggleTheme, setTheme }}
+    >
       {children}
     </ThemeContext.Provider>
   );

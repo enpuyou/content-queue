@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useRef, useEffect, useState } from "react";
+import { addHeadingAnchors } from "@/lib/bionicReading";
+import { useReadingSettings } from "@/contexts/ReadingSettingsContext";
 
 interface Highlight {
   id: string;
@@ -25,6 +27,21 @@ const colorClasses: Record<string, string> = {
   pink: "hover:opacity-80 transition-opacity cursor-pointer transition-colors",
   purple:
     "hover:opacity-80 transition-opacity cursor-pointer transition-colors",
+  selection: "native-selection", // Uses system highlight colors
+};
+
+/**
+ * Helper to wrap start of words in strong tags for Bionic Reading
+ */
+const applyBionicInfoToText = (text: string): string => {
+  return text
+    .split(/(\s+)/)
+    .map((part) => {
+      if (/^\s+$/.test(part) || part.length <= 1) return part;
+      const splitIndex = Math.ceil(part.length * 0.4);
+      return `<strong>${part.slice(0, splitIndex)}</strong>${part.slice(splitIndex)}`;
+    })
+    .join("");
 };
 
 const HighlightRenderer = ({
@@ -34,22 +51,21 @@ const HighlightRenderer = ({
 }: HighlightRendererProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [renderedHtml, setRenderedHtml] = useState<string>(html);
+  const { settings } = useReadingSettings();
 
   useEffect(() => {
-    // Combine existing highlights with temporary selection if present
     const activeHighlights = [...highlights];
 
-    if (activeHighlights.length === 0) {
-      setRenderedHtml(html);
-      return;
-    }
-
-    // Parse HTML fresh every time
     const parser = new DOMParser();
-    const doc = parser.parseFromString(html, "text/html");
 
-    // Get all text nodes from the parsed DOM
-    const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT, null);
+    // IMPORTANT: Count character positions on the ORIGINAL html first
+    // This matches how Reader.tsx calculates offsets from content.full_text
+    const originalDoc = parser.parseFromString(html, "text/html");
+    const walker = document.createTreeWalker(
+      originalDoc.body,
+      NodeFilter.SHOW_TEXT,
+      null,
+    );
 
     let charIndex = 0;
     const textNodes: Array<{ node: Text; startChar: number; endChar: number }> =
@@ -57,32 +73,28 @@ const HighlightRenderer = ({
 
     let textNode: Text | null;
     while ((textNode = walker.nextNode() as Text | null)) {
-      const nodeLength = textNode.textContent?.length || 0;
+      const nodeText = textNode.textContent || "";
+      if (nodeText.length === 0) continue;
+
       textNodes.push({
         node: textNode,
         startChar: charIndex,
-        endChar: charIndex + nodeLength,
+        endChar: charIndex + nodeText.length,
       });
-      charIndex += nodeLength;
+      charIndex += nodeText.length;
     }
 
-    // Process each text node once, applying all overlapping highlights
     textNodes.forEach(({ node, startChar, endChar }) => {
       const parent = node.parentNode;
       if (!parent) return;
 
       const nodeText = node.textContent || "";
-
-      // Find all highlights that overlap with this text node
       const overlappingHighlights = activeHighlights
         .filter((h) => h.start_offset < endChar && h.end_offset > startChar)
-        .sort((a, b) => a.start_offset - b.start_offset); // Sort by start position
+        .sort((a, b) => a.start_offset - b.start_offset);
 
-      if (overlappingHighlights.length === 0) return;
-
-      // Create segments with highlight information
       interface Segment {
-        start: number; // relative to node start
+        start: number;
         end: number;
         highlight?: Highlight;
       }
@@ -90,83 +102,92 @@ const HighlightRenderer = ({
       const segments: Segment[] = [];
       let currentPos = 0;
 
-      overlappingHighlights.forEach((highlight) => {
-        const highlightStart = Math.max(0, highlight.start_offset - startChar);
-        const highlightEnd = Math.min(
-          nodeText.length,
-          highlight.end_offset - startChar,
-        );
+      if (overlappingHighlights.length > 0) {
+        overlappingHighlights.forEach((highlight) => {
+          const highlightStart = Math.max(
+            0,
+            highlight.start_offset - startChar,
+          );
+          const highlightEnd = Math.min(
+            nodeText.length,
+            highlight.end_offset - startChar,
+          );
 
-        // Skip this highlight if it's completely before our current position
-        // (this happens when highlights overlap - we already processed this range)
-        if (highlightEnd <= currentPos) {
-          return;
-        }
+          if (highlightEnd <= currentPos) return;
 
-        // Add non-highlighted segment before this highlight if needed
-        if (currentPos < highlightStart) {
-          segments.push({ start: currentPos, end: highlightStart });
-          currentPos = highlightStart;
-        }
+          if (currentPos < highlightStart) {
+            segments.push({ start: currentPos, end: highlightStart });
+            currentPos = highlightStart;
+          }
 
-        // If this highlight overlaps with where we are, only add the non-overlapping part
-        const segmentStart = Math.max(currentPos, highlightStart);
-        const segmentEnd = highlightEnd;
+          const segmentStart = Math.max(currentPos, highlightStart);
+          const segmentEnd = highlightEnd;
 
-        if (segmentStart < segmentEnd) {
-          segments.push({
-            start: segmentStart,
-            end: segmentEnd,
-            highlight,
-          });
-          currentPos = segmentEnd;
-        }
-      });
+          if (segmentStart < segmentEnd) {
+            segments.push({ start: segmentStart, end: segmentEnd, highlight });
+            currentPos = segmentEnd;
+          }
+        });
+      }
 
-      // Add remaining non-highlighted text after all highlights
       if (currentPos < nodeText.length) {
         segments.push({ start: currentPos, end: nodeText.length });
       }
 
-      // Build DOM nodes from segments
       const fragment = document.createDocumentFragment();
       segments.forEach((segment) => {
-        const text = nodeText.substring(segment.start, segment.end);
+        const rawText = nodeText.substring(segment.start, segment.end);
+
+        // Apply Bionic Reading transformation if enabled
+        const contentHtml = settings.bionicReading
+          ? applyBionicInfoToText(rawText)
+          : rawText;
 
         if (segment.highlight) {
           const span = document.createElement("span");
           span.className = colorClasses[segment.highlight.color];
-          if (segment.highlight.color !== "temp-selection") {
+          if (segment.highlight.color !== "selection") {
             span.style.backgroundColor = `var(--highlight-${segment.highlight.color})`;
-            span.dataset.highlightId = segment.highlight.id; // Only add ID for real highlights
           }
-          span.textContent = text;
+          span.dataset.highlightId = segment.highlight.id;
+          // Use innerHTML because contentHtml might contain <strong> tags
+          span.innerHTML = contentHtml;
           fragment.appendChild(span);
         } else {
-          fragment.appendChild(document.createTextNode(text));
+          if (settings.bionicReading) {
+            const span = document.createElement("span");
+            span.innerHTML = contentHtml;
+            fragment.appendChild(span);
+          } else {
+            fragment.appendChild(document.createTextNode(rawText));
+          }
         }
       });
 
-      // Replace the original text node with our fragment
       parent.replaceChild(fragment, node);
     });
 
-    // Update the rendered HTML
-    setRenderedHtml(doc.body.innerHTML);
-  }, [html, highlights]);
+    // Apply heading anchors to the final processed HTML
+    setRenderedHtml(addHeadingAnchors(originalDoc.body.innerHTML));
+  }, [html, highlights, settings.bionicReading]);
 
   return (
     <div
+      id="article-content"
       ref={containerRef}
       dangerouslySetInnerHTML={{ __html: renderedHtml }}
       onClick={(e) => {
         const target = e.target as HTMLElement;
-        if (target.dataset.highlightId) {
+        // Check closest because click might be on a <strong> tag inside the span
+        const highlightElement = target.closest(
+          "[data-highlight-id]",
+        ) as HTMLElement;
+        if (highlightElement && highlightElement.dataset.highlightId) {
           const highlight = highlights.find(
-            (h) => h.id === target.dataset.highlightId,
+            (h) => h.id === highlightElement.dataset.highlightId,
           );
           if (highlight && onHighlightClick) {
-            onHighlightClick(highlight);
+            onHighlightClick(highlight, highlightElement);
           }
         }
       }}
@@ -174,5 +195,4 @@ const HighlightRenderer = ({
   );
 };
 
-// Use memo to prevent re-renders when parent state changes but props are stable
 export default React.memo(HighlightRenderer);

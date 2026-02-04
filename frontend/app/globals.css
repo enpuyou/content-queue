@@ -40,11 +40,12 @@
   /* Gray circle */
 
   /* Highlight colors - light mode (translucent) */
-  --highlight-yellow: rgba(254, 240, 138, 0.7);
-  --highlight-green: rgba(187, 247, 208, 0.7);
-  --highlight-blue: rgba(191, 219, 254, 0.7);
-  --highlight-pink: rgba(251, 207, 232, 0.7);
-  --highlight-purple: rgba(233, 213, 255, 0.7);
+  /* Highlight colors - light mode (solid instead of translucent) */
+  --highlight-yellow: rgba(254, 240, 138, 0.9);
+  --highlight-green: rgba(187, 247, 208, 0.9);
+  --highlight-blue: rgba(191, 219, 254, 0.9);
+  --highlight-pink: rgba(251, 207, 232, 0.9);
+  --highlight-purple: rgba(233, 213, 255, 0.9);
 }
 
 /* Dark Mode */
@@ -56,14 +57,14 @@
   --color-bg-tertiary: #1a1a1a;
   /* Card background */
 
-  --color-text-primary: #f5f5f5;
-  /* Off-white */
-  --color-text-secondary: #d4d4d4;
-  /* Soft white */
-  --color-text-muted: #a3a3a3;
-  /* Muted */
-  --color-text-faint: #737373;
-  /* Very muted */
+  --color-text-primary: #e0e0e0;
+  /* Softened white (was #f5f5f5) */
+  --color-text-secondary: #b0b0b0;
+  /* Muted grey (was #d4d4d4) */
+  --color-text-muted: #737373;
+  /* Darker muted */
+  --color-text-faint: #525252;
+  /* Very faint */
 
   --color-border: #2a2a2a;
   /* Dark border */
@@ -74,7 +75,7 @@
   /* Lighter are.na blue for dark */
   --color-accent-hover: #8b91f0;
 
-  --color-status-unread: #f5f5f5;
+  --color-status-unread: #e0e0e0;
   --color-status-read: #737373;
 
   /* Highlight colors - dark mode (darker, more opaque for readability) */
@@ -83,6 +84,86 @@
   --highlight-blue: rgba(59, 130, 246, 0.4);
   --highlight-pink: rgba(236, 72, 153, 0.4);
   --highlight-purple: rgba(168, 85, 247, 0.4);
+}
+
+/* Sepia Mode */
+.sepia {
+  --color-bg-primary: #f5f0e8;
+  --color-bg-secondary: #ede6da;
+  --color-bg-tertiary: #e5ddd0;
+
+  --color-text-primary: #433422;
+  --color-text-secondary: #5c4a35;
+  --color-text-muted: #7a6b5a;
+  --color-text-faint: #998672;
+
+  --color-border: #d4c9b8;
+  --color-border-subtle: #e0d6c7;
+
+  --color-accent: #8b5e3c;
+  --color-accent-hover: #6d4a2e;
+
+  --color-status-unread: #433422;
+  --color-status-read: #998672;
+
+  /* Sepia highlight colors */
+  --highlight-yellow: rgba(244, 213, 125, 0.6);
+  --highlight-green: rgba(166, 200, 155, 0.6);
+  --highlight-blue: rgba(180, 192, 210, 0.6);
+  --highlight-pink: rgba(216, 172, 186, 0.6);
+  --highlight-purple: rgba(196, 175, 210, 0.6);
+}
+
+/* ========================================
+   MOBILE-SPECIFIC UI SIZING
+   These use pure CSS media queries to ensure mobile sizing works
+   ======================================== */
+
+/* Highlight toolbar - mobile small, desktop normal */
+.highlight-toolbar {
+  /* Width controlled by inline styles (min-content) */
+}
+
+@media (min-width: 640px) {
+  .highlight-toolbar {
+    /* Width controlled by inline styles (min-content) */
+  }
+}
+
+/* Highlight color swatches */
+.highlight-color-swatch {
+  width: 12px !important;
+  height: 12px !important;
+}
+
+@media (min-width: 640px) {
+  .highlight-color-swatch {
+    width: 24px !important;
+    height: 24px !important;
+  }
+}
+
+/* Carousel indicator dots */
+.carousel-dot {
+  width: 4px !important;
+  height: 4px !important;
+}
+
+.carousel-dot.active {
+  width: 8px !important;
+  height: 4px !important;
+}
+
+@media (min-width: 640px) {
+  .carousel-dot {
+    width: 8px !important;
+    height: 8px !important;
+  }
+
+  .carousel-dot.active {
+    width: 20px !important;
+    height: 8px !important;
+  }
 }
 
 @theme inline {
@@ -371,6 +452,29 @@ a {
 
 .fade-in {
   animation: fade-in 0.3s ease-out;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.15s ease-out;
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+  }
+
+  to {
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.25s ease-out;
+}
+
+/* Safe area for iPhone notch/home indicator */
+.pb-safe {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
 }
 
 /* Subtle hover lift for interactive elements */
@@ -745,4 +849,608 @@ a {
   vertical-align: middle !important;
   line-height: 1 !important;
   /* Override .text-xs line-height */
+}
+
+/* ========================================
+   READING SETTINGS - FONT FAMILIES
+   ======================================== */
+
+/* Only apply font changes to body text, not headers */
+.font-serif-setting p,
+.font-serif-setting span,
+.font-serif-setting div:not(h1):not(h2):not(h3):not(h4),
+.font-serif-setting li {
+  font-family: var(--font-serif), Georgia, serif !important;
+}
+
+.font-sans-setting p,
+.font-sans-setting span,
+.font-sans-setting div:not(h1):not(h2):not(h3):not(h4),
+.font-sans-setting li {
+  font-family:
+    var(--font-sans),
+    system-ui,
+    -apple-system,
+    sans-serif !important;
+}
+
+.font-system-setting p,
+.font-system-setting span,
+.font-system-setting div:not(h1):not(h2):not(h3):not(h4),
+.font-system-setting li {
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif !important;
+}
+
+/* ========================================
+   READING SETTINGS - FONT SIZES
+   ======================================== */
+
+.text-small-setting,
+.text-small-setting p {
+  font-size: 0.9375rem !important;
+  line-height: 1.6 !important;
+}
+
+.text-small-setting h1,
+.text-small-setting h2,
+.text-small-setting h3,
+.text-small-setting h4 {
+  line-height: 1.2 !important;
+}
+
+/* Small: Scale headers down proportionally */
+.text-small-setting h2 {
+  font-size: 1.5rem !important;
+}
+.text-small-setting h3 {
+  font-size: 1.2rem !important;
+}
+.text-small-setting h4 {
+  font-size: 1.05rem !important; /* Still larger than 0.9375rem paragraph */
+}
+
+.text-medium-setting,
+.text-medium-setting p {
+  font-size: 1.0625rem !important;
+  line-height: 1.7 !important;
+}
+
+.text-medium-setting h1,
+.text-medium-setting h2,
+.text-medium-setting h3,
+.text-medium-setting h4 {
+  line-height: 1.2 !important;
+}
+
+/* Medium: Use default reader sizes (already defined in #reader-content) */
+
+.text-large-setting,
+.text-large-setting p {
+  font-size: 1.1875rem !important;
+  line-height: 1.8 !important;
+}
+
+.text-large-setting h1,
+.text-large-setting h2,
+.text-large-setting h3,
+.text-large-setting h4 {
+  line-height: 1.2 !important;
+}
+
+/* Large: Scale headers up proportionally */
+.text-large-setting h2 {
+  font-size: 1.95rem !important;
+}
+.text-large-setting h3 {
+  font-size: 1.55rem !important;
+}
+.text-large-setting h4 {
+  font-size: 1.3rem !important; /* Larger than 1.1875rem paragraph */
+}
+
+/* ========================================
+   READING SETTINGS - CONTENT WIDTH
+   ======================================== */
+
+/* Content width classes now applied directly to reader-content container */
+/* Native selection persistence */
+.native-selection {
+  background-color: Highlight;
+  color: HighlightText;
+}
+
+#reader-content.content-width-narrow {
+  max-width: 32rem !important;
+}
+
+#reader-content.content-width-medium {
+  max-width: 42rem !important;
+}
+
+#reader-content.content-width-wide {
+  max-width: 48rem !important;
+}
+
+/* ========================================
+   READING SETTINGS - LINE HEIGHT
+   ======================================== */
+
+.line-height-compact,
+.line-height-compact p,
+.line-height-compact div,
+.line-height-compact span {
+  line-height: 1.4 !important;
+}
+
+.line-height-compact h1,
+.line-height-compact h2,
+.line-height-compact h3,
+.line-height-compact h4 {
+  line-height: 1.2 !important;
+}
+
+.line-height-comfortable,
+.line-height-comfortable p,
+.line-height-comfortable div,
+.line-height-comfortable span {
+  line-height: 1.7 !important;
+}
+
+.line-height-comfortable h1,
+.line-height-comfortable h2,
+.line-height-comfortable h3,
+.line-height-comfortable h4 {
+  line-height: 1.2 !important;
+}
+
+.line-height-spacious,
+.line-height-spacious p,
+.line-height-spacious div,
+.line-height-spacious span {
+  line-height: 2 !important;
+}
+
+.line-height-spacious h1,
+.line-height-spacious h2,
+.line-height-spacious h3,
+.line-height-spacious h4 {
+  line-height: 1.2 !important;
+}
+
+/* ========================================
+   READING SETTINGS - LETTER SPACING
+   ======================================== */
+
+.letter-spacing-tight,
+.letter-spacing-tight p,
+.letter-spacing-tight div,
+.letter-spacing-tight span {
+  letter-spacing: -0.01em !important;
+}
+
+.letter-spacing-normal,
+.letter-spacing-normal p,
+.letter-spacing-normal div,
+.letter-spacing-normal span {
+  letter-spacing: 0.01em !important;
+}
+
+.letter-spacing-wide,
+.letter-spacing-wide p,
+.letter-spacing-wide div,
+.letter-spacing-wide span {
+  letter-spacing: 0.05em !important;
+}
+
+/* ========================================
+   BIONIC READING SUPPORT
+   ======================================== */
+
+/* Mark first 40% of each word with font-weight for bionic effect */
+.bionic-reading strong {
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+/* ========================================
+   FOCUS MODE
+   ======================================== */
+
+/* Focus Mode - dim non-active paragraphs */
+.focus-mode p,
+.focus-mode h2,
+.focus-mode h3,
+.focus-mode h4,
+.focus-mode blockquote,
+.focus-mode ul,
+.focus-mode ol {
+  opacity: 0.3;
+  transition: opacity 0.4s ease;
+}
+
+.focus-mode p[data-para-index].focused,
+.focus-mode h2[data-para-index].focused,
+.focus-mode h3[data-para-index].focused,
+.focus-mode h4[data-para-index].focused,
+.focus-mode blockquote[data-para-index].focused,
+.focus-mode ul[data-para-index].focused,
+.focus-mode ol[data-para-index].focused {
+  opacity: 1;
+}
+
+/* Brighten the paragraph above and below for context */
+.focus-mode [data-para-index].near-focused {
+  opacity: 0.6;
+}
+
+/* ========================================
+   HEADING ANCHORS
+   ======================================== */
+
+/* Position anchor in left margin so header text aligns with paragraphs */
+h2,
+h3,
+h4 {
+  position: relative;
+}
+
+.heading-anchor {
+  position: absolute;
+  left: -1.5em;
+  opacity: 0;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  transition: opacity 0.2s;
+  font-weight: normal;
+  font-size: 0.8em;
+}
+
+h1:hover .heading-anchor,
+h2:hover .heading-anchor,
+h3:hover .heading-anchor,
+h4:hover .heading-anchor {
+  opacity: 0.5;
+}
+
+.heading-anchor:hover {
+  opacity: 0.8;
+}
+
+/* On mobile, keep anchor inline to prevent overflow */
+@media (max-width: 768px) {
+  .heading-anchor {
+    position: static;
+    margin-right: 0.5rem;
+  }
+}
+
+/* ========================================
+   READER CONTENT - REFINED TYPOGRAPHY
+   ======================================== */
+
+/* Headers in reader content - Always serif regardless of body font setting */
+/* This maintains editorial hierarchy - body text can be any font user prefers */
+#reader-content h2 {
+  font-family: var(--font-serif), Georgia, serif !important;
+  font-size: 1.75rem !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.02em !important;
+  color: var(--color-text-primary) !important;
+  margin-top: 2.5rem !important;
+  margin-bottom: 1rem !important;
+  line-height: 1.3 !important;
+  scroll-margin-top: 5rem !important; /* For smooth anchor scrolling */
+}
+
+#reader-content h3 {
+  font-family: var(--font-serif), Georgia, serif !important;
+  font-size: 1.4rem !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.01em !important;
+  color: var(--color-text-primary) !important;
+  margin-top: 2rem !important;
+  margin-bottom: 0.75rem !important;
+  line-height: 1.3 !important;
+  scroll-margin-top: 5rem !important;
+}
+
+#reader-content h4 {
+  font-family: var(--font-serif), Georgia, serif !important;
+  font-size: 1.15rem !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+  color: var(--color-text-primary) !important;
+  margin-top: 1.5rem !important;
+  margin-bottom: 0.5rem !important;
+  line-height: 1.4 !important;
+  scroll-margin-top: 5rem !important;
+}
+
+/* First header after article start - reduce top margin */
+#reader-content > h2:first-child,
+#reader-content > h3:first-child,
+#reader-content > h4:first-child {
+  margin-top: 0 !important;
+}
+
+/* Paragraphs - Optimal reading rhythm */
+#reader-content p {
+  margin-bottom: 1.5em !important;
+  text-align: left !important;
+  hyphens: auto !important;
+  -webkit-hyphens: auto !important;
+  text-rendering: optimizeLegibility !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+}
+
+/* Links within reader content */
+#reader-content a {
+  color: var(--color-accent) !important;
+  text-decoration: underline !important;
+  text-decoration-color: var(--color-accent) !important;
+  text-decoration-thickness: 1px !important;
+  text-underline-offset: 2px !important;
+  transition: opacity 0.2s ease !important;
+}
+
+#reader-content a:hover {
+  opacity: 0.7 !important;
+}
+
+/* Don't underline heading anchors */
+#reader-content .heading-anchor {
+  text-decoration: none !important;
+}
+
+/* Strong/Bold text */
+#reader-content strong,
+#reader-content b {
+  font-weight: 600 !important;
+  color: var(--color-text-primary) !important;
+}
+
+/* Emphasis/Italic text */
+#reader-content em,
+#reader-content i {
+  font-style: italic !important;
+}
+
+/* Tighter spacing when paragraph follows a header */
+#reader-content h2 + p,
+#reader-content h3 + p,
+#reader-content h4 + p {
+  margin-top: 0 !important;
+}
+
+/* Lists - Clean spacing with subtle styling */
+#reader-content ul,
+#reader-content ol {
+  margin-top: 1em !important;
+  margin-bottom: 1.5em !important;
+  padding-left: 1.75em !important;
+}
+
+#reader-content ul {
+  list-style-type: disc !important;
+}
+
+#reader-content ol {
+  list-style-type: decimal !important;
+}
+
+#reader-content li {
+  margin-bottom: 0.5em !important;
+  padding-left: 0.25em !important;
+  line-height: 1.7 !important;
+}
+
+#reader-content li:last-child {
+  margin-bottom: 0 !important;
+}
+
+/* Nested lists */
+#reader-content li ul,
+#reader-content li ol {
+  margin-top: 0.5em !important;
+  margin-bottom: 0.5em !important;
+}
+
+#reader-content li ul {
+  list-style-type: circle !important;
+}
+
+#reader-content li li ul {
+  list-style-type: square !important;
+}
+
+/* Blockquotes - Editorial style */
+#reader-content blockquote {
+  margin: 1.5em 0 !important;
+  padding: 0.75em 1.25em !important;
+  border-left: 3px solid var(--color-accent) !important;
+  background: var(--color-bg-secondary) !important;
+  font-style: italic !important;
+  color: var(--color-text-secondary) !important;
+}
+
+#reader-content blockquote p {
+  margin-bottom: 0.75em !important;
+}
+
+#reader-content blockquote p:last-child {
+  margin-bottom: 0 !important;
+}
+
+/* Code blocks */
+#reader-content pre {
+  margin: 1.5em 0 !important;
+  padding: 1em 1.25em !important;
+  background: var(--color-bg-secondary) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 4px !important;
+  overflow-x: auto !important;
+}
+
+#reader-content code {
+  font-size: 0.9em !important;
+  background: var(--color-bg-secondary) !important;
+  padding: 0.2em 0.4em !important;
+  border-radius: 3px !important;
+}
+
+#reader-content pre code {
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+/* Images and Figures */
+#reader-content figure {
+  margin: 2em 0 !important;
+  text-align: center !important;
+}
+
+#reader-content img {
+  max-width: 100% !important;
+  height: auto !important;
+  border-radius: 4px !important;
+  display: block !important;
+  margin: 0 auto !important;
+}
+
+#reader-content figcaption {
+  margin-top: 0.75em !important;
+  font-size: 0.875rem !important;
+  color: var(--color-text-muted) !important;
+  font-style: italic !important;
+  text-align: center !important;
+  padding: 0 1em !important;
+}
+
+/* Adaptive spacing - reduce gaps between related elements */
+#reader-content h2 + h3,
+#reader-content h3 + h4 {
+  margin-top: 0.5rem !important;
+}
+
+/* Lists after headers */
+#reader-content h2 + ul,
+#reader-content h2 + ol,
+#reader-content h3 + ul,
+#reader-content h3 + ol,
+#reader-content h4 + ul,
+#reader-content h4 + ol {
+  margin-top: 0.5em !important;
+}
+
+/* Prevent orphaned short paragraphs from looking awkward */
+#reader-content p:empty {
+  display: none !important;
+}
+
+/* Tables - if trafilatura extracts them */
+#reader-content table {
+  width: 100% !important;
+  margin: 1.5em 0 !important;
+  border-collapse: collapse !important;
+  font-size: 0.9em !important;
+}
+
+#reader-content th,
+#reader-content td {
+  border: 1px solid var(--color-border) !important;
+  padding: 0.5em 0.75em !important;
+  text-align: left !important;
+}
+
+#reader-content th {
+  background: var(--color-bg-secondary) !important;
+  font-weight: 600 !important;
+}
+
+/* Horizontal rules */
+#reader-content hr {
+  margin: 2em 0 !important;
+  border: none !important;
+  border-top: 1px solid var(--color-border) !important;
+}
+
+/* Mobile adjustments for reader */
+@media (max-width: 640px) {
+  #reader-content h2 {
+    font-size: 1.5rem !important;
+    margin-top: 2rem !important;
+  }
+
+  #reader-content h3 {
+    font-size: 1.25rem !important;
+    margin-top: 1.5rem !important;
+  }
+
+  #reader-content h4 {
+    font-size: 1.1rem !important;
+    margin-top: 1.25rem !important;
+  }
+
+  #reader-content p {
+    margin-bottom: 1.25em !important;
+  }
+
+  #reader-content figcaption {
+    font-size: 0.8rem !important;
+  }
+
+  #reader-content table {
+    font-size: 0.8em !important;
+  }
+}
+
+/* Fallback utility in case Tailwind theme doesn't resolve it */
+.font-serif {
+  font-family: var(--font-serif), Georgia, serif !important;
+}
+
+/* ========================================
+   INTERACTION ANIMATIONS
+   ======================================== */
+
+@keyframes flash-highlight {
+  0% {
+    background-color: var(--highlight-purple) !important;
+  }
+
+  50% {
+    background-color: var(--highlight-purple) !important;
+  }
+
+  100% {
+    background-color: transparent !important;
+  }
+}
+
+.flash-highlight {
+  animation: flash-highlight 2s ease-out forwards !important;
+}
+
+/* ========================================
+   TOC INTERACTION
+   ======================================== */
+.toc-link {
+  /* Default: Slow fade for idle mode */
+  transition:
+    opacity 2000ms ease,
+    color 500ms ease,
+    transform 500ms ease;
+}
+
+.toc-link:hover {
+  /* Hover: Fast response for interactivity */
+  /* 'all' covers opacity, color, and transform */
+  transition: all 100ms ease !important;
+  opacity: 1 !important;
 }
