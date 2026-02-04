@@ -1,20 +1,15 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import { ContentItem } from "@/types";
 import { searchAPI, highlightsAPI } from "@/lib/api";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useReadingSettings } from "@/contexts/ReadingSettingsContext";
 import HighlightToolbar from "./HighlightToolbar";
 import HighlightRenderer from "./HighlightRenderer";
 import HighlightsPanel from "./HighlightsPanel";
-
-const fontSizeClasses = {
-  small: "text-sm md:text-base",
-  medium: "text-base md:text-lg",
-  large: "text-lg md:text-xl",
-};
 import ThemeToggle from "./ThemeToggle";
 
 interface ExtendedSelection {
@@ -40,10 +35,14 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
   // Use global theme context (no local theme state needed)
   useTheme();
 
-  // UI state
-  const [fontSize, setFontSize] = useState<"small" | "medium" | "large">(
-    "medium",
-  );
+  // Use reading settings from context
+  const { settings, updateSetting } = useReadingSettings();
+
+  // Focus mode state
+  const [focusMode, setFocusMode] = useState(false);
+
+  // Reading progress state
+  const [readProgress, setReadProgress] = useState(0);
 
   // Similar articles state
   const [showSimilar, setShowSimilar] = useState(false);
@@ -56,6 +55,12 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
   const [loadingSimilar, setLoadingSimilar] = useState(false);
 
   const [selection, setSelection] = useState<ExtendedSelection | null>(null);
+  const [isNoteOpen, setIsNoteOpen] = useState(false);
+
+  // Reset note state when selection changes (e.g. clicking a new highlight or clearing)
+  useEffect(() => {
+    setIsNoteOpen(false);
+  }, [selection]);
 
   const [_isCreatingHighlight, _setIsCreatingHighlight] = useState(false);
 
@@ -72,15 +77,283 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
   >([]);
   const [_loadingHighlights, setLoadingHighlights] = useState(false);
 
-  // Store original plain text for offset calculation
-  const [originalPlainText, setOriginalPlainText] = useState<string>("");
-
   // Highlights panel visibility
   const [showHighlightsPanel, setShowHighlightsPanel] = useState(false);
 
   // Navbar auto-hide state
   const [showNavbar, setShowNavbar] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
+
+  // TOC State
+  const [tocHeadings, setTocHeadings] = useState<
+    Array<{ id: string; text: string; level: number }>
+  >([]);
+  const [activeId, setActiveId] = useState<string>("");
+
+  // Scroll Spy for TOC with toggleable active state based on position
+  const isManualScrolling = useRef(false);
+  const tocNavRef = useRef<HTMLDivElement>(null);
+
+  // Unified TOC logic (Auto-scroll + Highlight)
+  const isUserInteracting = useRef(false);
+  const isAutoScrolling = useRef(false);
+  const interactionTimeout = useRef<NodeJS.Timeout | undefined>(undefined);
+
+  const updateToc = useCallback(() => {
+    if (tocHeadings.length === 0) return;
+
+    const scrollY = window.scrollY;
+    const offset = window.innerHeight * 0.3; // Match reading preference (30% down)
+    const documentScroll = scrollY + offset;
+
+    // 1. Find the current active heading
+    let activeIndex = -1;
+    for (let i = 0; i < tocHeadings.length; i++) {
+      const heading = tocHeadings[i];
+      const element = document.getElementById(heading.id);
+      if (!element) continue;
+
+      // Get absolute position relative to document
+      // (getBoundingClientRect + scrollY calculation)
+      const rect = element.getBoundingClientRect();
+      const top = rect.top + scrollY;
+
+      if (top <= documentScroll + 20) {
+        // Slight buffer
+        activeIndex = i;
+      } else {
+        break;
+      }
+    }
+
+    if (activeIndex !== -1) {
+      const activeHeading = tocHeadings[activeIndex];
+
+      // Update highlight state (only triggers render if changed)
+      setActiveId((prev) =>
+        prev !== activeHeading.id ? activeHeading.id : prev,
+      );
+
+      // 2. Continuous Scroll Logic
+      // Only scroll if user is NOT interacting manually
+      if (tocNavRef.current && !isUserInteracting.current) {
+        const activeEl = document.getElementById(activeHeading.id);
+        const nextHeading = tocHeadings[activeIndex + 1];
+        const nextEl = nextHeading
+          ? document.getElementById(nextHeading.id)
+          : null;
+
+        let progress = 0;
+
+        // Calculate progress between current and next header (0 to 1)
+        if (activeEl && nextEl) {
+          const activeTop = activeEl.getBoundingClientRect().top + scrollY;
+          const nextTop = nextEl.getBoundingClientRect().top + scrollY;
+          const sectionHeight = nextTop - activeTop;
+          const distanceTraveled = documentScroll - activeTop;
+
+          if (sectionHeight > 0) {
+            progress = Math.max(
+              0,
+              Math.min(1, distanceTraveled / sectionHeight),
+            );
+          }
+        }
+
+        // Map progress to TOC sidebar links
+        const tocActiveLink = tocNavRef.current.querySelector(
+          `a[href="#${activeHeading.id}"]`,
+        ) as HTMLElement;
+
+        const tocNextLink = nextHeading
+          ? (tocNavRef.current.querySelector(
+              `a[href="#${nextHeading.id}"]`,
+            ) as HTMLElement)
+          : null;
+
+        if (tocActiveLink) {
+          // Calculate center point of the active link
+          let targetCenter =
+            tocActiveLink.offsetTop + tocActiveLink.offsetHeight / 2;
+
+          // Interpolate towards the next link based on reading progress
+          // This creates the "smoothly scrolls before we reach next header" effect
+          if (tocNextLink) {
+            const nextCenter =
+              tocNextLink.offsetTop + tocNextLink.offsetHeight / 2;
+            targetCenter += (nextCenter - targetCenter) * progress;
+          }
+
+          // Center this target point in the sidebar container
+          const containerHeight = tocNavRef.current.clientHeight;
+          const targetScroll = targetCenter - containerHeight / 2;
+
+          // Apply scroll directly (bypassing React render for smoothness)
+          isAutoScrolling.current = true;
+          tocNavRef.current.scrollTop = targetScroll;
+        }
+      }
+    }
+  }, [tocHeadings]);
+
+  // Main Scroll Listener
+  useEffect(() => {
+    let ticking = false;
+    const onScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          updateToc();
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    // Check initially
+    setTimeout(updateToc, 100);
+
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [updateToc]);
+
+  // Sidebar Interaction Handler (Pause auto-scroll)
+  const handleTocScrollInteraction = useCallback(() => {
+    if (isAutoScrolling.current) {
+      isAutoScrolling.current = false;
+      return;
+    }
+
+    isUserInteracting.current = true;
+    clearTimeout(interactionTimeout.current);
+
+    interactionTimeout.current = setTimeout(() => {
+      isUserInteracting.current = false;
+      // Smoothly scroll back to sync position
+      if (tocNavRef.current) {
+        // Enable smooth scrolling temporarily
+        tocNavRef.current.style.scrollBehavior = "smooth";
+        updateToc();
+        // Reset to auto after animation completes
+        setTimeout(() => {
+          if (tocNavRef.current) {
+            tocNavRef.current.style.scrollBehavior = "auto";
+          }
+        }, 300);
+      } else {
+        updateToc();
+      }
+    }, 3000);
+  }, [updateToc]);
+
+  // Idle Timer for TOC
+  const [isIdle, setIsIdle] = useState(false);
+
+  useEffect(() => {
+    let idleTimer: NodeJS.Timeout;
+
+    const resetIdleTimer = () => {
+      setIsIdle(false);
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        setIsIdle(true);
+      }, 5000); // 5 seconds
+    };
+
+    // Events that wake up the interface
+    window.addEventListener("scroll", resetIdleTimer, { passive: true });
+    window.addEventListener("mousemove", resetIdleTimer, { passive: true });
+    // window.addEventListener("keydown", resetIdleTimer, { passive: true }); // Removed to reduce listeners, scroll/mouse is primary
+    // window.addEventListener("click", resetIdleTimer, { passive: true });
+
+    resetIdleTimer(); // Start timer
+
+    return () => {
+      clearTimeout(idleTimer);
+      window.removeEventListener("scroll", resetIdleTimer);
+      window.removeEventListener("mousemove", resetIdleTimer);
+    };
+  }, []);
+
+  // Extract headings for TOC
+  useEffect(() => {
+    if (!content.full_text) return;
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(content.full_text, "text/html");
+
+    const allHeadings: Array<{ id: string; text: string; level: number }> = [];
+
+    doc.querySelectorAll("h1, h2, h3, h4").forEach((heading) => {
+      let id = heading.id;
+      const text = heading.textContent || "";
+
+      if (!id && text) {
+        id = text
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, "");
+      }
+
+      if (id && text) {
+        allHeadings.push({
+          id,
+          text,
+          level: parseInt(heading.tagName.substring(1)),
+        });
+      }
+    });
+
+    // Skip headers that match or are part of the article title
+    // This removes duplicate title headers from TOC
+    let headings = allHeadings;
+    const titleNormalized = (content.title || "").toLowerCase().trim();
+
+    // Remove all headers that are substrings of or contain the title
+    headings = allHeadings.filter((h) => {
+      const headingNormalized = h.text.toLowerCase().trim();
+      // Skip if heading is in title or title is in heading (fuzzy match)
+      if (
+        titleNormalized &&
+        (titleNormalized.includes(headingNormalized) ||
+          headingNormalized.includes(titleNormalized) ||
+          // Also check individual words
+          titleNormalized
+            .split(/\s+/)
+            .some(
+              (word) => word.length > 4 && headingNormalized.includes(word),
+            ))
+      ) {
+        return false;
+      }
+      return true;
+    });
+
+    // Renormalize to have at most 3 levels (H2, H3, H4 in display)
+    if (headings.length > 0) {
+      const minLevel = Math.min(...headings.map((h) => h.level));
+      const maxLevel = Math.max(...headings.map((h) => h.level));
+      const levelRange = maxLevel - minLevel + 1;
+
+      // If more than 3 levels, collapse the deepest ones
+      if (levelRange > 3) {
+        headings = headings.map((h) => {
+          // Map to range 2-4
+          const newLevel = 2 + Math.min(2, h.level - minLevel);
+          return { ...h, level: newLevel };
+        });
+      } else {
+        // Normal offset to start at 2
+        const levelOffset = minLevel - 2;
+        headings = headings.map((h) => ({
+          ...h,
+          level: h.level - levelOffset,
+        }));
+      }
+    }
+
+    console.log("Extracted TOC Headings structure:", headings);
+    setTocHeadings(headings);
+  }, [content.full_text, content.title]);
 
   // Fetch highlights when article loads
   const fetchHighlights = useCallback(async () => {
@@ -99,20 +372,6 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
     fetchHighlights();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [content.id]);
-
-  // Extract original plain text when content loads
-  useEffect(() => {
-    if (!content.full_text) {
-      setOriginalPlainText("");
-      return;
-    }
-
-    // Parse the HTML to get plain text without any existing highlights
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(content.full_text, "text/html");
-    const plainText = doc.body.innerText || doc.body.textContent || "";
-    setOriginalPlainText(plainText);
-  }, [content.full_text, content.id]); // Also depend on content.id to refresh on article change
 
   // Removed auto-mark as read on opening
   // Articles are now marked as read only when:
@@ -145,6 +404,9 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
         }
         setLastScrollY(scrollTop);
       }
+
+      // Update reading progress
+      setReadProgress(Math.min(scrollPercent * 100, 100));
 
       // Debounce: save position 1 second after user stops scrolling
       clearTimeout(saveTimeout);
@@ -184,6 +446,79 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [content.id]); // Only run when article changes
 
+  // Focus mode effect - robust scroll-based detection
+  useEffect(() => {
+    if (!focusMode) {
+      // Cleanup focus classes when mode is disabled
+      const paragraphs = document.querySelectorAll(
+        "#reader-content p, #reader-content h2, #reader-content h3, #reader-content h4, #reader-content blockquote, #reader-content ul, #reader-content ol",
+      );
+      paragraphs.forEach((p) => p.classList.remove("focused", "near-focused"));
+      return;
+    }
+
+    const checkFocus = () => {
+      const paragraphs = Array.from(
+        document.querySelectorAll(
+          "#reader-content p, #reader-content h2, #reader-content h3, #reader-content h4, #reader-content blockquote, #reader-content ul, #reader-content ol",
+        ),
+      );
+
+      if (paragraphs.length === 0) return;
+
+      // ENSURE indices are set (CSS relies on p[data-para-index])
+      paragraphs.forEach((p, i) => {
+        if (!p.hasAttribute("data-para-index")) {
+          p.setAttribute("data-para-index", String(i));
+        }
+      });
+
+      // Target line is 30% down the screen (matching TOC / reading preference)
+      const targetY = window.innerHeight * 0.3;
+      let closestIndex = -1;
+      let minDistance = Infinity;
+
+      paragraphs.forEach((p, i) => {
+        const rect = p.getBoundingClientRect();
+        // Distance from the center of the paragraph to the target line
+        // Or better: distance from the top of the paragraph to the target line?
+        // Let's use top, but if the paragraph overlaps the line, it's a strong candidate.
+
+        let dist = 0;
+        if (rect.top <= targetY && rect.bottom >= targetY) {
+          dist = 0; // It overlaps the line
+        } else {
+          dist = Math.min(
+            Math.abs(rect.top - targetY),
+            Math.abs(rect.bottom - targetY),
+          );
+        }
+
+        if (dist < minDistance) {
+          minDistance = dist;
+          closestIndex = i;
+        }
+      });
+
+      if (closestIndex !== -1) {
+        paragraphs.forEach((p, i) => {
+          p.classList.remove("focused", "near-focused");
+          if (i === closestIndex) {
+            p.classList.add("focused");
+          } else if (Math.abs(i - closestIndex) <= 1) {
+            p.classList.add("near-focused");
+          }
+        });
+      }
+    };
+
+    window.addEventListener("scroll", checkFocus, { passive: true });
+    checkFocus(); // Check immediately
+    setTimeout(checkFocus, 500);
+
+    return () => window.removeEventListener("scroll", checkFocus);
+  }, [focusMode, content.full_text, highlights]);
+
   // highlight - improved for mobile
   useEffect(() => {
     let selectionTimeout: NodeJS.Timeout;
@@ -202,11 +537,17 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
         return;
       }
 
+      // CRITICAL FIX: Ensure target is an element before using closest
+      const isElement =
+        target && target.nodeType === 1 && typeof target.closest === "function";
+      if (target && !isElement) return;
+
       // We need to check closely up the DOM tree for the toolbar
       // The toolbar might be mounted in a portal or high up
       const isToolbarClick =
-        target?.closest(".highlight-toolbar") ||
-        target?.closest("button")?.textContent?.includes("Highlight"); // Safety check for our new button
+        isElement &&
+        (target?.closest(".highlight-toolbar") ||
+          target?.closest("button")?.textContent?.includes("Highlight")); // Safety check for our new button
 
       if (isToolbarClick) {
         return;
@@ -232,8 +573,8 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
                 startOffset: clickedHighlight.start_offset,
                 endOffset: clickedHighlight.end_offset,
                 position: {
-                  x: rect.left + rect.width / 2,
-                  y: rect.top - 10,
+                  x: rect.left + rect.width / 2, // Centered below
+                  y: rect.bottom, // Below the highlight
                 },
                 existingHighlightId: clickedHighlight.id,
                 existingColor: clickedHighlight.color,
@@ -263,8 +604,8 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
           startOffset: offsets.startOffset,
           endOffset: offsets.endOffset,
           position: {
-            x: rect.left + rect.width / 2,
-            y: rect.top - 10, // Above selection
+            x: rect.left + rect.width / 2, // Centered below selection
+            y: rect.bottom, // Below the selection
           },
         });
       }, 100); // Small delay for mobile selection to complete
@@ -284,7 +625,6 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
       document.removeEventListener("mouseup", handleMouseUp);
       document.removeEventListener("touchend", handleTouchEnd);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [highlights]);
 
   /**
@@ -319,26 +659,38 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
     "text-[var(--color-accent)] hover:text-[var(--color-accent-hover)]";
 
   const scrollToHighlight = useCallback(
-    (highlight: {
-      id: string;
-      text: string;
-      start_offset: number;
-      end_offset: number;
-      color: string;
-      note?: string;
-    }) => {
-      // Find the span element with this highlight ID
-      const highlightEl = document.querySelector(
+    (
+      highlight: {
+        id: string;
+        text: string;
+        start_offset: number;
+        end_offset: number;
+        color: string;
+        note?: string;
+      },
+      clickedElement?: HTMLElement,
+    ) => {
+      // Find ALL span elements with this highlight ID (handling multi-paragraph highlights)
+      const highlightEls = document.querySelectorAll(
         `[data-highlight-id="${highlight.id}"]`,
       );
 
-      if (highlightEl) {
-        highlightEl.scrollIntoView({ behavior: "smooth", block: "center" });
-        // Flash animation to draw attention
-        highlightEl.classList.add("ring-2", "ring-blue-500");
-        setTimeout(() => {
-          highlightEl.classList.remove("ring-2", "ring-blue-500");
-        }, 1500);
+      if (highlightEls.length > 0) {
+        // Flash animation to draw attention on ALL segments
+        highlightEls.forEach((el) => {
+          el.classList.add("ring-2", "ring-blue-500");
+          setTimeout(() => {
+            el.classList.remove("ring-2", "ring-blue-500");
+          }, 1500);
+        });
+
+        // Only scroll if we didn't just click the element (prevent jumping)
+        if (!clickedElement) {
+          highlightEls[0].scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+        }
       }
     },
     [],
@@ -346,101 +698,113 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
 
   const getTextOffsets = () => {
     const selection = window.getSelection();
-    if (!selection || selection.toString().length === 0) return null;
+    if (
+      !selection ||
+      selection.rangeCount === 0 ||
+      selection.toString().trim().length === 0
+    )
+      return null;
 
-    // Get selected text and trim whitespace
-    let selectedText = selection.toString();
-    const leadingWhitespace = selectedText.search(/\S/);
-    const trailingWhitespace = selectedText.search(/\S(?!.*\S)/);
+    const range = selection.getRangeAt(0);
+    // Use the specific content container identifying the rendered HTML
+    // This avoids counting whitespace in the wrapper divs
+    const contentEl = document.getElementById("article-content");
 
-    if (leadingWhitespace >= 0 && trailingWhitespace >= 0) {
-      selectedText = selectedText.substring(
-        leadingWhitespace,
-        trailingWhitespace + 1,
+    // If we can't find the specific inner content, fallback to wrapper (though offset might be riskier)
+    if (!contentEl) {
+      console.warn(
+        "Could not find #article-content, offset calculation may be inaccurate",
       );
-    }
-
-    if (selectedText.length === 0) return null;
-
-    // If we don't have original plain text yet, extract it on the fly
-    let plainText = originalPlainText;
-    if (!plainText && content.full_text) {
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(content.full_text, "text/html");
-      plainText = doc.body.innerText || doc.body.textContent || "";
-    }
-
-    if (!plainText) {
-      console.error("Cannot extract plain text from content");
       return null;
     }
 
-    // Simple approach: Find the selected text in the plain text
-    // Since the user is selecting from the rendered content which might have highlights,
-    // we need to search for the text in the original
+    // Helper to calculate offset relative to contentEl
+    // We must match the logic in HighlightRenderer which iterates TEXT nodes
+    const walkerFilter: NodeFilter = {
+      acceptNode: (node) => {
+        // Ignore text inside heading anchors (added by addHeadingAnchors)
+        // because HighlightRenderer calculates offsets on original HTML without them
+        if (
+          node.parentElement &&
+          node.parentElement.classList.contains("heading-anchor")
+        ) {
+          return NodeFilter.FILTER_REJECT;
+        }
+        return NodeFilter.FILTER_ACCEPT;
+      },
+    };
 
-    // Try to find exact match first
-    const exactMatchIndex = plainText.indexOf(selectedText);
+    const calculateOffset = (node: Node, offsetInNode: number): number => {
+      const walker = document.createTreeWalker(
+        contentEl,
+        NodeFilter.SHOW_TEXT,
+        walkerFilter,
+      );
+      let totalOffset = 0;
+      let currentNode: Node | null;
 
-    if (exactMatchIndex !== -1) {
-      return {
-        selectedText,
-        startOffset: exactMatchIndex,
-        endOffset: exactMatchIndex + selectedText.length,
-      };
+      while ((currentNode = walker.nextNode())) {
+        if (currentNode === node) {
+          return totalOffset + offsetInNode;
+        }
+        totalOffset += (currentNode.textContent || "").length;
+      }
+      return -1;
+    };
+
+    const startOffset = calculateOffset(
+      range.startContainer,
+      range.startOffset,
+    );
+    const endOffset = calculateOffset(range.endContainer, range.endOffset);
+
+    if (startOffset === -1 || endOffset === -1) {
+      console.error("Could not calculate exact tracking offsets");
+      // Fallback to simple string match if traversal fails (rare)
+      return null;
     }
 
-    // If exact match fails, try to find it by context
-    // Get some context before and after from the rendered DOM
-    const contentEl = document.getElementById("reader-content");
-    if (!contentEl) return null;
-
-    const range = selection.getRangeAt(0);
-    const preCaretRange = range.cloneRange();
-    preCaretRange.selectNodeContents(contentEl);
-    preCaretRange.setEnd(range.startContainer, range.startOffset);
-
-    // Get last 100 chars before selection as context
-    const contextBefore = preCaretRange.toString().slice(-100);
-
-    // Find this context in the original text
-    const contextIndex = plainText.indexOf(contextBefore);
-
-    if (contextIndex !== -1) {
-      const startOffset = contextIndex + contextBefore.length;
-      const endOffset = startOffset + selectedText.length;
-
-      return { selectedText, startOffset, endOffset };
+    // Get the full text content as the renderer sees it (concatenated text nodes)
+    // This ensures consistency with how we apply highlights
+    const walker = document.createTreeWalker(
+      contentEl,
+      NodeFilter.SHOW_TEXT,
+      walkerFilter,
+    );
+    let fullText = "";
+    let node: Node | null;
+    while ((node = walker.nextNode())) {
+      fullText += node.textContent || "";
     }
 
-    // Last resort: search for a cleaned version of the text
-    const cleanText = (text: string) => text.replace(/\s+/g, " ").trim();
-    const cleanedSelected = cleanText(selectedText);
-    const cleanedPlain = cleanText(plainText);
+    const selectedText = fullText.substring(startOffset, endOffset);
 
-    const cleanedIndex = cleanedPlain.indexOf(cleanedSelected);
-
-    if (cleanedIndex !== -1) {
-      // Map back to original text position (approximate)
-      console.warn("Using approximate offset based on cleaned text");
-      return {
-        selectedText,
-        startOffset: cleanedIndex,
-        endOffset: cleanedIndex + cleanedSelected.length,
-      };
-    }
-
-    console.error("Could not find selected text in original content");
-    return null;
+    return {
+      selectedText,
+      startOffset,
+      endOffset,
+    };
   };
 
   return (
-    <div className={`min-h-screen ${themeClasses} transition-colors`}>
+    <div
+      className={`min-h-screen ${themeClasses} transition-colors select-none`}
+    >
+      {/* Reading Progress Bar - at very top */}
+      <div className="fixed top-0 left-0 right-0 h-0.5 z-50 bg-[var(--color-border-subtle)]">
+        <div
+          className="h-full bg-[var(--color-accent)] transition-[width] duration-150"
+          style={{ width: `${readProgress}%` }}
+        />
+      </div>
+
       <HighlightToolbar
         selection={selection}
         contentId={content.id}
         onClose={() => setSelection(null)}
         onHighlightCreated={fetchHighlights}
+        showNote={isNoteOpen}
+        onToggleNote={setIsNoteOpen}
       />
       {/* Sticky Header with Controls */}
       <div
@@ -458,7 +822,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
                   : "/dashboard"
               }
               scroll={false}
-              className="text-xs px-2 py-1.5 rounded-none border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:border-[var(--color-accent)] transition-colors whitespace-nowrap flex-shrink-0 flex items-center"
+              className="text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-none border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:border-[var(--color-accent)] transition-colors whitespace-nowrap flex-shrink-0 flex items-center"
               onClick={() => {
                 // Clear the return path after using it
                 if (typeof window !== "undefined") {
@@ -471,14 +835,14 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
 
             {/* Reading Controls */}
             <div className="flex items-center gap-2 sm:gap-3">
-              {/* Font Size Control - hidden on mobile */}
-              <div className="hidden md:flex items-center gap-1">
+              {/* Font Size Control - now visible on mobile */}
+              <div className="flex items-center gap-0.5 sm:gap-1">
                 {(["small", "medium", "large"] as const).map((size) => (
                   <button
                     key={size}
-                    onClick={() => setFontSize(size)}
-                    className={`w-6 h-6 flex items-center justify-center rounded-none font-medium transition-colors ${
-                      fontSize === size
+                    onClick={() => updateSetting("fontSize", size)}
+                    className={`w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-none font-medium transition-colors ${
+                      settings.fontSize === size
                         ? "bg-[var(--color-border)] text-[var(--color-text-primary)]"
                         : "bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
                     }`}
@@ -486,10 +850,10 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
                     <span
                       className={
                         size === "small"
-                          ? "text-xs"
+                          ? "text-[10px] sm:text-xs"
                           : size === "medium"
-                            ? "text-sm"
-                            : "text-base"
+                            ? "text-xs sm:text-sm"
+                            : "text-sm sm:text-base"
                       }
                     >
                       A
@@ -503,23 +867,31 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
 
               {/* Action Buttons - condensed on mobile */}
               <div className="flex items-center gap-1 flex-wrap">
-                {/* Highlights button - icon only on mobile */}
+                {/* Focus Mode button - hidden on mobile */}
+                <button
+                  onClick={() => setFocusMode(!focusMode)}
+                  className={`hidden sm:inline-block text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-none border transition-colors ${
+                    focusMode
+                      ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-accent)]"
+                      : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
+                  }`}
+                  title="Toggle focus mode"
+                >
+                  Focus
+                </button>
+
+                {/* Highlights button - HIDDEN on mobile */}
                 <button
                   onClick={() => setShowHighlightsPanel(!showHighlightsPanel)}
-                  className={`text-xs px-2 py-1 rounded-none border transition-colors ${
+                  className={`hidden sm:inline-block text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-none border transition-colors ${
                     showHighlightsPanel
                       ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-accent)]"
                       : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
                   }`}
                   title={`${showHighlightsPanel ? "Hide" : "Show"} Highlights`}
                 >
-                  <span className="hidden sm:inline">
-                    {showHighlightsPanel ? "Hide" : "Show"} Highlights{" "}
-                    {highlights.length > 0 && `(${highlights.length})`}
-                  </span>
-                  <span className="sm:hidden">
-                    ✎{highlights.length > 0 && ` ${highlights.length}`}
-                  </span>
+                  {showHighlightsPanel ? "Hide" : "Show"} Highlights{" "}
+                  {highlights.length > 0 && `(${highlights.length})`}
                 </button>
 
                 {/* Archive button */}
@@ -527,7 +899,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
                   onClick={() =>
                     onStatusChange({ is_archived: !content.is_archived })
                   }
-                  className={`text-xs px-2 py-1 rounded-none border transition-colors whitespace-nowrap ${
+                  className={`text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-none border transition-colors whitespace-nowrap ${
                     content.is_archived
                       ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-accent)]"
                       : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
@@ -540,10 +912,10 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
                 <button
                   onClick={handleFindSimilar}
                   disabled={loadingSimilar}
-                  className="hidden sm:inline-block text-xs px-2 py-1 rounded-none border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:border-[var(--color-accent)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="hidden sm:inline-block text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-none border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:border-[var(--color-accent)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {loadingSimilar
-                    ? "Loading..."
+                    ? "Finding related..."
                     : showSimilar
                       ? "Hide Related"
                       : "Find Related"}
@@ -568,13 +940,118 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
         </div>
       )}
 
+      {/* Table of Contents - Desktop Left Sidebar */}
+      {tocHeadings.length > 0 && (
+        <div
+          ref={tocNavRef}
+          onScroll={handleTocScrollInteraction}
+          className="hidden xl:block fixed left-8 top-32 w-64 h-[calc(100vh-16rem)] overflow-y-auto pr-4 z-30 opacity-0 animate-fade-in [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']"
+          style={{ animationDelay: "0.5s", animationFillMode: "forwards" }}
+        >
+          <nav className="flex flex-col gap-1.5 mt-4">
+            {tocHeadings.map((heading) => {
+              const isActive = activeId === heading.id;
+
+              // In idle mode: only show active header
+              const shouldShow = !isIdle || isActive;
+
+              // Color logic
+              const linkColor =
+                isActive && !isIdle ? "var(--color-accent)" : "#6b7280";
+              const linkWeight = isActive ? 500 : 400;
+
+              // Opacity logic
+              const opacityClass = !shouldShow
+                ? "opacity-0 pointer-events-none"
+                : isActive
+                  ? "opacity-100"
+                  : "opacity-80 hover:opacity-100";
+
+              const transformClass = isActive ? "translate-x-1" : "";
+
+              // In idle mode, allow wrapping for active; otherwise truncate
+              const textClass =
+                isIdle && isActive
+                  ? "whitespace-normal break-words"
+                  : "truncate";
+
+              return (
+                <a
+                  key={heading.id}
+                  href={`#${heading.id}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const el = document.getElementById(heading.id);
+                    if (el) {
+                      // Disable scroll spy temporarily
+                      isManualScrolling.current = true;
+
+                      // Scroll to position heading at ~30% of viewport height (slightly above center)
+                      const top =
+                        el.getBoundingClientRect().top + window.scrollY;
+                      const offset = window.innerHeight * 0.3;
+                      window.scrollTo({
+                        top: top - offset,
+                        behavior: "smooth",
+                      });
+
+                      // Set active ID immediately
+                      setActiveId(heading.id);
+
+                      // Re-enable scroll spy after scroll animation (approx 1s)
+                      setTimeout(() => {
+                        isManualScrolling.current = false;
+                      }, 1000);
+
+                      // Highlight the paragraph after the header
+                      const nextEl = el.nextElementSibling;
+                      if (nextEl && nextEl.tagName === "P") {
+                        const computedStyle = getComputedStyle(
+                          document.documentElement,
+                        );
+                        const accentColor = computedStyle
+                          .getPropertyValue("--color-accent")
+                          .trim();
+                        nextEl.style.color = accentColor;
+                        setTimeout(() => {
+                          nextEl.style.color = "";
+                        }, 800);
+                      }
+                    }
+                  }}
+                  style={{
+                    color: linkColor,
+                    fontWeight: linkWeight,
+                    paddingLeft: `${Math.max(0, heading.level - 2) * 12}px`,
+                    fontSize: heading.level === 2 ? "0.9rem" : "0.85rem",
+                    // Add line height for wrapped text in idle mode
+                    lineHeight: isIdle && isActive ? "1.4" : "1.2",
+                    // Breathing effect: smooth transitions
+                    transition: "all 500ms ease, opacity 500ms ease",
+                  }}
+                  className={`
+                    toc-link
+                    py-0.5 block
+                    ${textClass}
+                    hover:!text-gray-900 dark:hover:!text-gray-100
+                    ${transformClass}
+                    ${opacityClass}
+                  `}
+                  title={heading.text}
+                >
+                  {heading.text}
+                </a>
+              );
+            })}
+          </nav>
+        </div>
+      )}
+
       {/* Article Content */}
-      <article className={`max-w-2xl mx-auto px-5 sm:px-6 lg:px-8 py-8 pt-28`}>
+      <article className="py-8 pt-28 pb-32 max-w-5xl mx-auto select-none">
         {/* Article Header */}
-        <header className="mb-12">
-          <h1
-            className={`font-serif font-normal leading-tight mb-4 ${fontSize === "small" ? "text-3xl" : fontSize === "medium" ? "text-4xl" : "text-5xl"} text-[var(--color-text-primary)]`}
-          >
+        <header className="mb-12 max-w-2xl mx-auto px-5 sm:px-6 lg:px-8">
+          <h1 className="font-serif font-normal leading-tight mb-4 text-4xl text-[var(--color-text-primary)]">
             {content.title || "Untitled Article"}
           </h1>
 
@@ -624,53 +1101,122 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
 
         {/* Description/Lead paragraph */}
         {content.description && (
-          <div
-            className={`${fontSizeClasses[fontSize]} leading-relaxed mb-8 italic font-serif border-l-2 border-[var(--color-border)] pl-6 text-[var(--color-text-secondary)]`}
-          >
+          <div className="mb-8 font-serif border-l-2 border-[var(--color-border)] pl-6 text-[var(--color-text-secondary)] max-w-2xl mx-auto px-5 sm:px-6 lg:px-8">
             {content.description}
           </div>
         )}
 
-        {/* Main Content - Memoized to prevent re-renders loosing selection */}
-        {useMemo(
-          () => (
-            <div
-              id="reader-content"
-              className={`max-w-none ${fontSizeClasses[fontSize]} leading-relaxed text-[var(--color-text-secondary)]`}
-            >
-              {content.full_text ? (
-                <HighlightRenderer
-                  html={content.full_text}
-                  highlights={highlights}
-                  onHighlightClick={scrollToHighlight}
-                />
-              ) : (
-                <div className="text-center py-12 opacity-60">
-                  <p>Full content not available yet.</p>
-                  <p className="text-sm mt-2">
-                    {content.processing_status === "processing" &&
-                      "Content is being extracted..."}
-                    {content.processing_status === "pending" &&
-                      "Content extraction is pending..."}
-                    {content.processing_status === "failed" &&
-                      "Content extraction failed. Please visit the original URL."}
-                  </p>
+        {useMemo(() => {
+          // Merge existing highlights with current selection (for visual persistence)
+          let displayHighlights = highlights;
+          // Only show temp selection when the note editor is OPEN (to persist visual while focus is in textarea)
+          // Otherwise, let the native browser selection handle the visual (preventing double-highlight)
+          if (selection && !selection.existingHighlightId && isNoteOpen) {
+            displayHighlights = [
+              ...highlights,
+              {
+                id: "temp-selection",
+                text: selection.text,
+                start_offset: selection.startOffset,
+                end_offset: selection.endOffset,
+                color: selection.existingColor || "selection", // Use standard selection blue
+                note: selection.existingNote,
+              },
+            ];
+          }
+
+          return (
+            /* Outer wrapper handles the "margin/padding" space and prevents it from being selectable */
+            <div className="w-full flex justify-center px-5 sm:px-6 lg:px-8 select-none cursor-default">
+              {/* Inner container constraints width but has NO padding, so selection matches text exactly */}
+              <div
+                className={`w-full
+                  ${
+                    settings.contentWidth === "narrow"
+                      ? "max-w-2xl"
+                      : settings.contentWidth === "wide"
+                        ? "max-w-3xl"
+                        : "max-w-[42rem]"
+                  }
+                `}
+              >
+                <div
+                  id="reader-content"
+                  className={`text-[var(--color-text-secondary)] select-text w-full outline-none
+                  ${
+                    settings.fontFamily === "serif"
+                      ? "font-serif-setting"
+                      : settings.fontFamily === "sans"
+                        ? "font-sans-setting"
+                        : "font-system-setting"
+                  }
+                  ${
+                    settings.fontSize === "small"
+                      ? "text-small-setting"
+                      : settings.fontSize === "large"
+                        ? "text-large-setting"
+                        : "text-medium-setting"
+                  }
+                  ${
+                    settings.lineHeight === "compact"
+                      ? "line-height-compact"
+                      : settings.lineHeight === "spacious"
+                        ? "line-height-spacious"
+                        : "line-height-comfortable"
+                  }
+                  ${
+                    settings.letterSpacing === "tight"
+                      ? "letter-spacing-tight"
+                      : settings.letterSpacing === "wide"
+                        ? "letter-spacing-wide"
+                        : "letter-spacing-normal"
+                  }
+                  ${settings.bionicReading ? "bionic-reading" : ""}
+                  ${focusMode ? "focus-mode" : ""}
+                `}
+                >
+                  {content.full_text ? (
+                    <HighlightRenderer
+                      html={content.full_text}
+                      highlights={displayHighlights}
+                      onHighlightClick={scrollToHighlight}
+                    />
+                  ) : (
+                    <div className="text-center py-12 opacity-60">
+                      <p>Full content not available yet.</p>
+                      <p className="text-sm mt-2">
+                        {content.processing_status === "processing" &&
+                          "Content is being extracted..."}
+                        {content.processing_status === "pending" &&
+                          "Content extraction is pending..."}
+                        {content.processing_status === "failed" &&
+                          "Content extraction failed. Please visit the original URL."}
+                      </p>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
-          ),
-          [
-            content.full_text,
-            content.processing_status,
-            highlights,
-            fontSize,
-            scrollToHighlight,
-          ],
-        )}
+          );
+        }, [
+          content.full_text,
+          content.processing_status,
+          highlights,
+          selection, // Add selection dependency
+          isNoteOpen, // Add isNoteOpen dependency so highlight appears when note opens
+          scrollToHighlight,
+          focusMode,
+          settings.fontFamily,
+          settings.fontSize,
+          settings.contentWidth,
+          settings.lineHeight,
+          settings.letterSpacing,
+          settings.bionicReading,
+        ])}
 
         {/* Similar Articles Section */}
         {showSimilar && similarArticles.length > 0 && (
-          <div className="mt-12 pt-8 border-t border-[var(--color-border)]">
+          <div className="mt-12 pt-8 border-t border-[var(--color-border)] max-w-2xl mx-auto px-5 sm:px-6 lg:px-8">
             <h2 className="font-serif text-2xl font-normal mb-6 text-[var(--color-text-primary)]">
               Similar Articles
             </h2>

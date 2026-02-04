@@ -330,7 +330,9 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
    * Client-side filtering based on reading_status
    * Uses reading_status computed field from backend
    */
-  const filteredContents = contents.filter((content) => {
+  const filteredContents = (
+    contents && Array.isArray(contents) ? contents : []
+  ).filter((content) => {
     switch (filter) {
       case "unread":
         return content.reading_status === "unread";
@@ -350,6 +352,7 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
    * Used to show counts in the filter buttons like "Unread (5)"
    */
   const getCount = (filterType: FilterType): number => {
+    if (!contents || !Array.isArray(contents)) return 0;
     switch (filterType) {
       case "unread":
         return contents.filter((c) => c.reading_status === "unread").length;
@@ -369,7 +372,9 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
   if (loading) {
     return (
       <div className="flex justify-center py-8">
-        <div className="text-gray-500">Loading your queue...</div>
+        <div className="text-[var(--color-text-muted)]">
+          Finding your articles...
+        </div>
       </div>
     );
   }

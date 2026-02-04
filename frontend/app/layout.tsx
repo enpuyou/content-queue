@@ -5,6 +5,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ToastProvider } from "@/contexts/ToastContext";
 import { ListsProvider } from "@/contexts/ListsContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { ReadingSettingsProvider } from "@/contexts/ReadingSettingsContext";
 import { ThemeScript } from "./theme-script";
 
 const inter = Inter({
@@ -34,13 +35,15 @@ export default function RootLayout({
         <ThemeScript />
       </head>
       <body className={inter.className}>
-        <ThemeProvider>
-          <AuthProvider>
-            <ToastProvider>
-              <ListsProvider>{children}</ListsProvider>
-            </ToastProvider>
-          </AuthProvider>
-        </ThemeProvider>
+        <ReadingSettingsProvider>
+          <ThemeProvider>
+            <AuthProvider>
+              <ToastProvider>
+                <ListsProvider>{children}</ListsProvider>
+              </ToastProvider>
+            </AuthProvider>
+          </ThemeProvider>
+        </ReadingSettingsProvider>
       </body>
     </html>
   );

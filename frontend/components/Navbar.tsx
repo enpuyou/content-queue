@@ -14,6 +14,7 @@ export default function Navbar() {
 
   const isQueueActive = pathname === "/dashboard";
   const isListsActive = pathname === "/lists";
+  const isSettingsActive = pathname === "/settings";
 
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
@@ -30,7 +31,7 @@ export default function Navbar() {
           <div className="flex items-center gap-6 flex-1">
             <Link
               href="/dashboard"
-              className="font-serif text-xl font-normal text-[var(--color-text-primary)] whitespace-nowrap"
+              className="font-serif text-xl font-normal text-[var(--color-text-primary)] whitespace-nowrap flex items-center"
             >
               sedi
             </Link>
@@ -61,6 +62,16 @@ export default function Navbar() {
               }`}
             >
               Lists
+            </button>
+            <button
+              onClick={() => (window.location.href = "/settings")}
+              className={`text-xs px-2 py-1.5 leading-none rounded-none border transition-colors ${
+                isSettingsActive
+                  ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-accent)]"
+                  : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
+              }`}
+            >
+              Settings
             </button>
             <button
               className="text-xs px-2 py-1.5 leading-none rounded-none border bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] transition-colors border-[var(--color-border)] hover:border-red-600 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400"
@@ -139,6 +150,19 @@ export default function Navbar() {
                   }`}
                 >
                   Lists
+                </button>
+                <button
+                  onClick={() => {
+                    window.location.href = "/settings";
+                    closeMobileMenu();
+                  }}
+                  className={`w-full text-xs px-2 py-1 leading-none rounded-none border transition-colors ${
+                    isSettingsActive
+                      ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-accent)]"
+                      : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
+                  }`}
+                >
+                  Settings
                 </button>
               </div>
 

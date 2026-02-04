@@ -135,7 +135,7 @@ export default function Sidebar() {
           {/* Lists Loading State */}
           {loading && (
             <div className="px-4 py-2 text-sm text-[var(--color-text-muted)]">
-              Loading lists...
+              Finding your lists...
             </div>
           )}
 

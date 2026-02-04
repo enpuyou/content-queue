@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ContentItem as ContentItemType } from "@/types";
 import StatusIndicator from "./StatusIndicator";
@@ -37,8 +37,13 @@ export default function ContentCard({
   const [isEditingTags, setIsEditingTags] = useState(false);
   const [tagInput, setTagInput] = useState("");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const router = useRouter();
   const { showToast } = useToast();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleAddTag = async () => {
     if (!tagInput.trim()) return;
@@ -100,6 +105,7 @@ export default function ContentCard({
 
   // Check if content was added within last 10 minutes
   const isJustAdded = () => {
+    if (!mounted) return false;
     const now = new Date();
     const createdAt = new Date(content.created_at);
     const diffMinutes = (now.getTime() - createdAt.getTime()) / (1000 * 60);
@@ -156,7 +162,11 @@ export default function ContentCard({
               {isJustAdded() ? (
                 <span>Just now</span>
               ) : (
-                <span>{new Date(content.created_at).toLocaleDateString()}</span>
+                <span>
+                  {mounted
+                    ? new Date(content.created_at).toLocaleDateString()
+                    : new Date(content.created_at).toISOString().split("T")[0]}
+                </span>
               )}
               {content.reading_time_minutes && (
                 <>

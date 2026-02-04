@@ -4,6 +4,7 @@ export interface User {
   full_name: string | null;
   is_active: boolean;
   created_at: string;
+  email_token?: string; // For email-to-save feature
 }
 
 export interface ContentItem {
