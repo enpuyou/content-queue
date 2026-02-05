@@ -305,30 +305,6 @@ def xml_to_html(xml_content: str, original_html: bytes = None) -> str:
                     if text and len(text) > 3 and text not in original_header_map:
                         original_header_map[text] = level
 
-                # Extract images with their context (for better matching)
-                # Look for content images (not icons, logos, etc.)
-                for img in original_soup.find_all("img"):
-                    src = img.get("src", "")
-                    alt = img.get("alt", "")
-                    # Skip small images (likely icons/logos)
-                    width = img.get("width", "")
-                    if width and width.isdigit() and int(width) < 50:
-                        continue
-                    if src and not any(
-                        x in src.lower() for x in ["icon", "logo", "avatar", "badge"]
-                    ):
-                        # Get caption from figcaption or nearby text
-                        caption = ""
-                        parent = img.parent
-                        if parent and parent.name == "figure":
-                            figcaption = parent.find("figcaption")
-                            if figcaption:
-                                caption = figcaption.get_text(strip=True)
-
-                        original_images.append(
-                            {"src": src, "alt": alt, "caption": caption}
-                        )
-
                 logger.debug(
                     f"Extracted {len(original_header_map)} headers and {len(original_images)} images from original HTML"
                 )
@@ -393,7 +369,85 @@ def xml_to_html(xml_content: str, original_html: bytes = None) -> str:
                 if desc_tag and desc_tag.get("content"):
                     page_description = desc_tag["content"].strip().lower()
 
-            except Exception:
+                # Extract context for images to re-insert them if missing
+                # We do this AFTER title extraction so we can use title_soup
+                for img in title_soup.find_all("img"):
+                    src = img.get("src", "")
+                    alt = img.get("alt", "")
+
+                    # Skip icons/logos
+                    width = img.get("width", "")
+                    if width and width.isdigit() and int(width) < 50:
+                        continue
+                    if src and any(
+                        x in src.lower()
+                        for x in [
+                            "icon",
+                            "logo",
+                            "avatar",
+                            "badge",
+                            "facebook",
+                            "twitter",
+                            "linkedin",
+                        ]
+                    ):
+                        continue
+
+                    # Get surrounding text context
+                    # 1. Try to find previous substantial text block
+                    prev_context = ""
+                    curr = img.parent
+                    search_steps = 0
+                    while curr and search_steps < 5:
+                        prev = curr.find_previous_sibling()
+                        if prev:
+                            text = prev.get_text(strip=True)
+                            if len(text) > 50:
+                                prev_context = text[-100:]  # Last 100 chars
+                                break
+                            curr = prev
+                        else:
+                            curr = curr.parent
+                            search_steps += 1
+
+                    # 2. Try to find next substantial text block
+                    next_context = ""
+                    curr = img.parent
+                    search_steps = 0
+                    while curr and search_steps < 5:
+                        next_node = curr.find_next_sibling()
+                        if next_node:
+                            text = next_node.get_text(strip=True)
+                            if len(text) > 50:
+                                next_context = text[:100]  # First 100 chars
+                                break
+                            curr = next_node
+                        else:
+                            curr = curr.parent
+                            search_steps += 1
+
+                    # Get caption
+                    caption = ""
+                    parent = img.parent
+                    if parent and parent.name == "figure":
+                        figcaption = parent.find("figcaption")
+                        if figcaption:
+                            caption = figcaption.get_text(strip=True)
+
+                    if prev_context or next_context:
+                        original_images.append(
+                            {
+                                "src": src,
+                                "alt": alt,
+                                "caption": caption,
+                                "prev_context": prev_context,
+                                "next_context": next_context,
+                                "inserted": False,
+                            }
+                        )
+
+            except Exception as e:
+                logger.warning(f"Error analyzing original HTML: {e}")
                 pass
 
         # First pass: collect headers and filter title duplicates
@@ -475,9 +529,33 @@ def xml_to_html(xml_content: str, original_html: bytes = None) -> str:
                     for raw_level in range(min_header_level, max_header_level + 1)
                 }
 
-        # Second pass: output content with normalized headers
+        # Second pass: output content with normalized headers AND re-insert images
         header_index = 0
+
+        # Helper to formatting image HTML
+        def format_image_html(img_data):
+            caption_html = ""
+            if img_data.get("caption"):
+                caption_html = (
+                    f'<figcaption style="text-align:center; font-size:0.9em; '
+                    f'color:var(--color-text-muted); margin-top:0.5em; font-style:italic;">'
+                    f'{img_data["caption"]}</figcaption>'
+                )
+
+            return (
+                f'<figure style="margin:1.5em 0; text-align:center;">'
+                f'<img src="{img_data["src"]}" alt="{img_data.get("alt", "")}" '
+                f'style="max-width:100%; height:auto; border-radius:4px;"/>'
+                f"{caption_html}"
+                f"</figure>"
+            )
+
         for elem in main.find_all(recursive=False):
+            # CHECK FOR IMAGES BEFORE ELEMENT (based on prev_context matches)
+            # This is tricky because we process element by element.
+            # Best place is typically AFTER a paragraph that matches prev_context
+            pass
+
             if elem.name == "p":
                 # Preserve inline elements (links, emphasis) within paragraphs
                 # Recursively process all inline elements
@@ -514,10 +592,10 @@ def xml_to_html(xml_content: str, original_html: bytes = None) -> str:
 
                 p_html_parts = process_inline_elements(elem)
                 paragraph_html = "".join(p_html_parts).strip()
+                paragraph_text_pure = elem.get_text(strip=True)
 
                 if paragraph_html:
                     # Skip if this paragraph matches the meta description
-                    # (to avoid duplicating description in both header and content)
                     if page_description:
                         # Remove HTML tags for comparison
                         para_text = (
@@ -532,15 +610,47 @@ def xml_to_html(xml_content: str, original_html: bytes = None) -> str:
                             logger.debug(
                                 f"Skipping description paragraph: '{paragraph_html[:40]}...'"
                             )
-                            # Still mark as substantial content
                             if len(paragraph_html) >= SUBSTANTIAL_TEXT_LENGTH:
                                 seen_substantial_content = True
                             continue
 
+                    # CHECK FOR IMAGES matched by NEXT context (should be inserted BEFORE this paragraph)
+                    for img in original_images:
+                        if not img["inserted"] and img["next_context"]:
+                            # Fuzzy match: check if first 50 chars of context match start of paragraph
+                            clean_next = (
+                                img["next_context"].replace("\n", " ").strip()[:50]
+                            )
+                            clean_para = paragraph_text_pure.replace("\n", " ").strip()
+
+                            if len(clean_next) > 20 and clean_next in clean_para:
+                                html_parts.append(format_image_html(img))
+                                img["inserted"] = True
+                                logger.info(
+                                    f"Re-inserted image (before match) {img['src'][:30]}..."
+                                )
+
                     html_parts.append(f"<p>{paragraph_html}</p>")
-                    # Mark as substantial content if paragraph is long enough
+
+                    # CHECK FOR IMAGES matched by PREV context (should be inserted AFTER this paragraph)
+                    for img in original_images:
+                        if not img["inserted"] and img["prev_context"]:
+                            # Fuzzy match: check if last 50 chars of context match end of paragraph
+                            clean_prev = (
+                                img["prev_context"].replace("\n", " ").strip()[-50:]
+                            )
+                            clean_para = paragraph_text_pure.replace("\n", " ").strip()
+
+                            if len(clean_prev) > 20 and clean_prev in clean_para:
+                                html_parts.append(format_image_html(img))
+                                img["inserted"] = True
+                                logger.info(
+                                    f"Re-inserted image (after match) {img['src'][:30]}..."
+                                )
+
                     if len(paragraph_html) >= SUBSTANTIAL_TEXT_LENGTH:
                         seen_substantial_content = True
+
             elif elem.name == "head":
                 # Skip headers that appear before first substantial paragraph
                 if not seen_substantial_content:
@@ -556,21 +666,30 @@ def xml_to_html(xml_content: str, original_html: bytes = None) -> str:
                         new_level = header_level_map.get(raw_level, 2)
                         # Clamp to H2-H4
                         new_level = max(2, min(4, new_level))
+
+                        # Check for images before header (using next_context match on header text)
+                        for img in original_images:
+                            if not img["inserted"] and img["next_context"]:
+                                clean_next = (
+                                    img["next_context"].replace("\n", " ").strip()[:50]
+                                )
+                                clean_header = stored_text.replace("\n", " ").strip()
+
+                                if len(clean_next) > 10 and clean_next in clean_header:
+                                    html_parts.append(format_image_html(img))
+                                    img["inserted"] = True
+
                         html_parts.append(f"<h{new_level}>{stored_text}</h{new_level}>")
                         header_index += 1
+
             elif elem.name == "list":
                 items = elem.find_all("item")
                 if items:
-                    # Check if list should be ordered (numbered)
-                    # Trafilatura uses 'type' attribute or we can check the 'rend' attribute
                     list_type = elem.get("type", "")
                     list_rend = elem.get("rend", "")
-
-                    # Determine if ordered or unordered
                     is_ordered = (
                         list_type == "ordered" or "ordered" in list_rend.lower()
                     )
-
                     list_tag = "ol" if is_ordered else "ul"
                     html_parts.append(f"<{list_tag}>")
                     for item in items:
@@ -578,17 +697,23 @@ def xml_to_html(xml_content: str, original_html: bytes = None) -> str:
                         if text:
                             html_parts.append(f"<li>{text}</li>")
                     html_parts.append(f"</{list_tag}>")
+
             elif elem.name == "quote":
                 text = elem.get_text(strip=True)
                 if text:
                     html_parts.append(f"<blockquote>{text}</blockquote>")
+
             elif elem.name == "graphic":
+                # Existing successful trafilatura extraction
                 src = elem.get("src")
                 alt = elem.get("alt", "")
-                title = elem.get("title", "")
 
                 if src:
-                    # Check if next element is a caption (common pattern in XML)
+                    # Mark as inserted if we found it in original_images to avoid dupe
+                    for img in original_images:
+                        if img["src"] == src:
+                            img["inserted"] = True
+
                     caption = ""
                     next_elem = elem.find_next_sibling()
                     if (
@@ -596,23 +721,19 @@ def xml_to_html(xml_content: str, original_html: bytes = None) -> str:
                         and next_elem.name in ["p", "hi"]
                         and len(next_elem.get_text(strip=True)) < 200
                     ):
-                        # Short paragraph after image is likely a caption
                         caption_text = next_elem.get_text(strip=True)
                         if caption_text:
-                            caption = f'<figcaption style="text-align:center; font-size:0.9em; color:var(--color-text-muted); margin-top:0.5em; font-style:italic;">{caption_text}</figcaption>'
+                            caption = caption_text
 
-                    # Wrap in figure tag
                     html_parts.append(
-                        f'<figure style="margin:1.5em 0; text-align:center;">'
-                        f'<img src="{src}" alt="{alt}" title="{title}" style="max-width:100%; height:auto; border-radius:4px;"/>'
-                        f"{caption}"
-                        f"</figure>"
+                        format_image_html({"src": src, "alt": alt, "caption": caption})
                     )
 
         if html_parts:
+            # Add any remaining images at the end if they haven't been inserted
+            # (Use sparingly or maybe only if strict criteria met, otherwise we might dump footer images)
             return "\n".join(html_parts)
         else:
-            # If no elements found, just get all text and convert to paragraphs
             logger.warning("No structured elements found in XML, converting all text")
             text = soup.get_text(strip=False)
             return text_to_html_paragraphs(text)

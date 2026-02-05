@@ -13,6 +13,7 @@ import os
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import NullPool
 
 from app.main import app
 from app.core.database import Base, get_db
@@ -28,7 +29,7 @@ SQLALCHEMY_TEST_DATABASE_URL = os.getenv(
     "postgresql://postgres:postgres@localhost:5433/content_queue_test",
 )
 
-engine = create_engine(SQLALCHEMY_TEST_DATABASE_URL)
+engine = create_engine(SQLALCHEMY_TEST_DATABASE_URL, poolclass=NullPool)
 
 
 # Enable pgvector extension for testing
@@ -43,26 +44,45 @@ def receive_connect(dbapi_conn, connection_record):
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
+@pytest.fixture(scope="session")
+def setup_database():
+    """
+    Create tables once for the entire test session.
+    """
+    # Create tables
+    Base.metadata.create_all(bind=engine)
+    yield
+    # Drop all at the end of session
+    Base.metadata.drop_all(bind=engine)
+    engine.dispose()
+
+
 @pytest.fixture(scope="function")
-def db_session():
+def db_session(setup_database):
     """
     Create a fresh database session for each test.
-
-    This fixture:
-    1. Creates all tables in the test database
-    2. Provides a database session to the test
-    3. Rolls back changes and drops tables after the test
-
-    Yields:
-        Session: A SQLAlchemy database session
+    Validates empty state and cleans up via TRUNCATE after.
     """
-    Base.metadata.create_all(bind=engine)
     session = TestingSessionLocal()
+
+    # Ensure clean slate (in case previous test failed to clean up)
+    from sqlalchemy import text
+
+    for table in reversed(Base.metadata.sorted_tables):
+        session.execute(text(f"TRUNCATE TABLE {table.name} RESTART IDENTITY CASCADE;"))
+    session.commit()
+
     try:
         yield session
     finally:
         session.close()
-        Base.metadata.drop_all(bind=engine)
+        # Clean up data
+        with engine.connect() as conn:
+            with conn.begin():
+                for table in reversed(Base.metadata.sorted_tables):
+                    conn.execute(
+                        text(f"TRUNCATE TABLE {table.name} RESTART IDENTITY CASCADE;")
+                    )
 
 
 @pytest.fixture(scope="function")

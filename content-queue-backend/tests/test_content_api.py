@@ -174,6 +174,9 @@ class TestListContent:
                 headers=auth_headers,
             )
             created_ids.append(response.json()["id"])
+            import time
+
+            time.sleep(0.01)  # Ensure timestamps are different for sorting checks
 
         # List all content
         response = client.get("/content", headers=auth_headers)
