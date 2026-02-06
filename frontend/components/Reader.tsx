@@ -3,10 +3,13 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ContentItem } from "@/types";
-import { searchAPI, highlightsAPI } from "@/lib/api";
+import { searchAPI, highlightsAPI, contentAPI } from "@/lib/api";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useReadingSettings } from "@/contexts/ReadingSettingsContext";
+import { useTTS } from "@/hooks/useTTS";
+import { useHotkeys } from "@/hooks/useHotkeys";
 import HighlightToolbar from "./HighlightToolbar";
 import HighlightRenderer from "./HighlightRenderer";
 import HighlightsPanel from "./HighlightsPanel";
@@ -53,6 +56,28 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
     }>
   >([]);
   const [loadingSimilar, setLoadingSimilar] = useState(false);
+  const [similarError, setSimilarError] = useState<string | null>(null);
+  const [isFadingOut, setIsFadingOut] = useState(false);
+
+  // Summary State
+  const [summary, setSummary] = useState<string | null>(
+    content.summary || null,
+  );
+  const [loadingSummary, setLoadingSummary] = useState(false);
+  const [showSummary, setShowSummary] = useState(!!content.summary);
+
+  // TTS State (for future implementation)
+  const { pause, resume, isPlaying } = useTTS();
+
+  // Router for shortcuts (Esc)
+  const router = useRouter();
+
+  // Keyboard Shortcuts
+  useHotkeys({
+    esc: () => router.push("/dashboard"),
+    h: () => setShowHighlightsPanel((prev) => !prev),
+    t: () => (isPlaying ? pause() : resume()), // Simple toggle, ideally smarter
+  });
 
   const [selection, setSelection] = useState<ExtendedSelection | null>(null);
   const [isNoteOpen, setIsNoteOpen] = useState(false);
@@ -79,6 +104,34 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
 
   // Highlights panel visibility
   const [showHighlightsPanel, setShowHighlightsPanel] = useState(false);
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+
+  const handleImageZoom = useCallback((src: string) => {
+    setZoomedImage(src);
+  }, []);
+
+  // Gesture: Two-finger swipe to toggle highlights panel
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      // Threshold for horizontal swipe vs vertical scroll
+      if (Math.abs(e.deltaX) > 30 && Math.abs(e.deltaY) < 30) {
+        setShowHighlightsPanel((prev) => {
+          if (e.deltaX > 0 && !prev) {
+            // Swipe Left (Pan Right visualization) -> Show Panel
+            return true;
+          }
+          if (e.deltaX < 0 && prev) {
+            // Swipe Right (Pan Left visualization) -> Hide Panel
+            return false;
+          }
+          return prev;
+        });
+      }
+    };
+
+    window.addEventListener("wheel", handleWheel, { passive: true });
+    return () => window.removeEventListener("wheel", handleWheel);
+  }, []);
 
   // Navbar auto-hide state
   const [showNavbar, setShowNavbar] = useState(true);
@@ -93,6 +146,8 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
   // Scroll Spy for TOC with toggleable active state based on position
   const isManualScrolling = useRef(false);
   const tocNavRef = useRef<HTMLDivElement>(null);
+  const similarArticlesRef = useRef<HTMLDivElement>(null);
+  const scrollPositionBeforeSimilar = useRef<number>(0);
 
   // Unified TOC logic (Auto-scroll + Highlight)
   const isUserInteracting = useRef(false);
@@ -633,22 +688,110 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
   const handleFindSimilar = async () => {
     if (similarArticles.length > 0) {
       // Toggle if already loaded
-      setShowSimilar(!showSimilar);
+      if (showSimilar) {
+        // Hiding - start fade-out and scroll back simultaneously
+        setIsFadingOut(true);
+        window.scrollTo({
+          top: scrollPositionBeforeSimilar.current,
+          behavior: "smooth",
+        });
+        // Hide after fade-out transition completes (300ms)
+        setTimeout(() => {
+          setShowSimilar(false);
+          setIsFadingOut(false);
+        }, 300);
+      } else {
+        // Showing - save position and scroll to reveal
+        scrollPositionBeforeSimilar.current = window.scrollY;
+        setShowSimilar(true);
+        setTimeout(() => {
+          if (similarArticlesRef.current) {
+            const rect = similarArticlesRef.current.getBoundingClientRect();
+            // Scroll to show the section with some margin at top
+            const scrollTarget = window.scrollY + rect.top - 100; // 100px margin from top
+            window.scrollTo({
+              top: scrollTarget,
+              behavior: "smooth",
+            });
+          }
+        }, 100);
+      }
       return;
     }
 
     try {
       setLoadingSimilar(true);
+      setSimilarError(null);
       const results = await searchAPI.findSimilar(content.id);
       setSimilarArticles(results);
+      scrollPositionBeforeSimilar.current = window.scrollY;
       setShowSimilar(true);
+      // Wait for render then scroll
+      setTimeout(() => {
+        if (similarArticlesRef.current) {
+          const rect = similarArticlesRef.current.getBoundingClientRect();
+          const scrollTarget = window.scrollY + rect.top - 100; // 100px margin from top
+          window.scrollTo({
+            top: scrollTarget,
+            behavior: "smooth",
+          });
+        }
+      }, 100);
     } catch (error) {
       console.error("Failed to find related articles:", error);
-      alert(
+      setSimilarError(
         "Failed to find related articles. This article may not have embeddings yet.",
       );
+      setSimilarArticles([]); // Clear previous results if any
+      setShowSimilar(true); // Show the section so the error is visible
+
+      // Scroll to error
+      setTimeout(() => {
+        if (similarArticlesRef.current) {
+          const rect = similarArticlesRef.current.getBoundingClientRect();
+          const scrollTarget = window.scrollY + rect.top - 100;
+          window.scrollTo({
+            top: scrollTarget,
+            behavior: "smooth",
+          });
+        }
+      }, 100);
     } finally {
       setLoadingSimilar(false);
+    }
+  };
+
+  const handleGenerateSummary = async () => {
+    if (loadingSummary) return;
+    try {
+      setLoadingSummary(true);
+      await contentAPI.summarize(content.id);
+      // In a real implementation with websockets, we'd wait for update.
+      // Here, we'll optimistically show a "Generating..." or poll.
+      // Actually, since I can't easily add polling right now without more complex logic,
+      // let's just simulate strictly for the UI feedback or assume the user reloads?
+      // Better: Poll for 5 seconds locally then stop.
+
+      let attempts = 0;
+      const interval = setInterval(async () => {
+        attempts++;
+        if (attempts > 10) {
+          // 10s timeout
+          clearInterval(interval);
+          setLoadingSummary(false);
+          return;
+        }
+        const updated = await contentAPI.getById(content.id);
+        if (updated.summary) {
+          setSummary(updated.summary);
+          setShowSummary(true);
+          clearInterval(interval);
+          setLoadingSummary(false);
+        }
+      }, 1000);
+    } catch (e) {
+      console.error("Summary generation failed", e);
+      setLoadingSummary(false);
     }
   };
 
@@ -791,10 +934,16 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
       className={`min-h-screen ${themeClasses} transition-colors select-none`}
     >
       {/* Reading Progress Bar - at very top */}
-      <div className="fixed top-0 left-0 right-0 h-0.5 z-50 bg-[var(--color-border-subtle)]">
+      <div
+        className="fixed top-0 left-0 right-0 bg-[var(--color-border-subtle)]"
+        style={{ height: "var(--progress-height)" }}
+      >
         <div
-          className="h-full bg-[var(--color-accent)] transition-[width] duration-150"
-          style={{ width: `${readProgress}%` }}
+          className="h-full transition-[width] duration-150"
+          style={{
+            width: `${readProgress}%`,
+            backgroundColor: "var(--color-progress-bar)",
+          }}
         />
       </div>
 
@@ -806,9 +955,9 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
         showNote={isNoteOpen}
         onToggleNote={setIsNoteOpen}
       />
-      {/* Sticky Header with Controls */}
+      {/* Sticky Header with Controls - Transparent floating style */}
       <div
-        className={`fixed top-0 left-0 right-0 z-10 ${themeClasses} border-b border-[var(--color-border)] shadow-sm transition-transform duration-300 ${
+        className={`fixed top-0 left-0 right-0 z-10 transition-transform duration-300 ${
           showNavbar ? "translate-y-0" : "-translate-y-full"
         }`}
       >
@@ -883,7 +1032,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
                 {/* Highlights button - HIDDEN on mobile */}
                 <button
                   onClick={() => setShowHighlightsPanel(!showHighlightsPanel)}
-                  className={`hidden sm:inline-block text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-none border transition-colors ${
+                  className={`hidden xl:inline-block text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-none border transition-colors ${
                     showHighlightsPanel
                       ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-accent)]"
                       : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
@@ -893,33 +1042,6 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
                   {showHighlightsPanel ? "Hide" : "Show"} Highlights{" "}
                   {highlights.length > 0 && `(${highlights.length})`}
                 </button>
-
-                {/* Archive button */}
-                <button
-                  onClick={() =>
-                    onStatusChange({ is_archived: !content.is_archived })
-                  }
-                  className={`text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-none border transition-colors whitespace-nowrap ${
-                    content.is_archived
-                      ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-accent)]"
-                      : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
-                  }`}
-                >
-                  {content.is_archived ? "Unarchive" : "Archive"}
-                </button>
-
-                {/* Find Related - hidden on mobile */}
-                <button
-                  onClick={handleFindSimilar}
-                  disabled={loadingSimilar}
-                  className="hidden sm:inline-block text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-none border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:border-[var(--color-accent)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {loadingSimilar
-                    ? "Finding related..."
-                    : showSimilar
-                      ? "Hide Related"
-                      : "Find Related"}
-                </button>
               </div>
             </div>
           </div>
@@ -927,18 +1049,20 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
       </div>
 
       {/* Highlights Panel Sidebar */}
-      {showHighlightsPanel && (
-        <div
-          className={`fixed right-0 top-16 h-[calc(100vh-4rem)] w-80 ${themeClasses} border-l border-[var(--color-border)] shadow-xl z-20 overflow-hidden flex flex-col`}
-        >
-          <HighlightsPanel
-            highlights={highlights}
-            onHighlightClick={scrollToHighlight}
-            onHighlightDeleted={fetchHighlights}
-            onHighlightUpdated={fetchHighlights}
-          />
-        </div>
-      )}
+      <div
+        className={`hidden xl:flex fixed right-4 top-32 w-80 h-[calc(100vh-16rem)] z-20 overflow-hidden flex-col transition-all duration-300 ease-in-out transform ${
+          showHighlightsPanel
+            ? "translate-x-0 opacity-100 pointer-events-auto"
+            : "translate-x-[120%] opacity-0 pointer-events-none"
+        }`}
+      >
+        <HighlightsPanel
+          highlights={highlights}
+          onHighlightClick={scrollToHighlight}
+          onHighlightDeleted={fetchHighlights}
+          onHighlightUpdated={fetchHighlights}
+        />
+      </div>
 
       {/* Table of Contents - Desktop Left Sidebar */}
       {tocHeadings.length > 0 && (
@@ -948,7 +1072,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
           className="hidden xl:block fixed left-8 top-32 w-64 h-[calc(100vh-16rem)] overflow-y-auto pr-4 z-30 opacity-0 animate-fade-in [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']"
           style={{ animationDelay: "0.5s", animationFillMode: "forwards" }}
         >
-          <nav className="flex flex-col gap-1.5 mt-4">
+          <nav className="flex flex-col gap-1.5 mt-4 font-mono tracking-tighter">
             {tocHeadings.map((heading) => {
               const isActive = activeId === heading.id;
 
@@ -1094,18 +1218,156 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
               <img
                 src={content.thumbnail_url}
                 alt=""
-                className="w-full opacity-90 hover:opacity-100 transition-opacity"
+                className="w-full opacity-90 hover:opacity-100 transition-opacity cursor-zoom-in"
+                onClick={() => handleImageZoom(content.thumbnail_url!)}
               />
             </div>
           )}
         </header>
 
-        {/* Description/Lead paragraph */}
+        {/* Description/Lead paragraph - Aligned with content width */}
         {content.description && (
-          <div className="mb-8 font-serif border-l-2 border-[var(--color-border)] pl-6 text-[var(--color-text-secondary)] max-w-2xl mx-auto px-5 sm:px-6 lg:px-8">
-            {content.description}
+          <div className="w-full flex justify-center px-5 sm:px-6 lg:px-8 mb-8">
+            <div
+              className={`w-full
+              ${
+                settings.contentWidth === "narrow"
+                  ? "max-w-2xl"
+                  : settings.contentWidth === "wide"
+                    ? "max-w-3xl"
+                    : "max-w-[42rem]"
+              }
+            `}
+            >
+              <div className="font-serif border-l-4 border-[var(--color-border)] pl-4 text-[var(--color-text-secondary)] text-lg leading-relaxed italic">
+                {content.description}
+              </div>
+            </div>
           </div>
         )}
+
+        {/* TLDR Summary Section - Aligned with content width */}
+        <div className="w-full flex justify-center px-5 sm:px-6 lg:px-8 mb-12">
+          <div
+            className={`w-full
+              ${
+                settings.contentWidth === "narrow"
+                  ? "max-w-2xl"
+                  : settings.contentWidth === "wide"
+                    ? "max-w-3xl"
+                    : "max-w-[42rem]"
+              }
+            `}
+          >
+            <div className="flex items-center gap-4 mb-4">
+              <button
+                onClick={() => {
+                  if (summary) {
+                    setShowSummary(!showSummary);
+                  } else {
+                    handleGenerateSummary();
+                  }
+                }}
+                disabled={loadingSummary}
+                className={`text-xs px-3 py-1.5 leading-none rounded-none border transition-colors flex items-center gap-2 font-mono uppercase tracking-wider
+                    ${
+                      showSummary && summary
+                        ? "bg-[var(--color-text-primary)] text-[var(--color-bg-primary)] border-[var(--color-text-primary)] hover:bg-transparent hover:text-[var(--color-text-primary)]"
+                        : "bg-transparent text-[var(--color-text-primary)] border-[var(--color-text-primary)] hover:bg-[var(--color-text-primary)] hover:text-[var(--color-bg-primary)]"
+                    }`}
+              >
+                {loadingSummary ? (
+                  <>
+                    <span className="inline-block w-2.5 h-4 bg-[var(--color-text-primary)] animate-blink align-text-bottom mr-1"></span>
+                    Summarizing_
+                  </>
+                ) : summary ? (
+                  showSummary ? (
+                    "Hide TL;DR"
+                  ) : (
+                    "Show TL;DR"
+                  )
+                ) : (
+                  "Generate TL;DR"
+                )}
+              </button>
+            </div>
+
+            {/* Retro Summary Box */}
+            {showSummary && summary && (
+              <div className="relative p-6 border-2 border-[var(--color-text-primary)] bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] shadow-[4px_4px_0px_0px_var(--color-text-primary)] rounded-none">
+                {/* Font family and line height respect settings, but size is fixed */}
+                <div
+                  className={`
+                      ${
+                        settings.fontFamily === "serif"
+                          ? "font-serif-setting"
+                          : settings.fontFamily === "sans"
+                            ? "font-sans-setting"
+                            : settings.fontFamily === "merriweather"
+                              ? "font-merriweather-setting"
+                              : settings.fontFamily === "verdana"
+                                ? "font-verdana-setting"
+                                : "font-system-setting"
+                      }
+                      ${settings.lineHeight === "compact" ? "line-height-compact" : settings.lineHeight === "spacious" ? "line-height-spacious" : "line-height-comfortable"}
+                    `}
+                >
+                  <ul className="list-disc pl-5 space-y-4 marker:text-[var(--color-text-primary)]">
+                    {summary.split("\n").map((line, i) => {
+                      // Normalize: remove BOM, control chars, normalize whitespace
+                      let clean = line
+                        .replace(/[\u200B-\u200D\uFEFF]/g, "") // Zero-width chars
+                        .replace(/\r/g, "") // Carriage returns
+                        .trim();
+
+                      // Clean up markdown list chars if they exist at start
+                      clean = clean.replace(/^[-•*]\s*/, "");
+                      if (!clean) return null;
+
+                      // Very robust parsing: find first ** and second **
+                      let title: string | null = null;
+                      let content: string = clean;
+
+                      const firstMarker = clean.indexOf("**");
+                      if (firstMarker !== -1 && firstMarker < 5) {
+                        // Must be near start (allow some whitespace)
+                        const secondMarker = clean.indexOf(
+                          "**",
+                          firstMarker + 2,
+                        );
+                        if (secondMarker !== -1) {
+                          title = clean
+                            .slice(firstMarker + 2, secondMarker)
+                            .trim();
+                          // Everything after the closing **
+                          const rest = clean.slice(secondMarker + 2);
+                          // Remove leading separators like ": " or " - " or just spaces
+                          content = rest.replace(/^[\s:\-–—]+/, "").trim();
+                        }
+                      }
+
+                      // Debug logging removed
+
+                      return (
+                        <li key={i} className="pl-1">
+                          {title && (
+                            <div className="tldr-title font-bold text-base mb-2 tracking-tight text-[var(--color-text-primary)]">
+                              {title}
+                            </div>
+                          )}
+                          <div className="text-sm leading-relaxed opacity-90">
+                            {content}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
 
         {useMemo(() => {
           // Merge existing highlights with current selection (for visual persistence)
@@ -1149,7 +1411,11 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
                       ? "font-serif-setting"
                       : settings.fontFamily === "sans"
                         ? "font-sans-setting"
-                        : "font-system-setting"
+                        : settings.fontFamily === "merriweather"
+                          ? "font-merriweather-setting"
+                          : settings.fontFamily === "verdana"
+                            ? "font-verdana-setting"
+                            : "font-system-setting"
                   }
                   ${
                     settings.fontSize === "small"
@@ -1181,6 +1447,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
                       html={content.full_text}
                       highlights={displayHighlights}
                       onHighlightClick={scrollToHighlight}
+                      onImageClick={handleImageZoom}
                     />
                   ) : (
                     <div className="text-center py-12 opacity-60">
@@ -1213,59 +1480,256 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
           settings.lineHeight,
           settings.letterSpacing,
           settings.bionicReading,
+          handleImageZoom,
         ])}
 
-        {/* Similar Articles Section */}
-        {showSimilar && similarArticles.length > 0 && (
-          <div className="mt-12 pt-8 border-t border-[var(--color-border)] max-w-2xl mx-auto px-5 sm:px-6 lg:px-8">
-            <h2 className="font-serif text-2xl font-normal mb-6 text-[var(--color-text-primary)]">
-              Similar Articles
-            </h2>
-            <div className="grid gap-4">
-              {similarArticles.map(({ item, similarity_score }) => (
-                <Link
-                  key={item.id}
-                  href={`/content/${item.id}`}
-                  className="block p-4 rounded-none border border-[var(--color-border)] transition-colors hover:border-[var(--color-accent)]"
-                >
-                  <div className="flex items-start gap-4">
-                    {item.thumbnail_url && (
-                      <img
-                        src={item.thumbnail_url}
-                        alt=""
-                        className="w-20 h-20 object-cover flex-shrink-0 opacity-80 hover:opacity-100 transition-opacity"
-                      />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <h3
-                        className={`font-serif font-medium mb-1 ${linkColorClasses}`}
-                      >
-                        {item.title || "Untitled"}
-                      </h3>
-                      {item.description && (
-                        <p className="text-sm text-[var(--color-text-muted)] line-clamp-2 mb-2">
-                          {item.description}
-                        </p>
-                      )}
-                      <div className="flex items-center gap-3 text-xs text-[var(--color-text-faint)]">
-                        <span className="text-[var(--color-accent)] font-medium">
-                          {Math.round(similarity_score * 100)}% similar
-                        </span>
-                        {item.reading_time_minutes && (
-                          <>
-                            <span>•</span>
-                            <span>{item.reading_time_minutes} min read</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              ))}
+        {/* End of Article Actions - Quiet and Minimal */}
+        {content.full_text && (
+          <div className="mt-16 max-w-2xl mx-auto px-5 sm:px-6 lg:px-8">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() =>
+                  onStatusChange({ is_archived: !content.is_archived })
+                }
+                className={`text-xs px-2 py-0.5 leading-none rounded-none border transition-colors ${
+                  content.is_archived
+                    ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-accent)]"
+                    : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
+                }`}
+              >
+                {content.is_archived ? "Unarchive" : "Archive"}
+              </button>
+              <button
+                onClick={handleFindSimilar}
+                disabled={loadingSimilar}
+                className="text-xs px-2 py-0.5 leading-none rounded-none border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:border-[var(--color-accent)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {loadingSimilar
+                  ? "Finding related..."
+                  : showSimilar
+                    ? "Hide Related"
+                    : "Find Related"}
+              </button>
             </div>
           </div>
         )}
+
+        {/* Similar Articles Section */}
+        {showSimilar && (
+          <div
+            ref={similarArticlesRef}
+            className={`mt-8 max-w-2xl mx-auto px-5 sm:px-6 lg:px-8 transition-opacity duration-300 ${
+              isFadingOut ? "opacity-0" : "opacity-100"
+            }`}
+          >
+            <h2 className="font-serif text-2xl font-normal mb-6 text-[var(--color-text-primary)]">
+              Similar Articles
+            </h2>
+
+            {similarError ? (
+              <div className="p-4 rounded-none border border-[var(--color-accent)] bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)]">
+                <p className="text-sm">{similarError}</p>
+              </div>
+            ) : similarArticles.length > 0 ? (
+              <div className="grid gap-4">
+                {similarArticles.map(({ item, similarity_score }) => (
+                  <Link
+                    key={item.id}
+                    href={`/content/${item.id}`}
+                    className="block p-4 rounded-none border border-[var(--color-border)] transition-colors hover:border-[var(--color-accent)]"
+                  >
+                    <div className="flex items-start gap-4">
+                      {item.thumbnail_url && (
+                        <img
+                          src={item.thumbnail_url}
+                          alt=""
+                          className="w-20 h-20 object-cover flex-shrink-0 opacity-80 hover:opacity-100 transition-opacity"
+                        />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <h3
+                          className={`font-serif font-medium mb-1 ${linkColorClasses}`}
+                        >
+                          {item.title || "Untitled"}
+                        </h3>
+                        {item.description && (
+                          <p className="text-sm text-[var(--color-text-muted)] line-clamp-2 mb-2">
+                            {item.description}
+                          </p>
+                        )}
+                        <div className="flex items-center gap-3 text-xs text-[var(--color-text-faint)]">
+                          <span className="text-[var(--color-accent)] font-medium">
+                            {Math.round(similarity_score * 100)}% similar
+                          </span>
+                          {item.reading_time_minutes && (
+                            <>
+                              <span>•</span>
+                              <span>{item.reading_time_minutes} min read</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="p-4 text-[var(--color-text-muted)]">
+                No similar articles found.
+              </div>
+            )}
+          </div>
+        )}
       </article>
+      {/* Image Zoom Modal */}
+      {zoomedImage && (
+        <ImageZoomModal
+          src={zoomedImage}
+          onClose={() => setZoomedImage(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// Separate component for complex zoom logic
+function ImageZoomModal({
+  src,
+  onClose,
+}: {
+  src: string;
+  onClose: () => void;
+}) {
+  const [scale, setScale] = useState(0.7);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const imageRef = useRef<HTMLImageElement>(null);
+
+  // Lock body scroll
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, []);
+
+  // Lock body scroll
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, []);
+
+  // Wheel zoom
+  const handleWheel = (e: React.WheelEvent) => {
+    e.stopPropagation();
+    const delta = e.deltaY * -0.001;
+    const newScale = Math.min(Math.max(0.5, scale + delta), 4);
+    setScale(newScale);
+  };
+
+  // Drag logic
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isDragging) {
+      e.stopPropagation();
+      setPosition({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y,
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center cursor-zoom-out animate-fade-in backdrop-blur-sm overflow-hidden"
+      onClick={onClose}
+      onWheel={handleWheel}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+      onMouseMove={handleMouseMove}
+    >
+      <div className="relative flex items-center justify-center w-full h-full p-8">
+        <img
+          ref={imageRef}
+          src={src}
+          alt="Zoomed"
+          className="max-w-full max-h-[85vh] object-contain rounded-sm shadow-2xl transition-transform duration-75 ease-out cursor-move"
+          style={{
+            transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+          }}
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={handleMouseDown}
+          draggable={false}
+        />
+      </div>
+
+      {/* Controls */}
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-4 bg-black/50 backdrop-blur-md px-4 py-2 rounded-full text-white/90">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setScale((s) => Math.max(0.5, s - 0.5));
+          }}
+          className="hover:text-white p-1"
+        >
+          -
+        </button>
+        <span className="text-xs font-mono w-12 text-center">
+          {Math.round(scale * 100)}%
+        </span>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setScale((s) => Math.min(4, s + 0.5));
+          }}
+          className="hover:text-white p-1"
+        >
+          +
+        </button>
+        <div className="w-px h-4 bg-white/20 mx-1" />
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setScale(0.7);
+            setPosition({ x: 0, y: 0 });
+          }}
+          className="text-xs hover:text-white"
+        >
+          Reset
+        </button>
+      </div>
+
+      <button
+        className="absolute top-4 right-4 text-white/70 hover:text-white p-2 transition-colors"
+        onClick={onClose}
+        aria-label="Close zoom"
+      >
+        <svg
+          className="w-8 h-8"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M6 18L18 6M6 6l12 12"
+          />
+        </svg>
+      </button>
     </div>
   );
 }

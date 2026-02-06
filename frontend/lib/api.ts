@@ -187,6 +187,13 @@ export const contentAPI = {
 
     return response.json();
   },
+
+  // Trigger summarization (POST /content/{item_id}/summary)
+  summarize: async (id: string) => {
+    return fetchWithAuth(`${API_BASE_URL}/content/${id}/summary`, {
+      method: "POST",
+    });
+  },
 };
 
 // Lists API - matches your /lists endpoints (for future use)

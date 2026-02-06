@@ -187,7 +187,7 @@ describe("HighlightsPanel", () => {
         />,
       );
 
-      expect(screen.getByText(/highlights \(3\)/i)).toBeInTheDocument();
+      expect(screen.getByText(/copy \(3\)/i)).toBeInTheDocument();
     });
   });
 
@@ -354,7 +354,6 @@ describe("HighlightsPanel", () => {
 
     it("deletes highlight with confirmation", async () => {
       mockedHighlightsAPI.delete.mockResolvedValue(null);
-      global.confirm = jest.fn(() => true);
 
       render(
         <HighlightsPanel
@@ -368,10 +367,20 @@ describe("HighlightsPanel", () => {
       const deleteButton = screen.getByLabelText(/^delete$/i);
       fireEvent.click(deleteButton);
 
+      // Wait for modal to appear
       await waitFor(() => {
-        expect(global.confirm).toHaveBeenCalledWith(
-          "Are you sure you want to delete this highlight?",
-        );
+        expect(screen.getByText("Delete Highlight")).toBeInTheDocument();
+      });
+
+      expect(
+        screen.getByText(/this action cannot be undone/i),
+      ).toBeInTheDocument();
+
+      // Click the Delete button in the modal (last Delete button)
+      const allDeleteButtons = screen.getAllByText("Delete");
+      fireEvent.click(allDeleteButtons[allDeleteButtons.length - 1]);
+
+      await waitFor(() => {
         expect(mockedHighlightsAPI.delete).toHaveBeenCalledWith("delete-test");
         expect(mockShowToast).toHaveBeenCalledWith(
           "Highlight deleted",
@@ -382,8 +391,6 @@ describe("HighlightsPanel", () => {
     });
 
     it("does not delete when user cancels", async () => {
-      global.confirm = jest.fn(() => false);
-
       render(
         <HighlightsPanel
           highlights={highlightToDelete}
@@ -396,16 +403,23 @@ describe("HighlightsPanel", () => {
       const deleteButton = screen.getByLabelText(/^delete$/i);
       fireEvent.click(deleteButton);
 
+      // Modal should appear
+      expect(screen.getByText("Delete Highlight")).toBeInTheDocument();
+
+      // Click Cancel
+      const cancelButton = screen.getByRole("button", { name: /cancel/i });
+      fireEvent.click(cancelButton);
+
       await waitFor(() => {
-        expect(global.confirm).toHaveBeenCalled();
-        expect(mockedHighlightsAPI.delete).not.toHaveBeenCalled();
-        expect(mockOnHighlightDeleted).not.toHaveBeenCalled();
+        expect(screen.queryByText("Delete Highlight")).not.toBeInTheDocument();
       });
+
+      expect(mockedHighlightsAPI.delete).not.toHaveBeenCalled();
+      expect(mockOnHighlightDeleted).not.toHaveBeenCalled();
     });
 
     it("handles delete error gracefully", async () => {
       mockedHighlightsAPI.delete.mockRejectedValue(new Error("Delete failed"));
-      global.confirm = jest.fn(() => true);
 
       render(
         <HighlightsPanel
@@ -418,6 +432,15 @@ describe("HighlightsPanel", () => {
 
       const deleteButton = screen.getByLabelText(/^delete$/i);
       fireEvent.click(deleteButton);
+
+      // Wait for modal to appear
+      await waitFor(() => {
+        expect(screen.getByText("Delete Highlight")).toBeInTheDocument();
+      });
+
+      // Click the Delete button in the modal (last Delete button)
+      const allDeleteButtons = screen.getAllByText("Delete");
+      fireEvent.click(allDeleteButtons[allDeleteButtons.length - 1]);
 
       await waitFor(() => {
         expect(mockShowToast).toHaveBeenCalledWith(

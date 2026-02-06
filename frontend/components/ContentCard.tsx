@@ -320,7 +320,7 @@ export default function ContentCard({
       <ConfirmModal
         isOpen={showDeleteModal}
         title="Delete Article"
-        message="Are you sure you want to delete this article? This action cannot be undone."
+        message="This action cannot be undone."
         confirmText="Delete"
         cancelText="Cancel"
         danger={true}

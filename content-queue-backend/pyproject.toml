@@ -31,7 +31,8 @@ dependencies = [
     "beautifulsoup4 (>=4.14.3,<5.0.0)",
     "lxml (>=6.0.2,<7.0.0)",
     "requests (>=2.32.5,<3.0.0)",
-    "slowapi (>=0.1.9) ; python_version >= \"3.11\" and python_version < \"4.0\""
+    "slowapi (>=0.1.9) ; python_version >= \"3.11\" and python_version < \"4.0\"",
+    "pypdf (>=6.6.2,<7.0.0)"
 ]
 
 [tool.poetry]

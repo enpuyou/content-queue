@@ -28,6 +28,14 @@ export default function ListsPage() {
   const [lists, setLists] = useState<ListWithCount[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredLists = lists.filter(
+    (list) =>
+      list.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (list.description &&
+        list.description.toLowerCase().includes(searchQuery.toLowerCase())),
+  );
 
   // Modal state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -139,10 +147,38 @@ export default function ListsPage() {
           </div>
         )}
 
-        {/* Lists as block grid layout - square blocks */}
+        {/* Search */}
         {lists.length > 0 && (
+          <div className="mb-6">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search lists..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-[var(--color-bg-secondary)] border border-[var(--color-border)] pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-[var(--color-accent)] transition-colors rounded-none placeholder-[var(--color-text-muted)] text-[var(--color-text-primary)]"
+              />
+              <svg
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)]"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </div>
+          </div>
+        )}
+
+        {/* Lists as block grid layout - square blocks */}
+        {filteredLists.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {lists.map((list) => (
+            {filteredLists.map((list) => (
               <ListBlockCard
                 key={list.id}
                 id={list.id}
@@ -155,6 +191,12 @@ export default function ListsPage() {
               />
             ))}
           </div>
+        ) : (
+          lists.length > 0 && (
+            <div className="text-center py-12 text-[var(--color-text-muted)] border border-dashed border-[var(--color-border)]">
+              No lists match "{searchQuery}"
+            </div>
+          )
         )}
       </div>
 

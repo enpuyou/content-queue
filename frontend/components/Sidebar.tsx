@@ -90,7 +90,7 @@ export default function Sidebar() {
         {/* App Title */}
         <div className="px-4">
           <h1 className="font-serif text-2xl font-normal text-[var(--color-text-primary)] tracking-tight">
-            sedi
+            sed.i
           </h1>
         </div>
 

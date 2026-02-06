@@ -35,6 +35,7 @@ class ContentItem(Base):
     # Extracted metadata
     title = Column(Text)
     description = Column(Text)
+    summary = Column(Text)  # AI-generated summary
     thumbnail_url = Column(Text)
     content_type = Column(
         String(50), index=True

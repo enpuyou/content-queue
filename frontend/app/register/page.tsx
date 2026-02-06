@@ -46,7 +46,7 @@ export default function RegisterPage() {
       <div className="max-w-md w-full space-y-8 p-8">
         <div>
           <h2 className="font-serif text-3xl font-normal text-center text-[var(--color-text-primary)]">
-            sedi
+            sed.i
           </h2>
         </div>
 

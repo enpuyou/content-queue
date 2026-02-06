@@ -5,12 +5,13 @@ import {
   useContext,
   useState,
   useEffect,
+  useLayoutEffect,
   ReactNode,
 } from "react";
 
 export interface ReadingSettings {
   theme: "light" | "dark" | "sepia";
-  fontFamily: "system" | "serif" | "sans";
+  fontFamily: "system" | "serif" | "sans" | "merriweather" | "verdana";
   fontSize: "small" | "medium" | "large";
   contentWidth: "narrow" | "medium" | "wide";
   lineHeight: "compact" | "comfortable" | "spacious";
@@ -44,34 +45,33 @@ const ReadingSettingsContext = createContext<ReadingSettingsContextType | null>(
 );
 
 export function ReadingSettingsProvider({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = useState<ReadingSettings>(DEFAULTS);
-  const [loaded, setLoaded] = useState(false);
-
-  // Load settings from localStorage on mount
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        setSettings({ ...DEFAULTS, ...JSON.parse(saved) });
-      } catch (err) {
-        console.error("Failed to parse settings:", err);
+  // Initialize from localStorage synchronously to prevent flash
+  const [settings, setSettings] = useState<ReadingSettings>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          return { ...DEFAULTS, ...JSON.parse(saved) };
+        } catch (err) {
+          console.error("Failed to parse settings:", err);
+        }
       }
     }
-    setLoaded(true);
-  }, []);
+    return DEFAULTS;
+  });
+
+  // Apply theme synchronously before paint to prevent flash
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    const themes = ["light", "dark", "sepia"];
+    root.classList.remove(...themes);
+    root.classList.add(settings.theme);
+  }, [settings.theme]);
 
   // Save settings to localStorage whenever they change
   useEffect(() => {
-    if (loaded) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-
-      // Apply theme to document - safely toggle classes without wiping fonts
-      const root = document.documentElement;
-      const themes = ["light", "dark", "sepia"];
-      root.classList.remove(...themes);
-      root.classList.add(settings.theme);
-    }
-  }, [settings, loaded]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  }, [settings]);
 
   const updateSetting = <K extends keyof ReadingSettings>(
     key: K,

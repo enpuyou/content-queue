@@ -50,7 +50,11 @@ export default function SettingsPreview() {
                             ? "font-serif-setting"
                             : settings.fontFamily === "sans"
                               ? "font-sans-setting"
-                              : "font-system-setting"
+                              : settings.fontFamily === "merriweather"
+                                ? "font-merriweather-setting"
+                                : settings.fontFamily === "verdana"
+                                  ? "font-verdana-setting"
+                                  : "font-system-setting"
                         }
                         ${
                           settings.fontSize === "small"

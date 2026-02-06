@@ -47,34 +47,39 @@ export default function ConfirmModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black bg-opacity-30 transition-opacity"
-        onClick={onCancel}
+        className="absolute inset-0 bg-black/60 cursor-default"
+        onClick={(e) => {
+          e.stopPropagation();
+          onCancel();
+        }}
       />
 
-      {/* Modal */}
-      <div className="relative bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-none max-w-md w-full mx-4 p-8 z-10">
-        <h3 className="font-serif text-xl font-normal text-[var(--color-text-primary)] mb-4">
+      {/* Modal - Are.na ultra-minimal style */}
+      <div
+        className="relative bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-none w-72 p-4 z-10"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-sm font-medium text-[var(--color-text-primary)] mb-1">
           {title}
         </h3>
 
-        <p className="text-[var(--color-text-secondary)] mb-8 leading-relaxed">
-          {message}
-        </p>
+        <p className="text-xs text-[var(--color-text-muted)] mb-4">{message}</p>
 
-        <div className="flex gap-4 justify-end">
+        {/* Buttons - navbar style */}
+        <div className="flex gap-2 justify-end">
           <button
             onClick={onCancel}
-            className="px-4 py-2 text-[var(--color-text-muted)] border border-[var(--color-border)] rounded-none hover:text-[var(--color-text-primary)] transition-colors"
+            className="text-xs px-2 py-0.5 leading-none rounded-none border border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-text-primary)] transition-colors"
           >
             {cancelText}
           </button>
 
           <button
             onClick={onConfirm}
-            className={`px-4 py-2 rounded-none transition-colors ${
+            className={`text-xs px-2 py-0.5 leading-none rounded-none border transition-colors ${
               danger
-                ? "bg-red-600 text-white hover:bg-red-700 border border-red-600"
-                : "bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] border border-[var(--color-accent)]"
+                ? "bg-rose-50 dark:bg-red-900/30 text-rose-500 dark:text-red-400 border-transparent hover:border-red-500 dark:hover:bg-red-900/50"
+                : "border-[var(--color-accent)] bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] hover:border-[var(--color-accent-hover)]"
             }`}
           >
             {confirmText}

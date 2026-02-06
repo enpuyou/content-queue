@@ -62,16 +62,37 @@ def generate_embedding(self, content_item_id: str):
         if item.description:
             text_parts.append(item.description)
         if item.full_text:
-            # Truncate full text to ~8000 tokens (~6000 words)
-            # OpenAI's limit is 8191 tokens for text-embedding-3-small
-            words = item.full_text.split()
-            if len(words) > 6000:
-                truncated_text = " ".join(words[:6000])
-                text_parts.append(truncated_text)
-            else:
-                text_parts.append(item.full_text)
+            text_parts.append(item.full_text)
 
-        text_to_embed = "\n\n".join(text_parts)
+        combined_text = "\n\n".join(text_parts)
+
+        # Use tiktoken to count tokens accurately
+        # text-embedding-3-small uses cl100k_base encoding
+        try:
+            import tiktoken
+
+            encoding = tiktoken.get_encoding("cl100k_base")
+            tokens = encoding.encode(combined_text)
+
+            # Limit to 8000 tokens (leaving buffer for safety, max is 8191)
+            if len(tokens) > 8000:
+                logger.info(
+                    f"Truncating text from {len(tokens)} to 8000 tokens for {item.original_url}"
+                )
+                tokens = tokens[:8000]
+                text_to_embed = encoding.decode(tokens)
+            else:
+                text_to_embed = combined_text
+        except Exception as e:
+            logger.warning(
+                f"Token counting failed, falling back to character limit: {e}"
+            )
+            # Fallback: simple character limit (conservative estimate: ~4 chars per token)
+            max_chars = 8000 * 4  # ~32k characters
+            if len(combined_text) > max_chars:
+                text_to_embed = combined_text[:max_chars]
+            else:
+                text_to_embed = combined_text
 
         # Generate embedding using OpenAI
         client = OpenAI(api_key=settings.OPENAI_API_KEY)

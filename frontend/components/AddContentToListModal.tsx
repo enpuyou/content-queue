@@ -104,12 +104,18 @@ export default function AddContentToListModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 p-4">
-      <div className="bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-none max-w-2xl w-full max-h-[80vh] flex flex-col">
+    <div
+      className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-none max-w-lg w-full max-h-[70vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="p-6 border-b border-[var(--color-border)]">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-serif text-2xl font-normal text-[var(--color-text-primary)]">
+        <div className="p-4 border-b border-[var(--color-border)]">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-medium text-[var(--color-text-primary)]">
               Add Content to List
             </h2>
             <button
@@ -143,7 +149,7 @@ export default function AddContentToListModal({
         </div>
 
         {/* Content list */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-4">
           {fetching ? (
             <div className="text-center py-8 text-[var(--color-text-muted)]">
               Loading content...
@@ -230,24 +236,24 @@ export default function AddContentToListModal({
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
+        <div className="p-4 border-t border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-[var(--color-text-secondary)]">
+            <span className="text-xs text-[var(--color-text-muted)]">
               {selectedIds.size} item{selectedIds.size !== 1 ? "s" : ""}{" "}
               selected
             </span>
-            <div className="flex gap-4">
+            <div className="flex gap-2">
               <button
                 onClick={onClose}
                 disabled={loading}
-                className="px-4 py-2 text-[var(--color-text-muted)] border border-[var(--color-border)] rounded-none hover:text-[var(--color-text-primary)] transition-colors disabled:opacity-50"
+                className="text-xs px-2 py-0.5 leading-none rounded-none border border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-accent)] transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={loading || selectedIds.size === 0}
-                className="px-4 py-2 text-white bg-[var(--color-accent)] rounded-none hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="text-xs px-2 py-0.5 leading-none rounded-none border border-[var(--color-accent)] bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] hover:border-[var(--color-accent-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? "Adding..." : `Add to List`}
               </button>

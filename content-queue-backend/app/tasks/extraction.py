@@ -112,6 +112,66 @@ def extract_metadata(self, content_item_id: str):
         return {"content_item_id": content_item_id, "status": "failed", "error": str(e)}
 
 
+def clean_html_tree(soup: BeautifulSoup):
+    """
+    Clean the HTML tree before passing to Trafilatura.
+    Removes noise, comments, and fixes structure that might confuse specific extractors.
+    """
+    if not soup:
+        return
+
+    # 1. Remove Comments
+    comment_selectors = [
+        "#comments",
+        ".comments-area",
+        "div[class*='comments-area']",
+        ".comment-list",
+        "[data-test-id='comment-list']",
+        ".comments-section",
+        "div[id^='comments']",
+    ]
+    for selector in comment_selectors:
+        for match in soup.select(selector):
+            match.decompose()
+
+    # 2. Remove Specific Noise Phrases (Sidebars, CTAs)
+    noise_phrases = [
+        "Reading Progress",
+        "On This Page",
+        "Schedule a Mock Interview",
+        "Mark as read",
+        "Your account is free and you can post anonymously",
+    ]
+
+    for phrase in noise_phrases:
+        # Find identifying strings
+        matches = list(soup.find_all(string=lambda t: t and phrase in t))
+        for text_node in matches:
+            if not text_node.parent:
+                continue  # Already removed
+
+            # Walk up to find the container to remove
+            curr = text_node.parent
+            depth = 0
+            while curr and depth < 5:
+                if curr.name in ["body", "html", "main", "article"]:
+                    break
+
+                # If we hit a block level container, remove it
+                if curr.name in ["div", "section", "aside", "nav"]:
+                    # Safely remove
+                    curr.decompose()
+                    break
+
+                curr = curr.parent
+                depth += 1
+
+    # 3. Convert Material UI Typography to <p>
+    # Trafilatura handles <p> tags better than <div> for link-heavy content
+    for div in soup.select("div.MuiTypography-body1"):
+        div.name = "p"
+
+
 @celery_app.task(base=DatabaseTask, bind=True, max_retries=2)
 def extract_full_content(self, content_item_id: str):
     """
@@ -169,6 +229,18 @@ def extract_full_content(self, content_item_id: str):
 
         # Extract article HTML using trafilatura (preserves formatting)
         downloaded = response.content
+
+        # PRE-PROCESSING: Clean HTML tree
+        # Parse with BS to remove noise before extraction
+        try:
+            # Trafilatura handles bytes/string. BS handles bytes best.
+            soup = BeautifulSoup(downloaded, "html.parser")
+            clean_html_tree(soup)
+            cleaned_html = str(soup)
+            downloaded = cleaned_html  # Use cleaned HTML for extraction
+        except Exception as e:
+            logger.warning(f"Error during HTML pre-cleaning: {e}")
+            # If cleaning fails, proceed with original content
 
         # First try: Extract as HTML with formatting
         xml_content = trafilatura.extract(
@@ -343,10 +415,6 @@ def xml_to_html(xml_content: str, original_html: bytes = None) -> str:
             else:
                 logger.warning("No header hierarchy found in XML, defaulting all to H2")
 
-        # Track if we've seen substantial content (to skip title/breadcrumb headers)
-        seen_substantial_content = False
-        SUBSTANTIAL_TEXT_LENGTH = 100  # Characters
-
         # Get page title and description to filter out duplicates
         page_title = None
         page_title_words = set()
@@ -453,55 +521,65 @@ def xml_to_html(xml_content: str, original_html: bytes = None) -> str:
         # First pass: collect headers and filter title duplicates
         headers_to_process = []
         for elem in main.find_all(recursive=False):
+            text = elem.get_text(strip=True)
+            if not text or len(text) < 3:
+                continue
+
+            is_header = False
+            text_lower = text.lower()
+
+            # Check if this element should be treated as a header
             if elem.name == "head":
-                text = elem.get_text(strip=True)
-                if text and len(text) >= 3:
-                    text_lower = text.lower()
+                is_header = True
+            elif elem.name == "p" and use_original_hierarchy:
+                # If we have the original hierarchy, allow paragraphs that match known headers
+                if text_lower in original_header_map:
+                    is_header = True
 
-                    # Skip navigation keywords
-                    nav_keywords = [
-                        "search",
-                        "menu",
-                        "sign in",
-                        "log in",
-                        "login",
-                        "get premium",
-                        "subscribe",
-                        "navigation",
-                        "skip to",
-                        "toggle",
-                        "⌘",
-                    ]
-                    if any(keyword in text_lower for keyword in nav_keywords):
-                        continue
+            if not is_header:
+                continue
 
-                    # Skip if this header matches the page title
-                    if page_title and (
-                        text_lower in page_title
-                        or page_title in text_lower
-                        or
-                        # Check if header contains significant title words
-                        any(word in text_lower for word in page_title_words)
-                    ):
-                        logger.debug(
-                            f"Skipping title-matching header: '{text[:40]}...'"
-                        )
-                        continue
+            # Skip navigation keywords
+            nav_keywords = [
+                "search",
+                "menu",
+                "sign in",
+                "log in",
+                "login",
+                "get premium",
+                "subscribe",
+                "navigation",
+                "skip to",
+                "toggle",
+                "⌘",
+            ]
+            if any(keyword in text_lower for keyword in nav_keywords):
+                continue
 
-                    # Get level
-                    normalized_text = text_lower
-                    if (
-                        use_original_hierarchy
-                        and normalized_text in original_header_map
-                    ):
-                        raw_level = original_header_map[normalized_text]
-                    else:
-                        rend = elem.get("rend", "h2")
-                        raw_level = 2
-                        if rend.startswith("h") and rend[1:].isdigit():
-                            raw_level = int(rend[1:])
+            # Skip if this header matches the page title
+            if page_title and (
+                text_lower in page_title
+                or page_title in text_lower
+                or
+                # Check if header contains significant title words
+                any(word in text_lower for word in page_title_words)
+            ):
+                logger.debug(f"Skipping title-matching header: '{text[:40]}...'")
+                continue
 
-                    headers_to_process.append((elem, text, raw_level))
+            # Get level
+            normalized_text = text_lower
+
+            if use_original_hierarchy and normalized_text in original_header_map:
+                raw_level = original_header_map[normalized_text]
+            else:
+                # Fallback for explicit <head> tags
+                rend = elem.get("rend", "h2")
+                raw_level = 2
+                if rend.startswith("h") and rend[1:].isdigit():
+                    raw_level = int(rend[1:])
+
+            headers_to_process.append((elem, text, raw_level))
 
         # Renormalize header levels after filtering
         # Find min level and map to H2-H4 range
@@ -555,6 +633,35 @@ def xml_to_html(xml_content: str, original_html: bytes = None) -> str:
             # This is tricky because we process element by element.
             # Best place is typically AFTER a paragraph that matches prev_context
             pass
+
+            # PRIORITY HEADER CHECK
+            header_match_data = None
+            if header_index < len(headers_to_process):
+                stored_elem, stored_text, raw_level = headers_to_process[header_index]
+                if stored_elem == elem:
+                    header_match_data = (stored_elem, stored_text, raw_level)
+
+            if header_match_data:
+                stored_elem, stored_text, raw_level = header_match_data
+
+                # Use the pre-computed normalized level
+                new_level = header_level_map.get(raw_level, 2)
+                # Clamp to H2-H4
+                new_level = max(2, min(4, new_level))
+
+                # Check for images before header (using next_context match on header text)
+                for img in original_images:
+                    if not img["inserted"] and img["next_context"]:
+                        clean_next = img["next_context"].replace("\n", " ").strip()[:50]
+                        clean_header = stored_text.replace("\n", " ").strip()
+
+                        if len(clean_next) > 10 and clean_next in clean_header:
+                            html_parts.append(format_image_html(img))
+                            img["inserted"] = True
+
+                html_parts.append(f"<h{new_level}>{stored_text}</h{new_level}>")
+                header_index += 1
+                continue
 
             if elem.name == "p":
                 # Preserve inline elements (links, emphasis) within paragraphs
@@ -610,8 +717,7 @@ def xml_to_html(xml_content: str, original_html: bytes = None) -> str:
                             logger.debug(
                                 f"Skipping description paragraph: '{paragraph_html[:40]}...'"
                             )
-                            if len(paragraph_html) >= SUBSTANTIAL_TEXT_LENGTH:
-                                seen_substantial_content = True
+
                             continue
 
                     # CHECK FOR IMAGES matched by NEXT context (should be inserted BEFORE this paragraph)
@@ -647,40 +753,6 @@ def xml_to_html(xml_content: str, original_html: bytes = None) -> str:
                                 logger.info(
                                     f"Re-inserted image (after match) {img['src'][:30]}..."
                                 )
-
-                    if len(paragraph_html) >= SUBSTANTIAL_TEXT_LENGTH:
-                        seen_substantial_content = True
-
-            elif elem.name == "head":
-                # Skip headers that appear before first substantial paragraph
-                if not seen_substantial_content:
-                    continue
-
-                # Check if this is one of our pre-processed headers
-                if header_index < len(headers_to_process):
-                    stored_elem, stored_text, raw_level = headers_to_process[
-                        header_index
-                    ]
-                    if stored_elem == elem:
-                        # Use the pre-computed normalized level
-                        new_level = header_level_map.get(raw_level, 2)
-                        # Clamp to H2-H4
-                        new_level = max(2, min(4, new_level))
-
-                        # Check for images before header (using next_context match on header text)
-                        for img in original_images:
-                            if not img["inserted"] and img["next_context"]:
-                                clean_next = (
-                                    img["next_context"].replace("\n", " ").strip()[:50]
-                                )
-                                clean_header = stored_text.replace("\n", " ").strip()
-
-                                if len(clean_next) > 10 and clean_next in clean_header:
-                                    html_parts.append(format_image_html(img))
-                                    img["inserted"] = True
-
-                        html_parts.append(f"<h{new_level}>{stored_text}</h{new_level}>")
-                        header_index += 1
 
             elif elem.name == "list":
                 items = elem.find_all("item")

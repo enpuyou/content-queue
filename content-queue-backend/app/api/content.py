@@ -15,6 +15,7 @@ from app.schemas.content import (
     ContentItemDetail,
 )
 from app.tasks.extraction import extract_metadata
+from app.tasks.summarization import generate_summary
 
 
 def compute_reading_status(
@@ -284,3 +285,35 @@ def delete_content_item(
     db.commit()
 
     return None
+
+
+@router.post(
+    "/{item_id}/summary", response_model=dict, status_code=status.HTTP_202_ACCEPTED
+)
+def generate_content_summary(
+    item_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Trigger summary generation for a content item.
+    """
+    item = (
+        db.query(ContentItem)
+        .filter(
+            ContentItem.id == item_id,
+            ContentItem.user_id == current_user.id,
+            ContentItem.deleted_at.is_(None),
+        )
+        .first()
+    )
+
+    if not item:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Content item not found"
+        )
+
+    # Trigger task
+    generate_summary.delay(str(item.id))
+
+    return {"status": "processing", "message": "Summary generation started"}

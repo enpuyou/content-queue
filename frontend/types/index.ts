@@ -13,6 +13,7 @@ export interface ContentItem {
   original_url: string;
   title: string | null;
   description: string | null;
+  summary?: string | null;
   thumbnail_url: string | null;
   content_type: string | null;
   tags: string[] | null;

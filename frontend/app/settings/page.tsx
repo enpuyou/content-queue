@@ -16,7 +16,10 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg-primary)] flex flex-col">
+    <div
+      className="min-h-screen bg-[var(--color-bg-primary)] flex flex-col"
+      suppressHydrationWarning
+    >
       <Navbar />
 
       <main className="flex-1 flex flex-col max-w-5xl mx-auto w-full px-4 py-6 sm:px-6 lg:px-8">

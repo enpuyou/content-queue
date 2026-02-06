@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, EB_Garamond } from "next/font/google";
+import { Inter, Libre_Caslon_Text, Merriweather } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ToastProvider } from "@/contexts/ToastContext";
@@ -13,14 +13,20 @@ const inter = Inter({
   variable: "--font-sans",
 });
 
-const ebGaramond = EB_Garamond({
+const libreCaslon = Libre_Caslon_Text({
   subsets: ["latin"],
   variable: "--font-serif",
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "700"],
+});
+
+const merriweather = Merriweather({
+  subsets: ["latin"],
+  variable: "--font-merriweather",
+  weight: ["300", "400", "700", "900"],
 });
 
 export const metadata: Metadata = {
-  title: "sedi",
+  title: "sed.i",
   description: "Your personal reading queue with AI-powered recommendations",
 };
 
@@ -30,7 +36,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${ebGaramond.variable}`}>
+    <html
+      lang="en"
+      className={`${inter.variable} ${libreCaslon.variable} ${merriweather.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         <ThemeScript />
       </head>

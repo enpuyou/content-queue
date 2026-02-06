@@ -31,7 +31,7 @@ export default function Home() {
       <div className="max-w-md w-full text-center space-y-8 p-8">
         <div>
           <h1 className="font-serif text-4xl font-normal text-[var(--color-text-primary)]">
-            sedi
+            sed.i
           </h1>
           <p className="mt-4 text-md text-[var(--color-text-secondary)]">
             Content aggregation and reading queue

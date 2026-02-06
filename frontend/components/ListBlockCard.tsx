@@ -126,7 +126,7 @@ export default function ListBlockCard({
                   e.preventDefault();
                   onDelete(id);
                 }}
-                className="flex-1 text-xs px-2 py-1 rounded-none bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+                className="flex-1 text-xs px-2 py-1 rounded-none bg-rose-50 dark:bg-red-900/30 text-rose-500 dark:text-red-400 hover:bg-red-50 hover:text-red-400 dark:hover:bg-red-900/50 transition-colors"
               >
                 Delete
               </button>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { highlightsAPI } from "@/lib/api";
 import { useToast } from "@/contexts/ToastContext";
+import ConfirmModal from "@/components/ConfirmModal";
 
 interface Highlight {
   id: string;
@@ -38,6 +39,8 @@ export default function HighlightsPanel({
   const [editNote, setEditNote] = useState("");
   const [editColor, setEditColor] = useState("");
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [justCopied, setJustCopied] = useState(false);
   const { showToast } = useToast();
 
   const handleStartEdit = (highlight: Highlight) => {
@@ -70,10 +73,6 @@ export default function HighlightsPanel({
   };
 
   const handleDelete = async (highlightId: string) => {
-    if (!confirm("Are you sure you want to delete this highlight?")) {
-      return;
-    }
-
     try {
       setIsDeleting(highlightId);
       await highlightsAPI.delete(highlightId);
@@ -84,6 +83,7 @@ export default function HighlightsPanel({
       showToast("Failed to delete highlight", "error");
     } finally {
       setIsDeleting(null);
+      setDeleteConfirmId(null);
     }
   };
 
@@ -97,7 +97,9 @@ export default function HighlightsPanel({
 
     try {
       await navigator.clipboard.writeText(markdown);
+      setJustCopied(true);
       showToast("Copied to clipboard", "success");
+      setTimeout(() => setJustCopied(false), 4000);
     } catch (error) {
       console.error("Failed to copy highlights:", error);
       showToast("Failed to copy", "error");
@@ -114,23 +116,22 @@ export default function HighlightsPanel({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="p-4 border-b border-[var(--color-border)] flex items-center justify-between">
-        <h3 className="font-semibold text-[var(--color-text-primary)]">
-          Highlights ({highlights.length})
-        </h3>
+      {/* Sticky copy button */}
+      <div className="px-4 pt-4 pb-2">
         <button
           onClick={handleCopyAllHighlights}
           className="text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"
           title="Copy all highlights as Markdown"
           aria-label="Copy all highlights"
         >
-          Copy All
+          {justCopied
+            ? `Copied (${highlights.length})`
+            : `Copy (${highlights.length})`}
         </button>
       </div>
 
-      {/* Highlights List */}
-      <div className="flex-1 overflow-y-auto">
+      {/* Highlights List - Scrollable */}
+      <div className="flex-1 overflow-y-auto px-4 pb-4">
         {highlights.map((highlight) => {
           const isEditing = editingId === highlight.id;
           const isBeingDeleted = isDeleting === highlight.id;
@@ -138,12 +139,12 @@ export default function HighlightsPanel({
           return (
             <div
               key={highlight.id}
-              className="border-b border-[var(--color-border)] p-4 hover:bg-[var(--color-bg-secondary)] transition-colors"
+              className="border border-transparent hover:border-[var(--color-accent)] p-2 mb-4 transition-colors rounded-none"
               role="listitem"
             >
               {/* Highlighted Text */}
               <div
-                className="p-2 rounded-none mb-2 cursor-pointer text-sm outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+                className="p-2 rounded-none mb-2 text-sm outline-none cursor-pointer"
                 style={
                   {
                     backgroundColor: `var(--highlight-${isEditing ? editColor : highlight.color})`,
@@ -158,7 +159,6 @@ export default function HighlightsPanel({
                 }}
                 role="button"
                 tabIndex={0}
-                title="Click to scroll to this highlight"
                 aria-label={`Go to highlight: ${highlight.text}`}
               >
                 {highlight.text.length > 150
@@ -238,9 +238,9 @@ export default function HighlightsPanel({
                       Edit
                     </button>
                     <button
-                      onClick={() => handleDelete(highlight.id)}
+                      onClick={() => setDeleteConfirmId(highlight.id)}
                       disabled={isBeingDeleted}
-                      className="text-xs px-2 py-1 rounded-none bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="text-xs px-2 py-1 rounded-none bg-rose-50 dark:bg-red-900/30 text-rose-500 dark:text-red-400 hover:bg-red-50 hover:text-red-400 dark:hover:bg-red-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       aria-label="Delete"
                     >
                       {isBeingDeleted ? "Deleting..." : "Delete"}
@@ -252,6 +252,18 @@ export default function HighlightsPanel({
           );
         })}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={deleteConfirmId !== null}
+        title="Delete Highlight"
+        message="This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        danger={true}
+        onConfirm={() => deleteConfirmId && handleDelete(deleteConfirmId)}
+        onCancel={() => setDeleteConfirmId(null)}
+      />
     </div>
   );
 }

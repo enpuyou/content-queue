@@ -79,11 +79,17 @@ export default function ContentPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-gray-500 mb-2">Loading article...</div>
-          <div className="text-sm text-gray-400">
-            Preparing your reading experience
+      <div className="min-h-screen bg-[var(--color-bg-primary)] flex items-center justify-center">
+        <div className="text-center font-mono">
+          {/* Typewriter dots animation */}
+          <div className="flex items-center justify-center gap-1 text-[var(--color-text-muted)]">
+            <span className="inline-block animate-pulse">.</span>
+            <span className="inline-block animate-pulse [animation-delay:0.3s]">
+              .
+            </span>
+            <span className="inline-block animate-pulse [animation-delay:0.6s]">
+              .
+            </span>
           </div>
         </div>
       </div>
@@ -92,17 +98,17 @@ export default function ContentPage() {
 
   if (error || !content) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center max-w-md">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+      <div className="min-h-screen bg-[var(--color-bg-primary)] flex items-center justify-center">
+        <div className="text-center max-w-md px-4">
+          <h1 className="font-serif text-2xl font-normal text-[var(--color-text-primary)] mb-2">
             Article Not Found
           </h1>
-          <p className="text-gray-600 mb-6">
+          <p className="text-[var(--color-text-secondary)] mb-6">
             {error || "This article could not be loaded."}
           </p>
           <a
             href="/dashboard"
-            className="inline-block bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors"
+            className="inline-block bg-[var(--color-accent)] text-white px-6 py-2 hover:bg-[var(--color-accent-hover)] transition-colors"
           >
             Back to Dashboard
           </a>

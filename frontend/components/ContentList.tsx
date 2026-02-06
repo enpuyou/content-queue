@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import ContentItem from "./ContentItem";
 import ContentCard from "./ContentCard";
 import { contentAPI, listsAPI } from "@/lib/api";
@@ -10,6 +10,7 @@ import { ContentItem as ContentItemType, List } from "@/types";
 import { useToast } from "@/contexts/ToastContext";
 import { useProcessingPolling } from "@/hooks/useProcessingPolling";
 import { useLists } from "@/contexts/ListsContext";
+import { useHotkeys } from "@/hooks/useHotkeys";
 
 /**
  * Filter type matching the reading status values:
@@ -117,6 +118,57 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
     fetchContents();
     fetchAvailableLists();
   }, [filter]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keyboard navigation state
+  const [selectedIndex, setSelectedIndex] = useState<number>(-1);
+  const router = useRouter();
+
+  // Reset selection when filter changes
+  useEffect(() => {
+    setSelectedIndex(-1);
+  }, [filter, contents]);
+
+  // Handle hotkeys
+  useHotkeys({
+    j: () => {
+      setSelectedIndex((prev) => {
+        const next = Math.min(prev + 1, filteredContents.length - 1);
+        scrollToIndex(next);
+        return next;
+      });
+    },
+    k: () => {
+      setSelectedIndex((prev) => {
+        const next = Math.max(prev - 1, 0);
+        scrollToIndex(next);
+        return next;
+      });
+    },
+    enter: () => {
+      if (selectedIndex >= 0 && selectedIndex < filteredContents.length) {
+        const item = filteredContents[selectedIndex];
+        // Match click logic
+        sessionStorage.setItem(
+          "contentListScrollPos",
+          window.scrollY.toString(),
+        );
+        router.push(`/content/${item.id}`);
+      }
+    },
+  });
+
+  const scrollToIndex = (index: number) => {
+    // Simple logic to scroll element into view if needed
+    // We rely on ID matching logic or just heuristics
+    // Since we don't hold refsArray easily (without refactoring), we use DOM selector
+    if (index < 0) return;
+    setTimeout(() => {
+      const el = document.getElementById(`content-item-${index}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }, 0);
+  };
 
   /**
    * Restore scroll position when navigating back
@@ -453,9 +505,11 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
 
           {/* Desktop: List layout */}
           <div className="hidden sm:block divide-y divide-[var(--color-border-subtle)]">
-            {filteredContents.map((content) => (
+            {filteredContents.map((content, idx) => (
               <ContentItem
                 key={content.id}
+                id={`content-item-${idx}`}
+                isSelected={idx === selectedIndex}
                 content={content}
                 onStatusChange={handleStatusChange}
                 onDelete={handleDelete}

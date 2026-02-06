@@ -527,7 +527,7 @@ describe("ContentItem", () => {
 
       expect(screen.getByText("Delete Article")).toBeInTheDocument();
       expect(
-        screen.getByText(/are you sure you want to delete this article/i),
+        screen.getByText(/this action cannot be undone/i),
       ).toBeInTheDocument();
     });
 
@@ -543,13 +543,15 @@ describe("ContentItem", () => {
       const deleteButton = screen.getByTitle("Delete");
       fireEvent.click(deleteButton);
 
-      // Find the Delete button within the modal (which has the red background)
+      // Wait for modal to appear
+      await waitFor(() => {
+        expect(screen.getByText("Delete Article")).toBeInTheDocument();
+      });
+
+      // Find all Delete buttons and click the one in the modal (the second one)
       const allDeleteButtons = screen.getAllByText("Delete");
-      const confirmButton = allDeleteButtons.find(
-        (btn) =>
-          btn.tagName === "BUTTON" && btn.classList.contains("bg-red-600"),
-      );
-      fireEvent.click(confirmButton!);
+      // First Delete is in the actions menu, second Delete is in the modal
+      fireEvent.click(allDeleteButtons[allDeleteButtons.length - 1]);
 
       await waitFor(() => {
         expect(mockOnDelete).toHaveBeenCalledWith("test-content-123");

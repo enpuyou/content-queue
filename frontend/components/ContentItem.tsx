@@ -36,6 +36,9 @@ interface ContentItemProps {
   onAddToList?: (listId: string) => void;
   // Optional: path to return to from reader
   returnPath?: string;
+  // Keyboard navigation
+  isSelected?: boolean;
+  id?: string;
 }
 
 export default function ContentItem({
@@ -47,6 +50,8 @@ export default function ContentItem({
   availableLists,
   onAddToList,
   returnPath,
+  isSelected,
+  id,
 }: ContentItemProps) {
   /**
    * Hydration fix: Only render relative dates on the client side
@@ -164,8 +169,15 @@ export default function ContentItem({
 
   return (
     <div
+      id={id}
       onClick={handleContainerClick}
-      className="group py-6 px-4 border-b border-[var(--color-border-subtle)] last:border-b-0 transition-all duration-300 cursor-pointer hover:bg-[var(--color-bg-secondary)]"
+      className={`group py-6 px-4 border-b border-[var(--color-border-subtle)] last:border-b-0 transition-all duration-300 cursor-pointer
+        ${
+          isSelected
+            ? "bg-[var(--color-bg-secondary)] border-l-4 border-l-[var(--color-accent)] pl-3 -ml-1 shadow-sm"
+            : "hover:bg-[var(--color-bg-secondary)]"
+        }
+      `}
     >
       <div className="flex items-start gap-4">
         {/* Left side: Content info */}
@@ -473,7 +485,7 @@ export default function ContentItem({
               {/* Delete */}
               <button
                 onClick={() => setShowDeleteModal(true)}
-                className="text-xs px-2 py-1 rounded-none bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+                className="text-xs px-2 py-1 rounded-none bg-rose-50 dark:bg-red-900/30 text-rose-500 dark:text-red-400 border border-transparent hover:border-red-500 dark:hover:bg-red-900/50 dark:hover:text-red-400 transition-colors"
                 title="Delete"
               >
                 Delete
@@ -497,7 +509,7 @@ export default function ContentItem({
       <ConfirmModal
         isOpen={showDeleteModal}
         title="Delete Article"
-        message="Are you sure you want to delete this article? This action cannot be undone."
+        message="This action cannot be undone."
         confirmText="Delete"
         cancelText="Cancel"
         danger={true}

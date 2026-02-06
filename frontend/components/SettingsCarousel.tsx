@@ -31,6 +31,8 @@ const settings: SettingConfig[] = [
     options: [
       { value: "serif", label: "Serif" },
       { value: "sans", label: "Sans" },
+      { value: "merriweather", label: "Merriweather" },
+      { value: "verdana", label: "Verdana" },
       { value: "system", label: "System" },
     ],
   },

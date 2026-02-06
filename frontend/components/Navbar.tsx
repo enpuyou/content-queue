@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import SearchBar from "@/components/SearchBar";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -11,10 +11,36 @@ export default function Navbar() {
   const { logout } = useAuth();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
+  const lastScrollY = useRef(0);
 
   const isQueueActive = pathname === "/dashboard";
   const isListsActive = pathname === "/lists";
   const isSettingsActive = pathname === "/settings";
+
+  // Scroll-based visibility
+  useEffect(() => {
+    const SCROLL_THRESHOLD = 10;
+
+    const handleScroll = () => {
+      const scrollY = window.scrollY;
+      const deltaY = scrollY - lastScrollY.current;
+
+      if (Math.abs(deltaY) > SCROLL_THRESHOLD) {
+        if (deltaY > 0 && scrollY > 100) {
+          // Scrolling down & past 100px - hide navbar
+          setIsVisible(false);
+        } else if (deltaY < 0 || scrollY < 50) {
+          // Scrolling up or near top - show navbar
+          setIsVisible(true);
+        }
+        lastScrollY.current = scrollY;
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
@@ -24,16 +50,18 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="relative w-full bg-[var(--color-bg-primary)] border-b border-[var(--color-border)]">
+    <nav
+      className={`sticky top-0 z-50 w-full transition-transform duration-300 ${isVisible ? "translate-y-0" : "-translate-y-full"}`}
+    >
       <div className="px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between w-full gap-4 sm:gap-8 h-20">
+        <div className="flex items-center justify-between w-full gap-4 sm:gap-8 h-14">
           {/* Left: Logo and Search */}
           <div className="flex items-center gap-6 flex-1">
             <Link
               href="/dashboard"
               className="font-serif text-xl font-normal text-[var(--color-text-primary)] whitespace-nowrap flex items-center"
             >
-              sedi
+              sed.i
             </Link>
             <div className="hidden md:block w-96">
               <SearchBar />
@@ -45,7 +73,7 @@ export default function Navbar() {
             <ThemeToggle />
             <button
               onClick={() => (window.location.href = "/dashboard")}
-              className={`text-xs px-2 py-1.5 leading-none rounded-none border transition-colors ${
+              className={`text-xs px-2 py-0.5 leading-none rounded-none border transition-colors ${
                 isQueueActive
                   ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-accent)]"
                   : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
@@ -55,7 +83,7 @@ export default function Navbar() {
             </button>
             <button
               onClick={() => (window.location.href = "/lists")}
-              className={`text-xs px-2 py-1.5 leading-none rounded-none border transition-colors ${
+              className={`text-xs px-2 py-0.5 leading-none rounded-none border transition-colors ${
                 isListsActive
                   ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-accent)]"
                   : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
@@ -65,7 +93,7 @@ export default function Navbar() {
             </button>
             <button
               onClick={() => (window.location.href = "/settings")}
-              className={`text-xs px-2 py-1.5 leading-none rounded-none border transition-colors ${
+              className={`text-xs px-2 py-0.5 leading-none rounded-none border transition-colors ${
                 isSettingsActive
                   ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-accent)]"
                   : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
@@ -74,7 +102,7 @@ export default function Navbar() {
               Settings
             </button>
             <button
-              className="text-xs px-2 py-1.5 leading-none rounded-none border bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] transition-colors border-[var(--color-border)] hover:border-red-600 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400"
+              className="text-xs px-2 py-0.5 leading-none rounded-none border bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] transition-colors border-[var(--color-border)] hover:border-rose-400 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-red-900/30 dark:hover:text-red-400 dark:hover:border-red-500"
               onClick={logout}
             >
               Logout
@@ -169,7 +197,7 @@ export default function Navbar() {
               {/* Logout Button */}
               <button
                 onClick={handleLogout}
-                className="w-full text-xs px-2 py-1 leading-none rounded-none border bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] transition-colors border-[var(--color-border)] hover:border-red-600 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400"
+                className="w-full text-xs px-2 py-1 leading-none rounded-none border bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] transition-colors border-[var(--color-border)] hover:border-rose-400 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-red-900/30 dark:hover:text-red-400 dark:hover:border-red-500"
               >
                 Logout
               </button>

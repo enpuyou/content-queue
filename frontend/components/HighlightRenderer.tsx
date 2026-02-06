@@ -20,6 +20,7 @@ interface HighlightRendererProps {
     highlight: Highlight,
     clickedElement?: HTMLElement,
   ) => void;
+  onImageClick?: (src: string) => void;
 }
 
 const colorClasses: Record<string, string> = {
@@ -51,6 +52,7 @@ const HighlightRenderer = ({
   html,
   highlights,
   onHighlightClick,
+  onImageClick,
 }: HighlightRendererProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [renderedHtml, setRenderedHtml] = useState<string>(html);
@@ -178,9 +180,21 @@ const HighlightRenderer = ({
     <div
       id="article-content"
       ref={containerRef}
+      className="cursor-text select-text [&_img]:cursor-zoom-in"
       dangerouslySetInnerHTML={{ __html: renderedHtml }}
       onClick={(e) => {
         const target = e.target as HTMLElement;
+
+        // Handle Image Click
+        if (target.tagName === "IMG" && onImageClick) {
+          const img = target as HTMLImageElement;
+          if (img.src) {
+            e.preventDefault();
+            onImageClick(img.src);
+            return;
+          }
+        }
+
         // Check closest because click might be on a <strong> tag inside the span
         const highlightElement = target.closest(
           "[data-highlight-id]",

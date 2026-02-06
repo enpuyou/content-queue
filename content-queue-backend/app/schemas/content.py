@@ -21,6 +21,7 @@ class ContentItemResponse(BaseModel):
     description: str | None
     thumbnail_url: str | None
     content_type: str | None
+    summary: str | None
     tags: list[str] | None = []
 
     # Full content fields

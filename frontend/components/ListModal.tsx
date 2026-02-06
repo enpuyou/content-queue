@@ -134,43 +134,40 @@ export default function ListModal({
   return (
     <>
       {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black bg-opacity-30 z-40"
-        onClick={handleClose}
-      />
+      <div className="fixed inset-0 bg-black/60 z-40" onClick={handleClose} />
 
       {/* Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div
-          className="bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-none max-w-md w-full p-8"
+          className="bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-none max-w-sm w-full p-5"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="mb-8">
-            <h2 className="font-serif text-2xl font-normal text-[var(--color-text-primary)]">
+          <div className="mb-5">
+            <h2 className="text-sm font-medium text-[var(--color-text-primary)]">
               {isEditing ? "Edit List" : "Create New List"}
             </h2>
-            <p className="text-[var(--color-text-secondary)] mt-2 text-sm">
+            <p className="text-xs text-[var(--color-text-muted)] mt-1">
               {isEditing
                 ? "Update the details of your list"
-                : "Organize your content into a custom collection"}
+                : "Organize your content into a collection"}
             </p>
           </div>
 
           {/* Error message */}
           {error && (
-            <div className="border-l-4 border-red-600 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 px-4 py-3 rounded-none mb-6">
+            <div className="border-l-2 border-red-500 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 px-3 py-2 text-xs rounded-none mb-4">
               {error}
             </div>
           )}
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {/* Name field */}
             <div>
               <label
                 htmlFor="name"
-                className="block text-sm font-medium text-[var(--color-text-primary)] mb-2"
+                className="block text-xs font-medium text-[var(--color-text-primary)] mb-1"
               >
                 List Name *
               </label>
@@ -190,7 +187,7 @@ export default function ListModal({
             <div>
               <label
                 htmlFor="description"
-                className="block text-sm font-medium text-[var(--color-text-primary)] mb-2"
+                className="block text-xs font-medium text-[var(--color-text-primary)] mb-1"
               >
                 Description (optional)
               </label>
@@ -229,19 +226,19 @@ export default function ListModal({
             )}
 
             {/* Buttons */}
-            <div className="flex gap-4 pt-6">
+            <div className="flex gap-2 pt-4">
               <button
                 type="button"
                 onClick={handleClose}
                 disabled={loading}
-                className="flex-1 px-4 py-2 border border-[var(--color-border)] text-[var(--color-text-muted)] rounded-none hover:text-[var(--color-text-primary)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 text-xs px-2 py-1 leading-none rounded-none border border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-accent)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={loading || !name.trim()}
-                className="flex-1 px-4 py-2 bg-[var(--color-accent)] text-white rounded-none hover:bg-[var(--color-accent-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 text-xs px-2 py-1 leading-none rounded-none border border-[var(--color-accent)] bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)] hover:border-[var(--color-accent-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading
                   ? "Saving..."

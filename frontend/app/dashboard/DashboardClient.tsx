@@ -5,8 +5,10 @@ import AddContentForm from "@/components/AddContentForm";
 import ContentList from "@/components/ContentList";
 import Navbar from "@/components/Navbar";
 import { ContentItem } from "@/types";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function DashboardClient() {
+  const { user } = useAuth();
   const contentListRef = useRef<{ addNewItem: (item: ContentItem) => void }>(
     null,
   );
@@ -25,7 +27,15 @@ export default function DashboardClient() {
           {/* Header with Title and Add Form */}
           <div>
             <h1 className="font-serif text-3xl font-normal text-[var(--color-text-primary)]">
-              My Queue
+              {/* Prevent flash: render nothing or skeleton while loading, default to Hello */}
+              {!user ? (
+                // While loading or not logged in (though protected route handles not logged in), show neutral
+                <span className="opacity-0">Hello</span>
+              ) : user.full_name ? (
+                `Hello ${user.full_name.split(" ")[0]}`
+              ) : (
+                "Hello"
+              )}
             </h1>
             {/* Add Content Form */}
             <div className="mt-2">

@@ -166,7 +166,7 @@ export default function MobileActionsMenu({
                     e.stopPropagation();
                     handleAction(onDelete);
                   }}
-                  className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                  className="w-full text-left px-4 py-2 text-sm text-rose-500 dark:text-red-400 hover:bg-rose-50 dark:hover:bg-red-900/20 transition-colors"
                 >
                   Delete
                 </button>

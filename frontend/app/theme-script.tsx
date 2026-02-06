@@ -7,10 +7,18 @@ export function ThemeScript() {
         __html: `
           (function() {
             try {
-              const theme = localStorage.getItem('theme') ||
-                (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+              var settings = localStorage.getItem('sedi-reading-settings');
+              var theme = 'light';
+              if (settings) {
+                var parsed = JSON.parse(settings);
+                theme = parsed.theme || 'light';
+              } else {
+                theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+              }
               document.documentElement.classList.add(theme);
-            } catch (e) {}
+            } catch (e) {
+              document.documentElement.classList.add('light');
+            }
           })();
         `,
       }}
