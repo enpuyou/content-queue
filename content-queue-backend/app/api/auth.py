@@ -10,8 +10,7 @@ from app.models.user import User
 from app.schemas.user import UserCreate, UserResponse, Token
 from app.models.content import ContentItem
 from app.models.highlight import Highlight
-
-# from app.tasks.extraction import extract_full_content  # No longer needed for static guide
+from app.tasks.extraction import extract_metadata
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -136,6 +135,25 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
         db.add(hl_2)
 
     db.commit()
+
+    # ---------------------------------------------------------
+    # Add Example Article: TextEdit and the Relief of Simple Software
+    # ---------------------------------------------------------
+    example_article = ContentItem(
+        user_id=new_user.id,
+        original_url="https://www.newyorker.com/culture/infinite-scroll/textedit-and-the-relief-of-simple-software",
+        title="TextEdit and the Relief of Simple Software",
+        description="A reflection on the virtues of minimalist software and focused tools.",
+        content_type="article",
+        processing_status="pending",  # Will be extracted by background task
+        submitted_via="system_default",
+    )
+    db.add(example_article)
+    db.commit()
+    db.refresh(example_article)
+
+    # Trigger background extraction for the example article
+    extract_metadata.delay(str(example_article.id))
 
     return new_user
 
