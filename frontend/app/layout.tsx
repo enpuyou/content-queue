@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
-import { Inter, Libre_Caslon_Text, Merriweather } from "next/font/google";
+import {
+  Inter,
+  Libre_Caslon_Text,
+  EB_Garamond,
+  Merriweather,
+} from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { ToastProvider } from "@/contexts/ToastContext";
 import { ListsProvider } from "@/contexts/ListsContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ReadingSettingsProvider } from "@/contexts/ReadingSettingsContext";
@@ -17,6 +21,12 @@ const libreCaslon = Libre_Caslon_Text({
   subsets: ["latin"],
   variable: "--font-serif",
   weight: ["400", "700"],
+});
+
+const ebGaramond = EB_Garamond({
+  subsets: ["latin"],
+  variable: "--font-logo",
+  weight: ["400", "500", "600", "700"],
 });
 
 const merriweather = Merriweather({
@@ -38,7 +48,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${libreCaslon.variable} ${merriweather.variable}`}
+      className={`${inter.variable} ${libreCaslon.variable} ${ebGaramond.variable} ${merriweather.variable}`}
       suppressHydrationWarning
     >
       <head>
@@ -48,9 +58,11 @@ export default function RootLayout({
         <ReadingSettingsProvider>
           <ThemeProvider>
             <AuthProvider>
-              <ToastProvider>
-                <ListsProvider>{children}</ListsProvider>
-              </ToastProvider>
+              <ListsProvider>
+                <div className="min-h-screen bg-[var(--color-bg-primary)] transition-colors duration-300">
+                  {children}
+                </div>
+              </ListsProvider>
             </AuthProvider>
           </ThemeProvider>
         </ReadingSettingsProvider>

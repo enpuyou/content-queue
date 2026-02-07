@@ -3,7 +3,7 @@
 import { createContext, useContext, ReactNode } from "react";
 import { useReadingSettings } from "./ReadingSettingsContext";
 
-type Theme = "light" | "dark" | "sepia";
+type Theme = "light" | "dark" | "sepia" | "true-black";
 
 interface ThemeContextType {
   theme: Theme;
@@ -18,8 +18,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const { settings, updateSetting } = useReadingSettings();
 
   const toggleTheme = () => {
-    // Toggle between light and dark (skip sepia in toggle)
-    const newTheme = settings.theme === "light" ? "dark" : "light";
+    // Cycle: light -> dark -> true-black -> light
+    let newTheme: Theme = "light";
+    if (settings.theme === "light") newTheme = "dark";
+    else if (settings.theme === "dark") newTheme = "true-black";
+    else if (settings.theme === "true-black") newTheme = "light";
+    else newTheme = "light"; // Default fallback (e.g. from sepia)
+
     updateSetting("theme", newTheme);
   };
 

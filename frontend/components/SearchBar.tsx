@@ -4,6 +4,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { searchAPI } from "@/lib/api";
+import RetroLoader from "./RetroLoader";
 
 /**
  * SearchBar Component
@@ -117,13 +118,16 @@ export default function SearchBar() {
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           placeholder="Search..."
-          className="w-full px-3 py-2 border border-transparent bg-transparent rounded-none text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] transition-all focus:outline-none focus:border-[var(--color-accent)] focus:bg-[var(--color-bg-secondary)] hover:border-[var(--color-border)] hover:bg-[var(--color-bg-secondary)]"
+          className="w-full px-3 py-2 border border-transparent bg-transparent rounded-none font-mono text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] transition-all focus:outline-none focus:border-[var(--color-accent)] focus:bg-[var(--color-bg-secondary)] hover:border-[var(--color-border)] hover:bg-[var(--color-bg-secondary)]"
         />
 
-        {/* Loading Spinner */}
+        {/* Retro Loading State */}
         {loading && (
           <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-            <div className="animate-spin h-4 w-4 border-2 border-[var(--color-accent)] border-t-transparent rounded-full"></div>
+            <RetroLoader
+              text="Searching"
+              className="text-xs text-[var(--color-accent)]"
+            />
           </div>
         )}
 

@@ -247,6 +247,9 @@ async def update_content_item(
     if update_data.tags is not None:
         item.tags = update_data.tags
 
+    if update_data.full_text is not None:
+        item.full_text = update_data.full_text
+
     db.commit()
     db.refresh(item)
     return item

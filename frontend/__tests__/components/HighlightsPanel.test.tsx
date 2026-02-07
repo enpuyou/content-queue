@@ -22,12 +22,6 @@ import { highlightsAPI } from "../../lib/api";
 jest.mock("../../lib/api");
 const mockedHighlightsAPI = highlightsAPI as jest.Mocked<typeof highlightsAPI>;
 
-// Mock the ToastContext
-const mockShowToast = jest.fn();
-jest.mock("../../contexts/ToastContext", () => ({
-  useToast: () => ({ showToast: mockShowToast }),
-}));
-
 // Mock clipboard API
 Object.assign(navigator, {
   clipboard: {
@@ -264,10 +258,6 @@ describe("HighlightsPanel", () => {
           note: "Original note",
         });
 
-        expect(mockShowToast).toHaveBeenCalledWith(
-          "Highlight updated",
-          "success",
-        );
         expect(mockOnHighlightUpdated).toHaveBeenCalled();
       });
     });
@@ -382,10 +372,6 @@ describe("HighlightsPanel", () => {
 
       await waitFor(() => {
         expect(mockedHighlightsAPI.delete).toHaveBeenCalledWith("delete-test");
-        expect(mockShowToast).toHaveBeenCalledWith(
-          "Highlight deleted",
-          "success",
-        );
         expect(mockOnHighlightDeleted).toHaveBeenCalled();
       });
     });
@@ -443,10 +429,6 @@ describe("HighlightsPanel", () => {
       fireEvent.click(allDeleteButtons[allDeleteButtons.length - 1]);
 
       await waitFor(() => {
-        expect(mockShowToast).toHaveBeenCalledWith(
-          "Failed to delete highlight",
-          "error",
-        );
         expect(mockOnHighlightDeleted).not.toHaveBeenCalled();
       });
     });
@@ -510,10 +492,6 @@ describe("HighlightsPanel", () => {
         expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
           expect.stringContaining("First highlight"),
         );
-        expect(mockShowToast).toHaveBeenCalledWith(
-          "Copied to clipboard",
-          "success",
-        );
       });
     });
 
@@ -534,8 +512,9 @@ describe("HighlightsPanel", () => {
       const copyButton = screen.getByRole("button", { name: /copy all/i });
       fireEvent.click(copyButton);
 
+      // Just verify the error was caught, no toast to check
       await waitFor(() => {
-        expect(mockShowToast).toHaveBeenCalledWith("Failed to copy", "error");
+        expect(navigator.clipboard.writeText).toHaveBeenCalled();
       });
     });
   });

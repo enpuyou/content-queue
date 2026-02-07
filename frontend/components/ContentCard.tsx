@@ -8,7 +8,7 @@ import StatusIndicator from "./StatusIndicator";
 import MobileActionsMenu from "./MobileActionsMenu";
 import ConfirmModal from "./ConfirmModal";
 import { contentAPI } from "@/lib/api";
-import { useToast } from "@/contexts/ToastContext";
+import RetroLoader from "./RetroLoader";
 
 interface ContentCardProps {
   content: ContentItemType;
@@ -22,6 +22,7 @@ interface ContentCardProps {
   availableLists?: Array<{ id: string; name: string }>;
   onAddToList?: (listId: string) => void;
   returnPath?: string; // Path to return to when clicking back from reader
+  isRemoving?: boolean;
 }
 
 export default function ContentCard({
@@ -33,13 +34,13 @@ export default function ContentCard({
   availableLists,
   onAddToList,
   returnPath,
+  isRemoving = false,
 }: ContentCardProps) {
   const [isEditingTags, setIsEditingTags] = useState(false);
   const [tagInput, setTagInput] = useState("");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
-  const { showToast } = useToast();
 
   useEffect(() => {
     setMounted(true);
@@ -57,10 +58,8 @@ export default function ContentCard({
         onUpdate(updated);
       }
       setTagInput("");
-      showToast("Tag added", "success");
     } catch (error) {
       console.error("Failed to add tag:", error);
-      showToast("Failed to add tag", "error");
     }
   };
 
@@ -73,10 +72,8 @@ export default function ContentCard({
       if (onUpdate) {
         onUpdate(updated);
       }
-      showToast("Tag removed", "success");
     } catch (error) {
       console.error("Failed to remove tag:", error);
-      showToast("Failed to remove tag", "error");
     }
   };
 
@@ -101,7 +98,6 @@ export default function ContentCard({
     content.processing_status === "pending" ||
     content.processing_status === "processing";
   const hasFailed = content.processing_status === "failed";
-  const hasMinimalData = !content.title && !content.description;
 
   // Check if content was added within last 10 minutes
   const isJustAdded = () => {
@@ -115,8 +111,16 @@ export default function ContentCard({
   return (
     <div
       onClick={handleCardClick}
-      className="block p-4 border border-[var(--color-border)] transition-colors hover:border-[var(--color-accent)] cursor-pointer bg-[var(--color-bg-primary)]"
+      className="block p-4 border border-[var(--color-border)] transition-colors hover:border-[var(--color-accent)] cursor-pointer bg-[var(--color-bg-primary)] relative"
     >
+      {/* Retro Removing Overlay */}
+      {isRemoving && (
+        <div className="absolute inset-0 flex items-center justify-center z-20 bg-[var(--color-bg-primary)]/90 font-mono text-sm text-[var(--color-accent)]">
+          <span className="animate-pulse">Removing...</span>
+          <span className="inline-block w-2.5 h-4 bg-[var(--color-accent)] ml-1 animate-pulse"></span>
+        </div>
+      )}
+
       <div className="flex items-start gap-4">
         {/* Thumbnail */}
         {content.thumbnail_url && (
@@ -132,17 +136,14 @@ export default function ContentCard({
           {/* Processing Status Badge */}
           {isProcessing && (
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs text-[var(--color-text-muted)] italic">
-                {content.processing_status === "pending" &&
-                  "Finding your article..."}
-                {content.processing_status === "processing" &&
-                  "Preparing your article..."}
-              </span>
-              <div className="flex gap-1">
-                <span className="inline-block w-1.5 h-1.5 bg-[var(--color-accent)] rounded-full animate-pulse"></span>
-                <span className="inline-block w-1.5 h-1.5 bg-[var(--color-accent)] rounded-full animate-pulse [animation-delay:0.2s]"></span>
-                <span className="inline-block w-1.5 h-1.5 bg-[var(--color-accent)] rounded-full animate-pulse [animation-delay:0.4s]"></span>
-              </div>
+              <RetroLoader
+                text={
+                  content.processing_status === "pending"
+                    ? "Finding your article"
+                    : "Preparing your article"
+                }
+                className="text-xs text-[var(--color-text-muted)] italic"
+              />
             </div>
           )}
 
@@ -181,9 +182,6 @@ export default function ContentCard({
           <h3 className="font-serif text-lg font-medium text-[var(--color-text-primary)] mb-1 line-clamp-2">
             {(() => {
               // Show helpful title based on state
-              if (isProcessing && hasMinimalData) {
-                return "Loading article...";
-              }
               if (content.title) {
                 return content.title;
               }
@@ -195,16 +193,12 @@ export default function ContentCard({
           </h3>
 
           {/* Description */}
-          {content.description ? (
+          {/* Description / Failed link */}
+          {content.description && !isProcessing && !hasFailed ? (
             <p className="text-sm text-[var(--color-text-muted)] line-clamp-2 mb-2">
               {content.description}
             </p>
-          ) : isProcessing ? (
-            <p className="text-sm text-[var(--color-text-faint)] italic line-clamp-2 mb-2">
-              Extracting content from {new URL(content.original_url).hostname}
-              ...
-            </p>
-          ) : hasFailed ? (
+          ) : isProcessing ? null : hasFailed ? (
             <p className="text-sm text-[var(--color-text-muted)] line-clamp-2 mb-2">
               <a
                 href={content.original_url}

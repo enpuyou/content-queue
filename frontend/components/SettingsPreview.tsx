@@ -82,7 +82,7 @@ export default function SettingsPreview() {
           {previewParagraphs.map((para, index) => (
             <p
               key={index}
-              className={`text-[var(--color-text-secondary)] mb-4 last:mb-0 ${para.hiddenOnMobile ? "hidden sm:block" : ""}`}
+              className={`text-[var(--color-text-secondary)] mb-4 last:mb-0 antialiased ${para.hiddenOnMobile ? "hidden sm:block" : ""}`}
             >
               {settings.bionicReading ? (
                 <BionicText text={para.text} />

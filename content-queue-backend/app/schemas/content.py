@@ -81,10 +81,14 @@ class ContentItemDetail(ContentItemResponse):
 class ContentItemUpdate(BaseModel):
     """Fields that can be updated"""
 
+    title: str | None = None
+    description: str | None = None
+    thumbnail_url: str | None = None
     is_read: bool | None = None
     is_archived: bool | None = None
-    read_position: Optional[float] = None
+    read_position: float | None = None
     tags: list[str] | None = None
+    full_text: str | None = None  # Allow updating full text (e.g. for persistence)
 
 
 class ContentItemList(BaseModel):

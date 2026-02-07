@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { highlightsAPI } from "@/lib/api";
-import { useToast } from "@/contexts/ToastContext";
 import ConfirmModal from "@/components/ConfirmModal";
 
 interface Highlight {
@@ -41,7 +40,6 @@ export default function HighlightsPanel({
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [justCopied, setJustCopied] = useState(false);
-  const { showToast } = useToast();
 
   const handleStartEdit = (highlight: Highlight) => {
     setEditingId(highlight.id);
@@ -61,14 +59,12 @@ export default function HighlightsPanel({
         note: editNote || undefined,
         color: editColor,
       });
-      showToast("Highlight updated", "success");
       onHighlightUpdated();
       setEditingId(null);
       setEditNote("");
       setEditColor("");
     } catch (error) {
       console.error("Error updating highlight:", error);
-      showToast("Failed to update highlight", "error");
     }
   };
 
@@ -76,11 +72,9 @@ export default function HighlightsPanel({
     try {
       setIsDeleting(highlightId);
       await highlightsAPI.delete(highlightId);
-      showToast("Highlight deleted", "success");
       onHighlightDeleted();
     } catch (error) {
       console.error("Error deleting highlight:", error);
-      showToast("Failed to delete highlight", "error");
     } finally {
       setIsDeleting(null);
       setDeleteConfirmId(null);
@@ -98,11 +92,9 @@ export default function HighlightsPanel({
     try {
       await navigator.clipboard.writeText(markdown);
       setJustCopied(true);
-      showToast("Copied to clipboard", "success");
       setTimeout(() => setJustCopied(false), 4000);
     } catch (error) {
       console.error("Failed to copy highlights:", error);
-      showToast("Failed to copy", "error");
     }
   };
 

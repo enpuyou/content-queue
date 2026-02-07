@@ -51,25 +51,25 @@ export default function ListBlockCard({
   return (
     <Link href={`/lists/${id}`}>
       <div
-        className="relative aspect-square max-w-xs mx-auto border border-[var(--color-border)] rounded-none bg-[var(--color-bg-secondary)] hover:border-[var(--color-accent)] transition-all cursor-pointer overflow-hidden group"
+        className="relative aspect-square max-w-xs mx-auto border border-[var(--color-border)] rounded-none bg-transparent hover:border-[var(--color-accent)] transition-all cursor-pointer overflow-hidden group"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
         {/* Base Content */}
-        <div className="p-4 h-full flex flex-col justify-between items-center text-center">
-          <div className="flex-1 w-full">
-            <h3 className="font-serif text-base font-normal text-[var(--color-text-primary)] line-clamp-2">
+        <div className="p-6 h-full flex flex-col justify-between items-center text-center">
+          <div className="flex-1 w-full flex flex-col justify-center">
+            <h3 className="font-serif text-xl font-normal text-[var(--color-text-primary)] line-clamp-2 group-hover:text-[var(--color-accent)] transition-colors">
               {name}
             </h3>
             {description && (
-              <p className="text-xs text-[var(--color-text-muted)] mt-1 line-clamp-1">
+              <p className="font-sans text-sm text-[var(--color-text-muted)] mt-2 line-clamp-2">
                 {description}
               </p>
             )}
           </div>
 
-          <div className="flex flex-col items-center gap-2 mt-4 w-full">
-            <span className="text-xs text-[var(--color-text-muted)]">
+          <div className="flex flex-col items-center gap-2 mt-4 w-full border-t border-dashed border-[var(--color-border-subtle)] pt-4">
+            <span className="text-[10px] uppercase tracking-widest text-[var(--color-text-faint)]">
               {contentCount} {contentCount === 1 ? "item" : "items"}
             </span>
             {isShared && (

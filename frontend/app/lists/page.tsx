@@ -3,9 +3,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { listsAPI } from "@/lib/api";
 import ListModal from "@/components/ListModal";
+import RetroLoader from "@/components/RetroLoader";
 import ConfirmModal from "@/components/ConfirmModal";
 import ListBlockCard from "@/components/ListBlockCard";
-import { useToast } from "@/contexts/ToastContext";
 import { useLists } from "@/contexts/ListsContext";
 import Navbar from "@/components/Navbar";
 
@@ -22,7 +22,6 @@ interface ListWithCount {
 }
 
 export default function ListsPage() {
-  const { showToast } = useToast();
   const { listCounts, setListCount } = useLists();
 
   const [lists, setLists] = useState<ListWithCount[]>([]);
@@ -56,11 +55,10 @@ export default function ListsPage() {
     } catch (err) {
       console.error("Failed to fetch lists:", err);
       setError("Failed to load lists. Please try again.");
-      showToast("Failed to load lists", "error");
     } finally {
       setLoading(false);
     }
-  }, [setListCount, showToast]);
+  }, [setListCount]);
 
   // Fetch lists on component mount
   useEffect(() => {
@@ -70,14 +68,10 @@ export default function ListsPage() {
   const handleDeleteList = async (listId: string) => {
     try {
       await listsAPI.delete(listId);
-      showToast("List deleted successfully", "success");
       setDeletingList(null);
       fetchLists(); // Refresh the list
     } catch (err) {
       console.error("Failed to delete list:", err);
-      const errorMessage =
-        err instanceof Error ? err.message : "Failed to delete list";
-      showToast(errorMessage, "error");
     }
   };
 
@@ -89,7 +83,7 @@ export default function ListsPage() {
         <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center py-12">
             <div className="text-[var(--color-text-muted)]">
-              Loading your lists...
+              <RetroLoader text="Loading your lists" />
             </div>
           </div>
         </div>
@@ -107,11 +101,8 @@ export default function ListsPage() {
           <div className="flex justify-between items-start">
             <div>
               <h1 className="font-serif text-3xl font-normal text-[var(--color-text-primary)]">
-                My Lists
+                My Collections
               </h1>
-              <p className="text-[var(--color-text-secondary)] text-sm mt-1">
-                Organize your reading queue into collections
-              </p>
             </div>
             <button
               onClick={() => setIsCreateModalOpen(true)}

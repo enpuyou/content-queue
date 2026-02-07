@@ -153,6 +153,7 @@ export const contentAPI = {
       is_archived?: boolean;
       read_position?: number;
       tags?: string[];
+      full_text?: string;
     },
   ) => {
     return fetchWithAuth(`${API_BASE_URL}/content/${id}`, {

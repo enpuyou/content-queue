@@ -10,7 +10,7 @@ import {
 } from "react";
 
 export interface ReadingSettings {
-  theme: "light" | "dark" | "sepia";
+  theme: "light" | "dark" | "sepia" | "true-black";
   fontFamily: "system" | "serif" | "sans" | "merriweather" | "verdana";
   fontSize: "small" | "medium" | "large";
   contentWidth: "narrow" | "medium" | "wide";
@@ -63,7 +63,7 @@ export function ReadingSettingsProvider({ children }: { children: ReactNode }) {
   // Apply theme synchronously before paint to prevent flash
   useLayoutEffect(() => {
     const root = document.documentElement;
-    const themes = ["light", "dark", "sepia"];
+    const themes = ["light", "dark", "sepia", "true-black"];
     root.classList.remove(...themes);
     root.classList.add(settings.theme);
   }, [settings.theme]);

@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { contentAPI } from "@/lib/api";
-import { useToast } from "@/contexts/ToastContext";
 import { ContentItem } from "@/types";
 
 interface AddContentFormProps {
@@ -12,7 +11,6 @@ interface AddContentFormProps {
 export default function AddContentForm({
   onContentAdded,
 }: AddContentFormProps) {
-  const { showToast } = useToast();
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -29,9 +27,6 @@ export default function AddContentForm({
       // Reset form
       setUrl("");
 
-      // Show success toast
-      showToast("Article added successfully!", "success");
-
       // Notify parent component with the new item
       onContentAdded(newItem);
     } catch (err) {
@@ -42,7 +37,6 @@ export default function AddContentForm({
           : "Failed to add content. Please try again.";
 
       setError(errorMessage);
-      showToast(errorMessage, "error");
     } finally {
       setLoading(false);
     }
@@ -56,24 +50,40 @@ export default function AddContentForm({
         </div>
       )}
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 group focus-within:opacity-100 opacity-80 transition-opacity duration-300">
         <input
           type="url"
           id="url"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="Paste article URL here..."
+          placeholder="Paste article URL..."
           required
-          className="flex-1 px-3 py-2 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] rounded-none hover:bg-[var(--color-bg-tertiary)] focus:outline-none focus:border-[var(--color-accent)] placeholder-[var(--color-text-muted)] transition-all"
+          className="flex-1 px-0 py-2 border-b border-[var(--color-border)] bg-transparent rounded-none focus:outline-none focus:!ring-0 focus:!border-[var(--color-border)] focus:!shadow-none placeholder-[var(--color-text-muted)] transition-all font-mono text-sm"
         />
 
         <button
           type="submit"
-          disabled={loading}
-          className="px-3 py-2 bg-[var(--color-accent)] text-white rounded-none hover:bg-[var(--color-accent-hover)] focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-[var(--color-accent)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+          disabled={loading || !url}
+          className="px-2 py-2 text-[var(--color-text-primary)] rounded-full hover:bg-[var(--color-bg-secondary)] focus:outline-none disabled:opacity-30 disabled:cursor-not-allowed transition-all font-mono text-xs"
           title="Add to Queue"
         >
-          {loading ? "..." : "→"}
+          {loading ? (
+            <span className="inline-block animate-pulse">▐</span>
+          ) : (
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+          )}
         </button>
       </div>
     </form>

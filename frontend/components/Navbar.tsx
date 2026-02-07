@@ -54,12 +54,13 @@ export default function Navbar() {
       className={`sticky top-0 z-50 w-full transition-transform duration-300 ${isVisible ? "translate-y-0" : "-translate-y-full"}`}
     >
       <div className="px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between w-full gap-4 sm:gap-8 h-14">
+        <div className="flex items-center justify-between w-full h-14 pl-2">
           {/* Left: Logo and Search */}
           <div className="flex items-center gap-6 flex-1">
             <Link
               href="/dashboard"
-              className="font-serif text-xl font-normal text-[var(--color-text-primary)] whitespace-nowrap flex items-center"
+              className="text-xl font-normal text-[var(--color-text-primary)] whitespace-nowrap flex items-center"
+              style={{ fontFamily: "var(--font-logo)" }}
             >
               sed.i
             </Link>
@@ -110,7 +111,8 @@ export default function Navbar() {
           </div>
 
           {/* Mobile: Theme Toggle and Menu Button */}
-          <div className="flex md:hidden items-center gap-2">
+          {/* Adjusted padding/margin to balance with logo (-mr-2 to account for button padding + SVG internal spacing) */}
+          <div className="flex md:hidden items-center gap-2 -mr-2">
             <ThemeToggle />
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}

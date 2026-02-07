@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { listsAPI } from "@/lib/api";
-import { useToast } from "@/contexts/ToastContext";
 
 interface ListModalProps {
   isOpen: boolean;
@@ -23,8 +22,6 @@ export default function ListModal({
   onSuccess,
   list,
 }: ListModalProps) {
-  const { showToast } = useToast();
-
   // Form state
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -81,7 +78,6 @@ export default function ListModal({
           name: name.trim(),
           description: description.trim() || undefined,
         });
-        showToast("List updated successfully", "success");
       } else {
         // Create new list
         await listsAPI.create({
@@ -89,7 +85,6 @@ export default function ListModal({
           description: description.trim() || undefined,
           is_shared: isShared,
         });
-        showToast("List created successfully", "success");
       }
 
       // Close modal and notify parent to refresh
@@ -99,7 +94,6 @@ export default function ListModal({
       const errorMessage =
         err instanceof Error ? err.message : "Failed to save list";
       setError(errorMessage);
-      showToast(errorMessage, "error");
       console.error(err);
     } finally {
       setLoading(false);

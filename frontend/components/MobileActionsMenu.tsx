@@ -103,7 +103,7 @@ export default function MobileActionsMenu({
                     e.stopPropagation();
                     handleAction(onRead);
                   }}
-                  className="w-full text-left px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-accent)] transition-colors"
+                  className="w-full text-left px-4 py-1 text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-accent)] transition-colors"
                 >
                   {isRead ? "Mark as Unread" : "Mark as Read"}
                 </button>
@@ -114,7 +114,7 @@ export default function MobileActionsMenu({
                     e.stopPropagation();
                     handleAction(onArchive);
                   }}
-                  className="w-full text-left px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-accent)] transition-colors"
+                  className="w-full text-left px-4 py-1 text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-accent)] transition-colors"
                 >
                   {isArchived ? "Unarchive" : "Archive"}
                 </button>
@@ -126,7 +126,7 @@ export default function MobileActionsMenu({
                       e.stopPropagation();
                       setShowListSubmenu(true);
                     }}
-                    className="w-full text-left px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-accent)] transition-colors flex items-center justify-between"
+                    className="w-full text-left px-4 py-1 text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-accent)] transition-colors flex justify-between items-center"
                   >
                     Add to List
                     <span>›</span>
@@ -140,7 +140,7 @@ export default function MobileActionsMenu({
                       e.stopPropagation();
                       handleAction(onRemoveFromList);
                     }}
-                    className="w-full text-left px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-accent)] transition-colors"
+                    className="w-full text-left px-4 py-1 text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-accent)] transition-colors"
                   >
                     Remove from List
                   </button>
@@ -152,7 +152,7 @@ export default function MobileActionsMenu({
                     e.stopPropagation();
                     handleAction(onAddTag);
                   }}
-                  className="w-full text-left px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-accent)] transition-colors"
+                  className="w-full text-left px-4 py-1 text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-accent)] transition-colors"
                 >
                   Add Tag
                 </button>
@@ -166,7 +166,7 @@ export default function MobileActionsMenu({
                     e.stopPropagation();
                     handleAction(onDelete);
                   }}
-                  className="w-full text-left px-4 py-2 text-sm text-rose-500 dark:text-red-400 hover:bg-rose-50 dark:hover:bg-red-900/20 transition-colors"
+                  className="w-full text-left px-4 py-1 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                 >
                   Delete
                 </button>
@@ -179,7 +179,7 @@ export default function MobileActionsMenu({
                     e.stopPropagation();
                     setShowListSubmenu(false);
                   }}
-                  className="w-full text-left px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-accent)] transition-colors flex items-center gap-1"
+                  className="w-full text-left px-4 py-1 text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-accent)] transition-colors flex items-center gap-1"
                 >
                   <span>‹</span> Back
                 </button>
@@ -194,7 +194,7 @@ export default function MobileActionsMenu({
                       e.stopPropagation();
                       handleAddToList(list.id);
                     }}
-                    className="w-full text-left px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-accent)] transition-colors"
+                    className="w-full text-left px-4 py-1 text-sm text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-accent)] transition-colors"
                   >
                     {list.name}
                   </button>

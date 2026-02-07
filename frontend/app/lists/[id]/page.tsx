@@ -3,10 +3,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { listsAPI, contentAPI } from "@/lib/api";
-import { useToast } from "@/contexts/ToastContext";
 import ContentItem from "@/components/ContentItem";
 import ContentCard from "@/components/ContentCard";
+import RetroLoader from "@/components/RetroLoader";
 import AddContentToListModal from "@/components/AddContentToListModal";
+import ListModal from "@/components/ListModal";
 import { ContentItem as ContentItemType } from "@/types";
 import { useLists } from "@/contexts/ListsContext";
 import Navbar from "@/components/Navbar";
@@ -25,7 +26,6 @@ interface ListDetail {
 export default function ListDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { showToast } = useToast();
   const { decrementListCount, incrementListCount } = useLists();
 
   const listId = params.id as string;
@@ -33,32 +33,40 @@ export default function ListDetailPage() {
   const [list, setList] = useState<ListDetail | null>(null);
   const [contents, setContents] = useState<ContentItemType[]>([]);
   const [isAddContentModalOpen, setIsAddContentModalOpen] = useState(false);
+  const [isEditListModalOpen, setIsEditListModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
 
-  const fetchListAndContent = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  const fetchListAndContent = useCallback(
+    async (silent = false) => {
+      try {
+        if (!silent) {
+          setLoading(true);
+        }
+        setError(null);
 
-      // Fetch list details and content in parallel
-      const [listData, contentData] = await Promise.all([
-        listsAPI.getById(listId),
-        listsAPI.getContent(listId),
-      ]);
+        // Fetch list details and content in parallel
+        const [listData, contentData] = await Promise.all([
+          listsAPI.getById(listId),
+          listsAPI.getContent(listId),
+        ]);
 
-      setList(listData);
-      setContents(contentData);
-    } catch (err) {
-      console.error("Failed to fetch list:", err);
-      setError(
-        "Failed to load list. It may not exist or you may not have access.",
-      );
-      showToast("Failed to load list", "error");
-    } finally {
-      setLoading(false);
-    }
-  }, [listId, showToast]);
+        setList(listData);
+        setContents(contentData);
+      } catch (err) {
+        console.error("Failed to fetch list:", err);
+        setError(
+          "Failed to load list. It may not exist or you may not have access.",
+        );
+      } finally {
+        if (!silent) {
+          setLoading(false);
+        }
+      }
+    },
+    [listId],
+  );
 
   // Fetch list details and content
   useEffect(() => {
@@ -69,21 +77,28 @@ export default function ListDetailPage() {
     const previousContents = [...contents];
 
     try {
+      // Show retro effect first
+      setRemovingId(contentId);
+
+      // Wait for animation (800ms)
+      await new Promise((resolve) => setTimeout(resolve, 800));
+
       // Optimistic update - remove from UI immediately
       setContents(contents.filter((c) => c.id !== contentId));
+      setRemovingId(null);
+
       // Also decrement the count in the lists context
       decrementListCount(listId);
 
       // Call API to remove from list
       await listsAPI.removeContent(listId, [contentId]);
-      showToast("Removed from list", "success");
     } catch (err) {
       console.error("Failed to remove from list:", err);
       // Revert on error
       setContents(previousContents);
+      setRemovingId(null);
       // Increment count back on error (undo the decrement)
       incrementListCount(listId);
-      showToast("Failed to remove from list", "error");
     }
   };
 
@@ -106,11 +121,9 @@ export default function ListDetailPage() {
       );
 
       await contentAPI.update(id, updates);
-      showToast("Updated successfully", "success");
     } catch (err) {
       console.error("Failed to update content:", err);
       setContents(previousContents);
-      showToast("Failed to update", "error");
     }
   };
 
@@ -122,11 +135,9 @@ export default function ListDetailPage() {
       setContents(contents.filter((content) => content.id !== id));
 
       await contentAPI.delete(id);
-      showToast("Article deleted successfully", "success");
     } catch (err) {
       console.error("Failed to delete content:", err);
       setContents(previousContents);
-      showToast("Failed to delete article", "error");
     }
   };
 
@@ -134,7 +145,9 @@ export default function ListDetailPage() {
     return (
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center py-12">
-          <div className="text-[var(--color-text-muted)]">Loading list...</div>
+          <div className="text-[var(--color-text-muted)]">
+            <RetroLoader text="Loading list" />
+          </div>
         </div>
       </div>
     );
@@ -177,25 +190,33 @@ export default function ListDetailPage() {
           </button>
 
           {/* Title and Add Content button */}
-          <div className="flex justify-between items-start pb-4 border-b border-[var(--color-border)]">
+          <div className="flex justify-between items-start pb-6 border-b border-dashed border-[var(--color-border)]">
             <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <h1 className="font-serif text-3xl font-normal text-[var(--color-text-primary)]">
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="font-serif text-4xl font-normal text-[var(--color-text-primary)] leading-tight">
                   {list.name}
                 </h1>
+                <button
+                  onClick={() => setIsEditListModalOpen(true)}
+                  className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors px-2 py-1"
+                  title="Edit List Details"
+                >
+                  Edit
+                </button>
                 {list.is_shared && (
-                  <span className="text-xs px-2 py-1 rounded-none border border-[var(--color-border)] text-[var(--color-text-muted)]">
+                  <span className="text-[10px] uppercase tracking-widest px-2 py-1 border border-[var(--color-border)] text-[var(--color-text-muted)] mt-1">
                     Shared
                   </span>
                 )}
               </div>
               {list.description && (
-                <p className="text-[var(--color-text-secondary)] text-sm mt-1">
+                <p className="font-serif text-lg text-[var(--color-text-secondary)] mt-2 leading-relaxed max-w-2xl">
                   {list.description}
                 </p>
               )}
-              <p className="text-xs text-[var(--color-text-muted)] mt-2">
-                {contents.length} {contents.length === 1 ? "item" : "items"}
+              <p className="text-xs uppercase tracking-widest text-[var(--color-text-muted)] mt-4">
+                {contents.length} {contents.length === 1 ? "item" : "items"}{" "}
+                inside
               </p>
             </div>
 
@@ -237,6 +258,7 @@ export default function ListDetailPage() {
                   onDelete={handleDelete}
                   onRemoveFromList={() => handleRemoveFromList(content.id)}
                   returnPath={`/lists/${listId}`}
+                  isRemoving={content.id === removingId}
                 />
               ))}
             </div>
@@ -251,6 +273,7 @@ export default function ListDetailPage() {
                   onDelete={handleDelete}
                   onRemoveFromList={() => handleRemoveFromList(content.id)}
                   returnPath={`/lists/${listId}`}
+                  isRemoving={content.id === removingId}
                 />
               ))}
             </div>
@@ -262,9 +285,27 @@ export default function ListDetailPage() {
           listId={listId}
           onClose={() => setIsAddContentModalOpen(false)}
           onSuccess={() => {
-            fetchListAndContent(); // Refresh the list content
+            fetchListAndContent(true); // Refresh the list content silently
           }}
+          existingContentIds={contents.map((c) => c.id)}
         />
+
+        {/* Edit List Modal */}
+        {list && (
+          <ListModal
+            isOpen={isEditListModalOpen}
+            onClose={() => setIsEditListModalOpen(false)}
+            onSuccess={() => {
+              fetchListAndContent(true);
+            }}
+            list={{
+              id: list.id,
+              name: list.name,
+              description: list.description,
+              is_shared: list.is_shared,
+            }}
+          />
+        )}
       </div>
     </div>
   );

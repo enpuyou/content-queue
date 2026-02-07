@@ -11,6 +11,7 @@ import { useReadingSettings } from "@/contexts/ReadingSettingsContext";
 import { useTTS } from "@/hooks/useTTS";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import HighlightToolbar from "./HighlightToolbar";
+import SequentialRetroLoader from "./SequentialRetroLoader";
 import HighlightRenderer from "./HighlightRenderer";
 import HighlightsPanel from "./HighlightsPanel";
 import ThemeToggle from "./ThemeToggle";
@@ -40,6 +41,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
 
   // Use reading settings from context
   const { settings, updateSetting } = useReadingSettings();
+  const contentRef = useRef<HTMLDivElement>(null);
 
   // Focus mode state
   const [focusMode, setFocusMode] = useState(false);
@@ -59,6 +61,11 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
   const [similarError, setSimilarError] = useState<string | null>(null);
   const [isFadingOut, setIsFadingOut] = useState(false);
 
+  // New Highlight State for Inline Expansion
+  const [newlyCreatedHighlightId, setNewlyCreatedHighlightId] = useState<
+    string | null
+  >(null);
+
   // Summary State
   const [summary, setSummary] = useState<string | null>(
     content.summary || null,
@@ -76,16 +83,87 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
   useHotkeys({
     esc: () => router.push("/dashboard"),
     h: () => setShowHighlightsPanel((prev) => !prev),
-    t: () => (isPlaying ? pause() : resume()), // Simple toggle, ideally smarter
+    t: () => (isPlaying ? pause() : resume()), // Simple toggle
+    // Ephemeral formatting for user readability - NOW PERSISTED
+    b: async (e) => {
+      e.preventDefault();
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
+        // Build a temporary document fragment to analyze
+        const range = selection.getRangeAt(0);
+
+        // Check if selection is already bold by looking at parent elements
+        // OR checking if the range contents are fully wrapped in B/STRONG
+        let isBold = false;
+        let parent = range.commonAncestorContainer.parentElement;
+        while (parent && parent !== contentRef.current) {
+          if (parent.tagName === "B" || parent.tagName === "STRONG") {
+            isBold = true;
+            break;
+          }
+          parent = parent.parentElement;
+        }
+
+        try {
+          if (isBold) {
+            // Basic un-bold implementation (execCommand is deprecated but robust for simple toggles in contentEditable)
+            // Since we are not contentEditable, we might need a more complex DOM manipulation
+            // Reverting to execCommand for simplicity if we made the area editable temporarily?
+            // Actually, surroundContents throws if partial.
+            // Let's stick to the current "Add Bold" but improve it:
+            // To properly UN-bold without execCommand is complex.
+            // A cheat: use execCommand on a hidden editable div? No.
+            // Given the constraints and the "Reader" nature, let's try to strip if strictly matching?
+            // For now, let's just APPLY bold. The user asked to UNBOLD.
+            // Retrying with a safer approach:
+            const span = document.createElement("span");
+            span.style.fontWeight = "bold";
+            // If already bold (via style or tag), we might want to set font-weight normal?
+            // But simpler: just toggle a class?
+            // Let's use the 'B' tag as requested.
+
+            // NEW APPROACH: Simple Toggle using document.execCommand (safest visual toggle)
+            // We need `contentRef` to be `contentEditable` for a millisecond?
+            if (contentRef.current) {
+              contentRef.current.contentEditable = "true";
+              document.execCommand("bold");
+              contentRef.current.contentEditable = "false";
+
+              // Persist
+              const newHtml = contentRef.current.innerHTML;
+              await contentAPI.update(content.id, { full_text: newHtml });
+            }
+          } else {
+            // If not bold, make it bold
+            if (contentRef.current) {
+              contentRef.current.contentEditable = "true";
+              document.execCommand("bold");
+              contentRef.current.contentEditable = "false";
+
+              const newHtml = contentRef.current.innerHTML;
+              await contentAPI.update(content.id, { full_text: newHtml });
+            }
+          }
+        } catch (err) {
+          console.warn("Formatting failed", err);
+        }
+      }
+    },
+    i: async (e) => {
+      e.preventDefault();
+      // Similar approach for Italic
+      if (contentRef.current) {
+        contentRef.current.contentEditable = "true";
+        document.execCommand("italic");
+        contentRef.current.contentEditable = "false";
+
+        const newHtml = contentRef.current.innerHTML;
+        await contentAPI.update(content.id, { full_text: newHtml });
+      }
+    },
   });
 
   const [selection, setSelection] = useState<ExtendedSelection | null>(null);
-  const [isNoteOpen, setIsNoteOpen] = useState(false);
-
-  // Reset note state when selection changes (e.g. clicking a new highlight or clearing)
-  useEffect(() => {
-    setIsNoteOpen(false);
-  }, [selection]);
 
   const [_isCreatingHighlight, _setIsCreatingHighlight] = useState(false);
 
@@ -100,7 +178,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
       note?: string;
     }>
   >([]);
-  const [_loadingHighlights, setLoadingHighlights] = useState(false);
+  const [_loadingHighlights, _setLoadingHighlights] = useState(false);
 
   // Highlights panel visibility
   const [showHighlightsPanel, setShowHighlightsPanel] = useState(false);
@@ -410,21 +488,29 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
     setTocHeadings(headings);
   }, [content.full_text, content.title]);
 
-  // Fetch highlights when article loads
-  const fetchHighlights = useCallback(async () => {
-    try {
-      setLoadingHighlights(true);
-      const data = await highlightsAPI.getByContent(content.id);
-      setHighlights(data);
-    } catch (error) {
-      console.error("Failed to load highlights:", error);
-    } finally {
-      setLoadingHighlights(false);
-    }
-  }, [content.id]);
+  // Fetch highlights
+  const refreshHighlights = useCallback(
+    async (newHighlightId?: string) => {
+      // If a new highlight was created (e.g. "Note" button clicked), store ID to auto-open it
+      if (newHighlightId) {
+        setNewlyCreatedHighlightId(newHighlightId);
+        // Clear it after a moment so it doesn't persist across future re-renders distinct from this interaction
+        setTimeout(() => setNewlyCreatedHighlightId(null), 2000);
+      }
+      if (content.id) {
+        try {
+          const data = await highlightsAPI.getByContent(content.id);
+          setHighlights(data);
+        } catch (error) {
+          console.error("Failed to fetch highlights:", error);
+        }
+      }
+    },
+    [content.id],
+  );
 
   useEffect(() => {
-    fetchHighlights();
+    refreshHighlights();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [content.id]);
 
@@ -633,7 +719,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
                 },
                 existingHighlightId: clickedHighlight.id,
                 existingColor: clickedHighlight.color,
-                existingNote: clickedHighlight.note,
+                // We no longer pass existingNote to toolbar since it's handled inline
               });
               return;
             }
@@ -737,10 +823,29 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
           });
         }
       }, 100);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Failed to find related articles:", error);
+
+      // Check if it's the specific "no embedding" error
+      const isEmbeddingError =
+        error &&
+        typeof error === "object" &&
+        "response" in error &&
+        error.response &&
+        typeof error.response === "object" &&
+        "status" in error.response &&
+        error.response.status === 400 &&
+        "data" in error.response &&
+        error.response.data &&
+        typeof error.response.data === "object" &&
+        "detail" in error.response.data &&
+        typeof error.response.data.detail === "string" &&
+        error.response.data.detail.includes("no embedding");
+
       setSimilarError(
-        "Failed to find related articles. This article may not have embeddings yet.",
+        isEmbeddingError
+          ? "This article is still being processed. Please wait a moment and try again."
+          : "Failed to find related articles. Please try again later.",
       );
       setSimilarArticles([]); // Clear previous results if any
       setShowSimilar(true); // Show the section so the error is visible
@@ -902,7 +1007,9 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
     const endOffset = calculateOffset(range.endContainer, range.endOffset);
 
     if (startOffset === -1 || endOffset === -1) {
-      console.error("Could not calculate exact tracking offsets");
+      console.warn(
+        "Could not calculate exact tracking offsets, using fallback",
+      );
       // Fallback to simple string match if traversal fails (rare)
       return null;
     }
@@ -929,6 +1036,114 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
     };
   };
 
+  const articleContent = useMemo(() => {
+    // Merge existing highlights with current selection (for visual persistence)
+    // Note: "Fake" highlight for note editing is no longer needed since note editing is inline
+    const displayHighlights = highlights;
+
+    return (
+      /* Outer wrapper handles the "margin/padding" space and prevents it from being selectable */
+      <div className="w-full flex justify-center px-5 sm:px-6 lg:px-8 select-none cursor-default">
+        {/* Inner container constraints width but has NO padding, so selection matches text exactly */}
+        <div
+          className={`w-full
+            ${
+              settings.contentWidth === "narrow"
+                ? "max-w-2xl"
+                : settings.contentWidth === "wide"
+                  ? "max-w-3xl"
+                  : "max-w-[42rem]"
+            }
+          `}
+        >
+          <div
+            ref={contentRef}
+            id="reader-content"
+            className={`text-[var(--color-text-secondary)] select-text w-full outline-none
+            ${
+              settings.fontFamily === "serif"
+                ? "font-serif-setting"
+                : settings.fontFamily === "sans"
+                  ? "font-sans-setting"
+                  : settings.fontFamily === "merriweather"
+                    ? "font-merriweather-setting"
+                    : settings.fontFamily === "verdana"
+                      ? "font-verdana-setting"
+                      : "font-system-setting"
+            }
+            ${
+              settings.fontSize === "small"
+                ? "text-small-setting"
+                : settings.fontSize === "large"
+                  ? "text-large-setting"
+                  : "text-medium-setting"
+            }
+            ${
+              settings.lineHeight === "compact"
+                ? "line-height-compact"
+                : settings.lineHeight === "spacious"
+                  ? "line-height-spacious"
+                  : "line-height-comfortable"
+            }
+            ${
+              settings.letterSpacing === "tight"
+                ? "letter-spacing-tight"
+                : settings.letterSpacing === "wide"
+                  ? "letter-spacing-wide"
+                  : "letter-spacing-normal"
+            }
+            ${settings.bionicReading ? "bionic-reading" : ""}
+            ${focusMode ? "focus-mode" : ""}
+          `}
+          >
+            {content.full_text ? (
+              <HighlightRenderer
+                html={content.full_text}
+                highlights={displayHighlights}
+                onHighlightClick={scrollToHighlight}
+                onImageClick={handleImageZoom}
+                onDeleteHighlight={async (id) => {
+                  await highlightsAPI.delete(id);
+                  refreshHighlights();
+                }}
+                onUpdateHighlight={refreshHighlights}
+                newlyCreatedHighlightId={newlyCreatedHighlightId}
+              />
+            ) : (
+              <div className="text-center py-12 flex flex-col items-center gap-4">
+                <SequentialRetroLoader
+                  messages={[
+                    "Connecting to source...",
+                    "Extracting content...",
+                    "Parsing article...",
+                    "Formatting for you...",
+                  ]}
+                  className="text-[var(--color-accent)] text-lg"
+                  interval={2000}
+                />
+                <p className="text-sm text-[var(--color-text-muted)] opacity-70">
+                  {content.processing_status === "failed"
+                    ? "Content extraction failed. Please visit the original URL."
+                    : "This might take a few seconds."}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }, [
+    content.full_text,
+    content.processing_status,
+    highlights,
+    scrollToHighlight,
+    focusMode,
+    settings,
+    handleImageZoom,
+    newlyCreatedHighlightId,
+    refreshHighlights,
+  ]);
+
   return (
     <div
       className={`min-h-screen ${themeClasses} transition-colors select-none`}
@@ -951,9 +1166,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
         selection={selection}
         contentId={content.id}
         onClose={() => setSelection(null)}
-        onHighlightCreated={fetchHighlights}
-        showNote={isNoteOpen}
-        onToggleNote={setIsNoteOpen}
+        onHighlightCreated={refreshHighlights}
       />
       {/* Sticky Header with Controls - Transparent floating style */}
       <div
@@ -1059,8 +1272,8 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
         <HighlightsPanel
           highlights={highlights}
           onHighlightClick={scrollToHighlight}
-          onHighlightDeleted={fetchHighlights}
-          onHighlightUpdated={fetchHighlights}
+          onHighlightDeleted={refreshHighlights}
+          onHighlightUpdated={refreshHighlights}
         />
       </div>
 
@@ -1368,120 +1581,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
             )}
           </div>
         </div>
-
-        {useMemo(() => {
-          // Merge existing highlights with current selection (for visual persistence)
-          let displayHighlights = highlights;
-          // Only show temp selection when the note editor is OPEN (to persist visual while focus is in textarea)
-          // Otherwise, let the native browser selection handle the visual (preventing double-highlight)
-          if (selection && !selection.existingHighlightId && isNoteOpen) {
-            displayHighlights = [
-              ...highlights,
-              {
-                id: "temp-selection",
-                text: selection.text,
-                start_offset: selection.startOffset,
-                end_offset: selection.endOffset,
-                color: selection.existingColor || "selection", // Use standard selection blue
-                note: selection.existingNote,
-              },
-            ];
-          }
-
-          return (
-            /* Outer wrapper handles the "margin/padding" space and prevents it from being selectable */
-            <div className="w-full flex justify-center px-5 sm:px-6 lg:px-8 select-none cursor-default">
-              {/* Inner container constraints width but has NO padding, so selection matches text exactly */}
-              <div
-                className={`w-full
-                  ${
-                    settings.contentWidth === "narrow"
-                      ? "max-w-2xl"
-                      : settings.contentWidth === "wide"
-                        ? "max-w-3xl"
-                        : "max-w-[42rem]"
-                  }
-                `}
-              >
-                <div
-                  id="reader-content"
-                  className={`text-[var(--color-text-secondary)] select-text w-full outline-none
-                  ${
-                    settings.fontFamily === "serif"
-                      ? "font-serif-setting"
-                      : settings.fontFamily === "sans"
-                        ? "font-sans-setting"
-                        : settings.fontFamily === "merriweather"
-                          ? "font-merriweather-setting"
-                          : settings.fontFamily === "verdana"
-                            ? "font-verdana-setting"
-                            : "font-system-setting"
-                  }
-                  ${
-                    settings.fontSize === "small"
-                      ? "text-small-setting"
-                      : settings.fontSize === "large"
-                        ? "text-large-setting"
-                        : "text-medium-setting"
-                  }
-                  ${
-                    settings.lineHeight === "compact"
-                      ? "line-height-compact"
-                      : settings.lineHeight === "spacious"
-                        ? "line-height-spacious"
-                        : "line-height-comfortable"
-                  }
-                  ${
-                    settings.letterSpacing === "tight"
-                      ? "letter-spacing-tight"
-                      : settings.letterSpacing === "wide"
-                        ? "letter-spacing-wide"
-                        : "letter-spacing-normal"
-                  }
-                  ${settings.bionicReading ? "bionic-reading" : ""}
-                  ${focusMode ? "focus-mode" : ""}
-                `}
-                >
-                  {content.full_text ? (
-                    <HighlightRenderer
-                      html={content.full_text}
-                      highlights={displayHighlights}
-                      onHighlightClick={scrollToHighlight}
-                      onImageClick={handleImageZoom}
-                    />
-                  ) : (
-                    <div className="text-center py-12 opacity-60">
-                      <p>Full content not available yet.</p>
-                      <p className="text-sm mt-2">
-                        {content.processing_status === "processing" &&
-                          "Content is being extracted..."}
-                        {content.processing_status === "pending" &&
-                          "Content extraction is pending..."}
-                        {content.processing_status === "failed" &&
-                          "Content extraction failed. Please visit the original URL."}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        }, [
-          content.full_text,
-          content.processing_status,
-          highlights,
-          selection, // Add selection dependency
-          isNoteOpen, // Add isNoteOpen dependency so highlight appears when note opens
-          scrollToHighlight,
-          focusMode,
-          settings.fontFamily,
-          settings.fontSize,
-          settings.contentWidth,
-          settings.lineHeight,
-          settings.letterSpacing,
-          settings.bionicReading,
-          handleImageZoom,
-        ])}
+        {articleContent}
 
         {/* End of Article Actions - Quiet and Minimal */}
         {content.full_text && (
@@ -1502,13 +1602,24 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
               <button
                 onClick={handleFindSimilar}
                 disabled={loadingSimilar}
-                className="text-xs px-2 py-0.5 leading-none rounded-none border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:border-[var(--color-accent)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className={`text-xs px-2 py-0.5 leading-none rounded-none border transition-colors flex items-center gap-2
+                  ${
+                    showSimilar
+                      ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-accent)]"
+                      : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
+                  }
+                  ${loadingSimilar ? "opacity-70 cursor-wait" : ""}
+                `}
               >
-                {loadingSimilar
-                  ? "Finding related..."
-                  : showSimilar
-                    ? "Hide Related"
-                    : "Find Related"}
+                {loadingSimilar ? (
+                  <span className="font-mono text-xs animate-pulse">
+                    Finding related...
+                  </span>
+                ) : showSimilar ? (
+                  "Hide Related"
+                ) : (
+                  "Find Related"
+                )}
               </button>
             </div>
           </div>
@@ -1523,7 +1634,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
             }`}
           >
             <h2 className="font-serif text-2xl font-normal mb-6 text-[var(--color-text-primary)]">
-              Similar Articles
+              Related Articles
             </h2>
 
             {similarError ? (
@@ -1543,21 +1654,25 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
                         <img
                           src={item.thumbnail_url}
                           alt=""
-                          className="w-20 h-20 object-cover flex-shrink-0 opacity-80 hover:opacity-100 transition-opacity"
+                          className="w-20 h-20 object-cover flex-shrink-0 opacity-80 hover:opacity-100 transition-opacity mt-1"
                         />
                       )}
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 flex flex-col pt-1">
                         <h3
-                          className={`font-serif font-medium mb-1 ${linkColorClasses}`}
+                          className={`font-serif font-medium leading-snug line-clamp-2 ${linkColorClasses}`}
+                          style={{
+                            marginTop: "3px",
+                            marginBottom: "10px",
+                          }}
                         >
                           {item.title || "Untitled"}
                         </h3>
                         {item.description && (
-                          <p className="text-sm text-[var(--color-text-muted)] line-clamp-2 mb-2">
+                          <p className="text-sm text-[var(--color-text-muted)] line-clamp-2 mb-2 leading-relaxed">
                             {item.description}
                           </p>
                         )}
-                        <div className="flex items-center gap-3 text-xs text-[var(--color-text-faint)]">
+                        <div className="mt-auto flex items-center gap-3 text-xs text-[var(--color-text-faint)]">
                           <span className="text-[var(--color-accent)] font-medium">
                             {Math.round(similarity_score * 100)}% similar
                           </span>

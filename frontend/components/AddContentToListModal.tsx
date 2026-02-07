@@ -4,7 +4,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { contentAPI, listsAPI } from "@/lib/api";
 import { ContentItem } from "@/types";
-import { useToast } from "@/contexts/ToastContext";
 import { useLists } from "@/contexts/ListsContext";
 
 interface AddContentToListModalProps {
@@ -12,6 +11,7 @@ interface AddContentToListModalProps {
   listId: string;
   onClose: () => void;
   onSuccess: () => void;
+  existingContentIds?: string[];
 }
 
 export default function AddContentToListModal({
@@ -19,8 +19,8 @@ export default function AddContentToListModal({
   listId,
   onClose,
   onSuccess,
+  existingContentIds = [],
 }: AddContentToListModalProps) {
-  const { showToast } = useToast();
   const { incrementListCount, decrementListCount } = useLists();
   const [allContent, setAllContent] = useState<ContentItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -35,20 +35,19 @@ export default function AddContentToListModal({
       setAllContent(data.items || []);
     } catch (error) {
       console.error("Failed to fetch content:", error);
-      showToast("Failed to load content", "error");
     } finally {
       setFetching(false);
     }
-  }, [showToast]);
+  }, []);
 
   // Fetch all user's content when modal opens
   useEffect(() => {
     if (isOpen) {
       fetchAllContent();
-      setSelectedIds(new Set());
+      setSelectedIds(new Set(existingContentIds));
       setSearchQuery("");
     }
-  }, [isOpen, fetchAllContent]);
+  }, [isOpen, fetchAllContent, existingContentIds]);
 
   const handleToggleSelect = (id: string) => {
     const newSelected = new Set(selectedIds);
@@ -62,7 +61,6 @@ export default function AddContentToListModal({
 
   const handleSubmit = async () => {
     if (selectedIds.size === 0) {
-      showToast("Please select at least one item", "error");
       return;
     }
 
@@ -76,7 +74,6 @@ export default function AddContentToListModal({
       }
 
       await listsAPI.addContent(listId, Array.from(selectedIds));
-      showToast(`Added ${itemCount} item(s) to list`, "success");
       onSuccess();
       onClose();
     } catch (error) {
@@ -85,7 +82,6 @@ export default function AddContentToListModal({
       for (let i = 0; i < itemCount; i++) {
         decrementListCount(listId);
       }
-      showToast("Failed to add content to list", "error");
     } finally {
       setLoading(false);
     }
@@ -95,9 +91,11 @@ export default function AddContentToListModal({
   const filteredContent = allContent.filter((item) => {
     const query = searchQuery.toLowerCase();
     return (
-      item.title?.toLowerCase().includes(query) ||
-      item.description?.toLowerCase().includes(query) ||
-      item.original_url.toLowerCase().includes(query)
+      (item.title?.toLowerCase().includes(query) ||
+        item.description?.toLowerCase().includes(query) ||
+        item.description?.toLowerCase().includes(query) ||
+        item.original_url.toLowerCase().includes(query)) &&
+      item.processing_status !== "failed"
     );
   });
 
@@ -209,7 +207,10 @@ export default function AddContentToListModal({
 
                     {/* Content info */}
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-[var(--color-text-primary)] line-clamp-1">
+                      <h3
+                        className="font-medium text-[var(--color-text-primary)] line-clamp-1"
+                        style={{ marginTop: "0px", marginBottom: "10px" }}
+                      >
                         {item.title || "Untitled"}
                       </h3>
                       {item.description && (

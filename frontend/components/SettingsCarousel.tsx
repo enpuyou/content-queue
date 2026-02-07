@@ -5,6 +5,7 @@ import {
   useReadingSettings,
   type ReadingSettings,
 } from "@/contexts/ReadingSettingsContext";
+import HotkeysModal from "./HotkeysModal";
 
 interface SettingConfig {
   key: keyof ReadingSettings;
@@ -95,6 +96,7 @@ export default function SettingsCarousel() {
   } = useReadingSettings();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [showHotkeys, setShowHotkeys] = useState(false);
 
   const currentSetting = settings[currentIndex];
   const prevSetting =
@@ -268,8 +270,8 @@ export default function SettingsCarousel() {
       </div>
 
       {/* Bottom row: dots + reset */}
-      <div className="flex items-center gap-6">
-        <style>{`
+      {/* Styles for dots */}
+      <style>{`
           .force-dot-mobile {
             width: 8px !important;
             height: 8px !important;
@@ -301,6 +303,7 @@ export default function SettingsCarousel() {
             }
           }
         `}</style>
+      <div className="flex items-center justify-center gap-6 w-full px-4">
         {/* Position indicator dots */}
         <div className="flex gap-1.5">
           {settings.map((_, index) => (
@@ -327,7 +330,6 @@ export default function SettingsCarousel() {
           ))}
         </div>
 
-        {/* Reset button - text link style with adequate tap area */}
         <button
           onClick={resetSettings}
           className="text-[11px] sm:text-xs px-3 py-2 text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors duration-200"
@@ -346,6 +348,8 @@ export default function SettingsCarousel() {
           <span className="ml-1">to navigate</span>
         </div>
       </div>
+
+      {showHotkeys && <HotkeysModal onClose={() => setShowHotkeys(false)} />}
     </div>
   );
 }

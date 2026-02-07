@@ -8,8 +8,8 @@ import { ContentItem as ContentItemType } from "@/types";
 import ConfirmModal from "./ConfirmModal";
 import StatusIndicator from "./StatusIndicator";
 import MobileActionsMenu from "./MobileActionsMenu";
+import RetroLoader from "./RetroLoader";
 import { contentAPI } from "@/lib/api";
-import { useToast } from "@/contexts/ToastContext";
 
 /**
  * Props for ContentItem component
@@ -39,6 +39,7 @@ interface ContentItemProps {
   // Keyboard navigation
   isSelected?: boolean;
   id?: string;
+  isRemoving?: boolean;
 }
 
 export default function ContentItem({
@@ -52,6 +53,7 @@ export default function ContentItem({
   returnPath,
   isSelected,
   id,
+  isRemoving = false,
 }: ContentItemProps) {
   /**
    * Hydration fix: Only render relative dates on the client side
@@ -61,13 +63,34 @@ export default function ContentItem({
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showListDropdown, setShowListDropdown] = useState(false);
   const [isEditingTags, setIsEditingTags] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
   const [tagInput, setTagInput] = useState("");
-  const { showToast } = useToast();
   const router = useRouter();
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  /**
+   * Handle status change with retro effect for archiving
+   */
+  const handleStatusChange = (
+    e: React.MouseEvent | null,
+    updates: { is_read?: boolean; is_archived?: boolean },
+  ) => {
+    if (e) e.stopPropagation();
+
+    // If archiving, show retro effect first
+    if (updates.is_archived === true) {
+      setIsArchiving(true);
+      // Wait for retro effect (800ms)
+      setTimeout(() => {
+        onStatusChange(content.id, updates);
+      }, 800);
+    } else {
+      onStatusChange(content.id, updates);
+    }
+  };
 
   /**
    * Format relative date (Today, Yesterday, X days ago, or full date)
@@ -98,14 +121,12 @@ export default function ContentItem({
       const updatedContent = await contentAPI.update(content.id, {
         tags: newTags,
       });
-      showToast("Tags updated successfully", "success");
       // Notify parent component of the update
       if (onUpdate) {
         onUpdate(updatedContent);
       }
     } catch (error) {
       console.error("Failed to update tags:", error);
-      showToast("Failed to update tags", "error");
     }
   };
 
@@ -114,7 +135,6 @@ export default function ContentItem({
 
     const currentTags = content.tags || [];
     if (currentTags.includes(tagInput.trim())) {
-      showToast("Tag already exists", "error");
       return;
     }
 
@@ -171,31 +191,42 @@ export default function ContentItem({
     <div
       id={id}
       onClick={handleContainerClick}
-      className={`group py-6 px-4 border-b border-[var(--color-border-subtle)] last:border-b-0 transition-all duration-300 cursor-pointer
+      className={`group py-8 px-4 border-b border-dashed border-[var(--color-border-subtle)] last:border-b-0 transition-all duration-300 cursor-pointer relative
         ${
           isSelected
             ? "bg-[var(--color-bg-secondary)] border-l-4 border-l-[var(--color-accent)] pl-3 -ml-1 shadow-sm"
             : "hover:bg-[var(--color-bg-secondary)]"
         }
+        ${isArchiving ? "bg-[var(--color-bg-tertiary)]" : ""}
       `}
     >
+      {/* Retro Archiving Overlay */}
+      {(isArchiving || isRemoving) && (
+        <div className="absolute inset-0 flex items-center justify-center z-20 bg-[var(--color-bg-primary)]/90 font-mono text-sm text-[var(--color-accent)]">
+          <span className="animate-pulse">
+            {isRemoving ? "Removing..." : "Archiving..."}
+          </span>
+          <span className="inline-block w-2.5 h-4 bg-[var(--color-accent)] ml-1 animate-pulse"></span>
+        </div>
+      )}
       <div className="flex items-start gap-4">
         {/* Left side: Content info */}
-        <div className="flex-1 min-w-0">
-          {/* Processing Status Badge */}
+        <div
+          className="flex-1 min-w-0"
+          style={{
+            paddingRight: "30px",
+          }}
+        >
           {isProcessing && (
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs text-[var(--color-text-muted)] italic">
-                {content.processing_status === "pending" &&
-                  "Finding your article..."}
-                {content.processing_status === "processing" &&
-                  "Preparing your article..."}
-              </span>
-              <div className="flex gap-1">
-                <span className="inline-block w-1.5 h-1.5 bg-[var(--color-accent)] rounded-full animate-pulse"></span>
-                <span className="inline-block w-1.5 h-1.5 bg-[var(--color-accent)] rounded-full animate-pulse [animation-delay:0.2s]"></span>
-                <span className="inline-block w-1.5 h-1.5 bg-[var(--color-accent)] rounded-full animate-pulse [animation-delay:0.4s]"></span>
-              </div>
+              <RetroLoader
+                text={
+                  content.processing_status === "pending"
+                    ? "Finding your article"
+                    : "Preparing your article"
+                }
+                className="text-xs text-[var(--color-text-muted)] italic"
+              />
             </div>
           )}
 
@@ -235,11 +266,11 @@ export default function ContentItem({
               );
             }}
           >
-            <h3 className="font-serif text-xl font-medium text-[var(--color-text-primary)] hover:text-[var(--color-accent)] transition-colors">
+            <h3 className="font-serif text-2xl font-normal text-[var(--color-text-primary)] group-hover:text-[var(--color-accent)] transition-colors leading-tight">
               {(() => {
                 // Show helpful title based on state
                 if (isProcessing && hasMinimalData) {
-                  return "Loading article...";
+                  return null;
                 }
                 if (content.title) {
                   return content.title;
@@ -254,15 +285,10 @@ export default function ContentItem({
 
           {/* Description */}
           {content.description ? (
-            <p className="text-sm text-[var(--color-text-secondary)] line-clamp-2 mb-3 leading-relaxed">
+            <p className="text-sm text-[var(--color-text-muted)] line-clamp-2 mb-2">
               {content.description}
             </p>
-          ) : isProcessing ? (
-            <p className="text-sm text-[var(--color-text-faint)] italic line-clamp-2 mb-3 leading-relaxed">
-              Extracting content from {new URL(content.original_url).hostname}
-              ...
-            </p>
-          ) : hasFailed ? (
+          ) : isProcessing ? null : hasFailed ? (
             <p className="text-sm text-[var(--color-text-muted)] line-clamp-2 mb-3 leading-relaxed">
               <a
                 href={content.original_url}
@@ -379,7 +405,7 @@ export default function ContentItem({
                   onStatusChange(content.id, { is_read: !content.is_read })
                 }
                 onArchive={() =>
-                  onStatusChange(content.id, {
+                  handleStatusChange(null, {
                     is_archived: !content.is_archived,
                   })
                 }
@@ -401,8 +427,8 @@ export default function ContentItem({
             <div className="hidden sm:flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity flex-wrap">
               {/* Mark as read/unread */}
               <button
-                onClick={() =>
-                  onStatusChange(content.id, { is_read: !content.is_read })
+                onClick={(e) =>
+                  handleStatusChange(e, { is_read: !content.is_read })
                 }
                 className="text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"
                 title={content.is_read ? "Mark as unread" : "Mark as read"}
@@ -412,8 +438,8 @@ export default function ContentItem({
 
               {/* Archive/Unarchive */}
               <button
-                onClick={() =>
-                  onStatusChange(content.id, {
+                onClick={(e) =>
+                  handleStatusChange(e, {
                     is_archived: !content.is_archived,
                   })
                 }
@@ -471,37 +497,48 @@ export default function ContentItem({
                 + Tag
               </button>
 
-              {/* Remove from list (only show when in a list detail page) */}
-              {onRemoveFromList && (
+              {/* Remove from list (replaces Delete button in list context) */}
+              {onRemoveFromList ? (
                 <button
                   onClick={onRemoveFromList}
-                  className="text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"
+                  className="text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-rose-500 dark:text-red-400 border border-[var(--color-border)] hover:bg-rose-50 dark:hover:bg-red-900/20 transition-colors"
                   title="Remove from list"
                 >
                   Remove
                 </button>
+              ) : (
+                /* Delete button (only show if not in list context) */
+                <button
+                  onClick={() => setShowDeleteModal(true)}
+                  className="text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-rose-500 dark:text-red-400 border border-[var(--color-border)] hover:bg-rose-50 dark:hover:bg-red-900/20 transition-colors"
+                  title="Delete article"
+                >
+                  Delete
+                </button>
               )}
-
-              {/* Delete */}
-              <button
-                onClick={() => setShowDeleteModal(true)}
-                className="text-xs px-2 py-1 rounded-none bg-rose-50 dark:bg-red-900/30 text-rose-500 dark:text-red-400 border border-transparent hover:border-red-500 dark:hover:bg-red-900/50 dark:hover:text-red-400 transition-colors"
-                title="Delete"
-              >
-                Delete
-              </button>
             </div>
           </div>
         </div>
 
         {/* Right side: Thumbnail (if available) - right-aligned, smaller */}
         {content.thumbnail_url && (
-          <div className="flex-shrink-0 hidden sm:block">
-            <img
-              src={content.thumbnail_url}
-              alt={content.title || "thumbnail"}
-              className="w-20 h-20 object-cover opacity-80 hover:opacity-100 transition-opacity"
-            />
+          <div className="flex-shrink-0 hidden sm:block pl-6">
+            <div
+              className="w-24 h-24 bg-[var(--color-bg-secondary)]"
+              style={{
+                marginTop: "40px",
+              }}
+            >
+              <img
+                src={content.thumbnail_url}
+                alt={content.title || "thumbnail"}
+                className="w-full h-full object-cover opacity-90 hover:opacity-100 transition-opacity"
+                style={{
+                  width: "100px",
+                  height: "100px",
+                }}
+              />
+            </div>
           </div>
         )}
       </div>

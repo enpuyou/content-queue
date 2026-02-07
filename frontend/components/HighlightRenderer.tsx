@@ -23,17 +23,6 @@ interface HighlightRendererProps {
   onImageClick?: (src: string) => void;
 }
 
-const colorClasses: Record<string, string> = {
-  yellow:
-    "hover:opacity-80 transition-opacity cursor-pointer transition-colors",
-  green: "hover:opacity-80 transition-opacity cursor-pointer transition-colors",
-  blue: "hover:opacity-80 transition-opacity cursor-pointer transition-colors",
-  pink: "hover:opacity-80 transition-opacity cursor-pointer transition-colors",
-  purple:
-    "hover:opacity-80 transition-opacity cursor-pointer transition-colors",
-  selection: "native-selection", // Uses system highlight colors
-};
-
 /**
  * Helper to wrap start of words in strong tags for Bionic Reading
  */
@@ -48,23 +37,60 @@ const applyBionicInfoToText = (text: string): string => {
     .join("");
 };
 
+import parse, {
+  DOMNode,
+  Element,
+  domToReact,
+  attributesToProps,
+} from "html-react-parser";
+import InlineHighlight from "./InlineHighlight";
+
 const HighlightRenderer = ({
   html,
   highlights,
   onHighlightClick,
   onImageClick,
-}: HighlightRendererProps) => {
+  onDeleteHighlight,
+  onUpdateHighlight,
+  newlyCreatedHighlightId, // to trigger auto-open
+}: HighlightRendererProps & {
+  onDeleteHighlight?: (id: string) => void;
+  onUpdateHighlight?: () => void;
+  newlyCreatedHighlightId?: string | null;
+}) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [renderedHtml, setRenderedHtml] = useState<string>(html);
   const { settings } = useReadingSettings();
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 640);
+    };
+    checkMobile(); // Check on mount
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   useEffect(() => {
-    const activeHighlights = [...highlights];
+    // ... (Existing logic to process HTML with bionic reading and segments) ...
+    // BUT instead of manipulating DOM directly and replacing nodes,
+    // we should process the HTML string fully first, then parse it.
 
+    // Actually, the existing logic builds an HTML string via DOM manipulation on fragments
+    // but ultimately returns a String or modified DOM to dangerouslySetInnerHTML.
+
+    // The previous implementation utilized `originalDoc` and `textNodes` to inject spans into a DOM structure,
+    // then applied heading anchors, and finally set `renderedHtml` as a string.
+
+    // We can keep the logic "as is" to generate the string with <span data-highlight-id="...">
+    // and THEN use html-react-parser on THAT string.
+
+    const activeHighlights = [...highlights];
     const parser = new DOMParser();
 
     // IMPORTANT: Count character positions on the ORIGINAL html first
-    // This matches how Reader.tsx calculates offsets from content.full_text
     const originalDoc = parser.parseFromString(html, "text/html");
     const walker = document.createTreeWalker(
       originalDoc.body,
@@ -142,7 +168,6 @@ const HighlightRenderer = ({
       const fragment = document.createDocumentFragment();
       segments.forEach((segment) => {
         const rawText = nodeText.substring(segment.start, segment.end);
-
         // Apply Bionic Reading transformation if enabled
         const contentHtml = settings.bionicReading
           ? applyBionicInfoToText(rawText)
@@ -150,12 +175,12 @@ const HighlightRenderer = ({
 
         if (segment.highlight) {
           const span = document.createElement("span");
-          span.className = colorClasses[segment.highlight.color];
-          if (segment.highlight.color !== "selection") {
-            span.style.backgroundColor = `var(--highlight-${segment.highlight.color})`;
-          }
+          // NOTE: We don't need colorClasses here if InlineHighlight handles it contextually,
+          // but we need to mark it for parser replacement.
+          // We apply the ID so logic later can find it.
           span.dataset.highlightId = segment.highlight.id;
-          // Use innerHTML because contentHtml might contain <strong> tags
+          span.dataset.highlightColor = segment.highlight.color; // Pass color via dataset
+          span.dataset.highlightNote = segment.highlight.note || ""; // Pass note
           span.innerHTML = contentHtml;
           fragment.appendChild(span);
         } else {
@@ -176,39 +201,85 @@ const HighlightRenderer = ({
     setRenderedHtml(addHeadingAnchors(originalDoc.body.innerHTML));
   }, [html, highlights, settings.bionicReading]);
 
+  // ... (transform function)
+  const transform = (node: DOMNode, _index: number) => {
+    if (
+      node instanceof Element &&
+      node.name === "span" &&
+      node.attribs["data-highlight-id"]
+    ) {
+      const id = node.attribs["data-highlight-id"];
+      const color = node.attribs["data-highlight-color"];
+      const note = node.attribs["data-highlight-note"];
+
+      const highlight = highlights.find((h) => h.id === id);
+      // Fallback if highlight not found in props (should match)
+      const currentNote = highlight ? highlight.note : note;
+
+      return (
+        <InlineHighlight
+          key={id}
+          id={id}
+          color={color}
+          initialNote={currentNote}
+          initialOpen={newlyCreatedHighlightId === id}
+          onDelete={onDeleteHighlight}
+          onUpdate={onUpdateHighlight}
+          onHighlightClick={
+            onHighlightClick
+              ? () =>
+                  onHighlightClick(
+                    highlight || {
+                      id,
+                      color,
+                      text: "",
+                      start_offset: 0,
+                      end_offset: 0,
+                    },
+                  )
+              : undefined
+          } // Mock highlight object if missing, but should be found. Actually standard behavior is fine.
+          isMobile={isMobile}
+        >
+          {domToReact(node.children as DOMNode[], { replace: transform })}
+        </InlineHighlight>
+      );
+    }
+    // ...
+
+    // Handle Images
+    if (node instanceof Element && node.name === "img" && onImageClick) {
+      const src = node.attribs.src;
+      if (src) {
+        const props = attributesToProps(node.attribs);
+        // Return props but add onClick
+        // Ensure alt is a string (props.alt could be boolean or undefined)
+        const altText =
+          typeof props.alt === "string" ? props.alt : "Article image";
+        return (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            {...props}
+            alt={altText}
+            onClick={(e) => {
+              e.preventDefault();
+              onImageClick(src);
+            }}
+            className={`cursor-zoom-in ${props.className || ""}`}
+          />
+        );
+      }
+    }
+  };
+
   return (
     <div
       id="article-content"
       ref={containerRef}
-      className="cursor-text select-text [&_img]:cursor-zoom-in"
-      dangerouslySetInnerHTML={{ __html: renderedHtml }}
-      onClick={(e) => {
-        const target = e.target as HTMLElement;
-
-        // Handle Image Click
-        if (target.tagName === "IMG" && onImageClick) {
-          const img = target as HTMLImageElement;
-          if (img.src) {
-            e.preventDefault();
-            onImageClick(img.src);
-            return;
-          }
-        }
-
-        // Check closest because click might be on a <strong> tag inside the span
-        const highlightElement = target.closest(
-          "[data-highlight-id]",
-        ) as HTMLElement;
-        if (highlightElement && highlightElement.dataset.highlightId) {
-          const highlight = highlights.find(
-            (h) => h.id === highlightElement.dataset.highlightId,
-          );
-          if (highlight && onHighlightClick) {
-            onHighlightClick(highlight, highlightElement);
-          }
-        }
-      }}
-    />
+      className={`cursor-text select-text ${settings.bionicReading ? "" : ""}`} // Removed [&_img] since handled in parser
+    >
+      {parse(renderedHtml, { replace: transform })}
+    </div>
   );
 };
 

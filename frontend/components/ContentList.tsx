@@ -5,9 +5,9 @@ import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import ContentItem from "./ContentItem";
 import ContentCard from "./ContentCard";
+import RetroLoader from "./RetroLoader";
 import { contentAPI, listsAPI } from "@/lib/api";
 import { ContentItem as ContentItemType, List } from "@/types";
-import { useToast } from "@/contexts/ToastContext";
 import { useProcessingPolling } from "@/hooks/useProcessingPolling";
 import { useLists } from "@/contexts/ListsContext";
 import { useHotkeys } from "@/hooks/useHotkeys";
@@ -31,7 +31,6 @@ export interface ContentListRef {
 
 const ContentList = forwardRef<ContentListRef>((props, ref) => {
   // Toast context for showing success/error messages
-  const { showToast } = useToast();
   const { incrementListCount, decrementListCount } = useLists();
 
   // Get URL search params to read filter from URL
@@ -72,13 +71,10 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
   };
 
   // State for storing the content items from the backend
-  const initialCache = getCachedData();
-  const [contents, setContents] = useState<ContentItemType[]>(
-    initialCache?.items || [],
-  );
+  const [contents, setContents] = useState<ContentItemType[]>([]);
 
   // Loading state - true while fetching data
-  const [loading, setLoading] = useState(!initialCache);
+  const [loading, setLoading] = useState(true);
 
   // Error state - stores error message if fetch fails
   const [error, setError] = useState<string | null>(null);
@@ -94,6 +90,9 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
 
   // Pagination state - backend returns total count
   const [total, setTotal] = useState(0);
+
+  // Filter dropdown state
+  const [filterOpen, setFilterOpen] = useState(false);
 
   /**
    * Expose method to parent component for adding new items optimistically
@@ -210,15 +209,9 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
 
     // Show a toast notification
     if (updatedItem.processing_status === "completed") {
-      showToast(
-        `"${updatedItem.title || "Article"}" finished processing`,
-        "success",
-      );
+      // Toast removed
     } else if (updatedItem.processing_status === "failed") {
-      showToast(
-        `Failed to process "${updatedItem.title || "Article"}"`,
-        "error",
-      );
+      // Toast removed
     }
   });
 
@@ -310,8 +303,6 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
         setCachedData(updated, total);
         return updated;
       });
-
-      showToast("Updated successfully", "success");
     } catch (err) {
       console.error("Failed to update content:", err);
       // REVERT on error: restore previous state
@@ -334,13 +325,11 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
 
       // Call backend to soft delete
       await contentAPI.delete(id);
-      showToast("Article deleted successfully", "success");
     } catch (err) {
       console.error("Failed to delete content:", err);
       // Restore on error
       setContents(previousContents);
       setTotal(total + 1);
-      showToast("Failed to delete article", "error");
       setError("Failed to delete item. Please try again.");
     }
   };
@@ -369,12 +358,10 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
       incrementListCount(listId);
 
       await listsAPI.addContent(listId, [contentId]);
-      showToast("Added to list successfully", "success");
     } catch (err) {
       console.error("Failed to add to list:", err);
       // Revert on error - decrement count back
       decrementListCount(listId);
-      showToast("Failed to add to list", "error");
     }
   };
 
@@ -420,17 +407,6 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
     }
   };
 
-  // Show loading spinner while fetching data
-  if (loading) {
-    return (
-      <div className="flex justify-center py-8">
-        <div className="text-[var(--color-text-muted)]">
-          Finding your articles...
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4">
       {/* Error message - shown at top if something went wrong */}
@@ -446,39 +422,84 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
         </div>
       )}
 
-      {/* Filter buttons - action style */}
-      <div className="flex gap-1 pb-4 border-b border-[var(--color-border)] overflow-x-auto scrollbar-hide snap-x snap-mandatory">
-        {(["all", "unread", "in_progress", "read", "archived"] as const).map(
-          (filterType) => (
-            <Link
-              key={filterType}
-              href={
-                filterType === "all"
-                  ? "/dashboard"
-                  : `/dashboard?filter=${filterType}`
-              }
-              className={`no-underline text-xs px-2 py-1.5 leading-none rounded-none border whitespace-nowrap flex-shrink-0 snap-start transition-colors inline-flex items-center justify-center ${
-                filter === filterType
-                  ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-accent)]"
-                  : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
-              }`}
-            >
-              {filterType === "in_progress"
-                ? "In Progress"
-                : filterType.charAt(0).toUpperCase() + filterType.slice(1)}
-              {filterType !== "all" && ` (${getCount(filterType)})`}
-            </Link>
-          ),
-        )}
-      </div>
+      {/* Contextual Filter Row */}
+      <div className="flex items-baseline pl-0 gap-1.5 text-xs text-[var(--color-text-faint)] uppercase tracking-wider mb-4 relative z-20">
+        <span>Showing</span>
 
-      {/* Total count display */}
-      <div className="text-xs text-[var(--color-text-faint)] uppercase tracking-wider mb-4">
-        Showing {filteredContents.length} of {total} items
+        <div className="relative inline-block">
+          <button
+            onClick={() => setFilterOpen(!filterOpen)}
+            className="font-medium text-[var(--color-text-primary)] border-b border-dotted border-[var(--color-text-secondary)] hover:border-[var(--color-text-primary)] hover:border-solid transition-all flex items-center gap-1 pb-0.5"
+          >
+            {filter === "in_progress" ? "In Progress" : filter}
+            <svg
+              className={`w-3 h-3 transition-transform ${filterOpen ? "rotate-180" : ""}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="square"
+                strokeLinejoin="miter"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </button>
+
+          {filterOpen && (
+            <>
+              <div
+                className="fixed inset-0 z-10"
+                onClick={() => setFilterOpen(false)}
+              />
+              <div className="absolute left-0 top-full mt-1 w-48 bg-[var(--color-bg-primary)] border border-[var(--color-border)] shadow-lg z-20 flex flex-col">
+                {(
+                  ["all", "unread", "in_progress", "read", "archived"] as const
+                ).map((filterType) => (
+                  <Link
+                    key={filterType}
+                    href={
+                      filterType === "all"
+                        ? "/dashboard"
+                        : `/dashboard?filter=${filterType}`
+                    }
+                    onClick={() => setFilterOpen(false)}
+                    className={`text-left px-4 py-2 text-xs hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-accent)] transition-colors flex justify-between items-center ${
+                      filter === filterType
+                        ? "text-[var(--color-accent)] font-medium bg-[var(--color-bg-secondary)]"
+                        : "text-[var(--color-text-primary)]"
+                    }`}
+                  >
+                    <span className="capitalize">
+                      {filterType === "in_progress"
+                        ? "In Progress"
+                        : filterType}
+                    </span>
+                    <span className="text-[var(--color-text-muted)] text-[10px]">
+                      {getCount(filterType)}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        <span>
+          ({filteredContents.length} / {total} items)
+        </span>
       </div>
 
       {/* Content items list */}
-      {filteredContents.length === 0 ? (
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <RetroLoader
+            text="Finding your articles"
+            className="text-sm text-[var(--color-accent)]"
+          />
+        </div>
+      ) : filteredContents.length === 0 ? (
         <div className="text-center py-12 text-[var(--color-text-muted)]">
           <p className="text-sm">
             {filter === "all"

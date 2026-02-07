@@ -46,12 +46,6 @@ jest.mock("next/navigation", () => ({
 jest.mock("../../lib/api");
 const mockedContentAPI = contentAPI as jest.Mocked<typeof contentAPI>;
 
-// Mock the ToastContext
-const mockShowToast = jest.fn();
-jest.mock("../../contexts/ToastContext", () => ({
-  useToast: () => ({ showToast: mockShowToast }),
-}));
-
 describe("ContentItem", () => {
   const mockOnStatusChange = jest.fn();
   const mockOnDelete = jest.fn();
@@ -290,7 +284,8 @@ describe("ContentItem", () => {
   });
 
   describe("Archive/Unarchive", () => {
-    it("calls onStatusChange when archiving", () => {
+    it("calls onStatusChange when archiving", async () => {
+      jest.useFakeTimers();
       render(
         <ContentItem
           content={mockContent}
@@ -302,9 +297,14 @@ describe("ContentItem", () => {
       const archiveButton = screen.getByTitle("Archive");
       fireEvent.click(archiveButton);
 
+      // Fast-forward time by 800ms (retro effect delay)
+      jest.advanceTimersByTime(800);
+
       expect(mockOnStatusChange).toHaveBeenCalledWith("test-content-123", {
         is_archived: true,
       });
+
+      jest.useRealTimers();
     });
 
     it("calls onStatusChange when unarchiving", () => {
@@ -420,10 +420,6 @@ describe("ContentItem", () => {
             tags: ["javascript", "testing", "react"],
           },
         );
-        expect(mockShowToast).toHaveBeenCalledWith(
-          "Tags updated successfully",
-          "success",
-        );
       });
     });
 
@@ -448,10 +444,6 @@ describe("ContentItem", () => {
       fireEvent.click(addButton);
 
       await waitFor(() => {
-        expect(mockShowToast).toHaveBeenCalledWith(
-          "Tag already exists",
-          "error",
-        );
         expect(mockedContentAPI.update).not.toHaveBeenCalled();
       });
     });
@@ -522,7 +514,7 @@ describe("ContentItem", () => {
         />,
       );
 
-      const deleteButton = screen.getByTitle("Delete");
+      const deleteButton = screen.getByTitle("Delete article");
       fireEvent.click(deleteButton);
 
       expect(screen.getByText("Delete Article")).toBeInTheDocument();
@@ -540,7 +532,7 @@ describe("ContentItem", () => {
         />,
       );
 
-      const deleteButton = screen.getByTitle("Delete");
+      const deleteButton = screen.getByTitle("Delete article");
       fireEvent.click(deleteButton);
 
       // Wait for modal to appear
@@ -567,7 +559,7 @@ describe("ContentItem", () => {
         />,
       );
 
-      const deleteButton = screen.getByTitle("Delete");
+      const deleteButton = screen.getByTitle("Delete article");
       fireEvent.click(deleteButton);
 
       const cancelButton = screen.getByRole("button", { name: /cancel/i });

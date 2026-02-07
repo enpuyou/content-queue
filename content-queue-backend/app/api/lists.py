@@ -50,16 +50,19 @@ def get_user_lists(
     Get all lists for current user.
     Includes count of items in each list.
     """
-    # Query lists with content count
+    # Query lists with content count, excluding deleted items
     lists_with_count = (
         db.query(
             List,
-            func.count(content_list_membership.c.content_item_id).label(
-                "content_count"
-            ),
+            func.count(ContentItem.id).label("content_count"),
         )
         .outerjoin(
             content_list_membership, List.id == content_list_membership.c.list_id
+        )
+        .outerjoin(
+            ContentItem,
+            (ContentItem.id == content_list_membership.c.content_item_id)
+            & (ContentItem.deleted_at.is_(None)),
         )
         .filter(List.owner_id == current_user.id)
         .group_by(List.id)

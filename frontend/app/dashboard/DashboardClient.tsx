@@ -29,12 +29,20 @@ export default function DashboardClient() {
             <h1 className="font-serif text-3xl font-normal text-[var(--color-text-primary)]">
               {/* Prevent flash: render nothing or skeleton while loading, default to Hello */}
               {!user ? (
-                // While loading or not logged in (though protected route handles not logged in), show neutral
+                // While loading or not logged in, show neutral
                 <span className="opacity-0">Hello</span>
-              ) : user.full_name ? (
-                `Hello ${user.full_name.split(" ")[0]}`
               ) : (
-                "Hello"
+                (() => {
+                  const hour = new Date().getHours();
+                  let greeting = "Hello";
+                  if (hour < 12) greeting = "Good morning";
+                  else if (hour < 18) greeting = "Good afternoon";
+                  else greeting = "Good evening";
+
+                  return user.full_name
+                    ? `${greeting}, ${user.full_name.split(" ")[0]}`
+                    : greeting;
+                })()
               )}
             </h1>
             {/* Add Content Form */}

@@ -89,7 +89,10 @@ export default function Sidebar() {
       <div className="p-4 space-y-6">
         {/* App Title */}
         <div className="px-4">
-          <h1 className="font-serif text-2xl font-normal text-[var(--color-text-primary)] tracking-tight">
+          <h1
+            className="text-2xl font-normal text-[var(--color-text-primary)] tracking-tight"
+            style={{ fontFamily: "var(--font-logo)" }}
+          >
             sed.i
           </h1>
         </div>
