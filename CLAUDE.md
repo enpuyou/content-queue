@@ -7,8 +7,13 @@
 - User will manually type/paste code into the editor (not automatic edits)
 - Assume user can learn in large volumes but wants to understand each step
 - This is a learning exercise, not just "magic code that works"
+- **IMPORTANT:** Don't paste entire file contents in chat. Show only:
+  - Small code snippets (examples, key changes)
+  - Overall structure/outline
+  - Specific lines that need changes
+  - User should get the gist without walls of code
 - When making changes:
-  1. Show the exact code to add/change
+  1. Show the exact code to add/change (concisely)
   2. Explain what it does and why
   3. Indicate where it goes (file path, line numbers, or surrounding context)
   4. Let user implement it manually

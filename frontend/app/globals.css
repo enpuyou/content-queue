@@ -87,13 +87,12 @@
   --color-status-unread: #e0e0e0;
   --color-status-read: #737373;
 
-  /* Highlight colors - dark mode (darker, more opaque for readability) */
-  --highlight-yellow: rgba(250, 204, 21, 0.4);
-  /* Yellow-400, brighter */
-  --highlight-green: rgba(34, 197, 94, 0.4);
-  --highlight-blue: rgba(59, 130, 246, 0.4);
-  --highlight-pink: rgba(236, 72, 153, 0.4);
-  --highlight-purple: rgba(168, 85, 247, 0.4);
+  /* Highlight colors - dark mode (higher opacity for vibrancy on dark bg) */
+  --highlight-yellow: rgb(250, 204, 21, 0.6);
+  --highlight-green: rgba(34, 197, 94, 0.6);
+  --highlight-blue: rgba(59, 130, 246, 0.6);
+  --highlight-pink: rgba(236, 72, 153, 0.6);
+  --highlight-purple: rgba(136, 45, 222, 0.6);
 
   --color-progress-bar: #6b73e8;
   /* Purple-500 */
@@ -153,11 +152,11 @@
   --color-status-read: #737373;
 
   /* Highlight colors - similar to dark mode */
-  --highlight-yellow: rgba(250, 204, 21, 0.4);
-  --highlight-green: rgba(34, 197, 94, 0.4);
-  --highlight-blue: rgba(59, 130, 246, 0.4);
-  --highlight-pink: rgba(236, 72, 153, 0.4);
-  --highlight-purple: rgba(168, 85, 247, 0.4);
+  --highlight-yellow: rgb(250, 204, 21, 0.6);
+  --highlight-green: rgba(34, 197, 94, 0.6);
+  --highlight-blue: rgba(59, 130, 246, 0.6);
+  --highlight-pink: rgba(236, 72, 153, 0.6);
+  --highlight-purple: rgba(136, 45, 222, 0.6);
 
   --color-progress-bar: #6b73e8;
   --progress-height: 3px;
@@ -1189,8 +1188,7 @@ a {
 .focus-mode ul[data-para-index].focused,
 .focus-mode ol[data-para-index].focused {
   opacity: 1;
-  color: rgba(255, 255, 255, 0.95) !important;
-  /* Brighter white for dark mode */
+  color: var(--color-text-primary) !important;
 }
 
 /* Brighten the paragraph above and below for context */
@@ -1564,4 +1562,19 @@ h4:hover .heading-anchor {
   /* 'all' covers opacity, color, and transform */
   transition: all 100ms ease !important;
   opacity: 1 !important;
+}
+
+/* ========================================
+   HIGHLIGHT TEXT CONTRAST (DARK MODE)
+   ======================================== */
+
+/* Make text more readable on highlights in dark mode */
+.dark [data-highlight-color] {
+  font-weight: 600;
+  text-shadow: 0 0 1px rgba(255, 255, 255, 0.3);
+}
+
+.true-black [data-highlight-color] {
+  font-weight: 600;
+  text-shadow: 0 0 1px rgba(255, 255, 255, 0.3);
 }

@@ -221,32 +221,36 @@ export default function InlineHighlight({
               }}
             />
             <span className="flex items-center justify-between pt-2 bg-[var(--color-bg-primary)]">
-              <button
-                onClick={handleDeleteHighlight}
-                className="text-xs px-2 py-0.5 leading-none rounded-none border bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] border-[var(--color-border)] hover:border-red-400 hover:text-red-500 transition-colors tracking-wider font-sans"
-              >
-                Delete
-              </button>
+              {/* LEFT GROUP: Delete + Color Picker */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleDeleteHighlight}
+                  className="text-xs px-2 py-0.5 leading-none rounded-none border bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] border-[var(--color-border)] hover:border-red-400 hover:text-red-500 transition-colors tracking-wider font-sans"
+                >
+                  Delete
+                </button>
 
-              {/* Integrated Color Picker */}
-              <div className="flex gap-2 px-2">
-                {colors.map((c) => (
-                  <button
-                    key={c}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleColorChange(c);
-                    }}
-                    className={`
-                                            w-[22px] h-[22px] border transition-all hover:scale-110
-                                            ${color === c ? "border-[var(--color-text-primary)] scale-110 shadow-sm" : "border-transparent opacity-70 hover:opacity-100"}
-                                        `}
-                    style={{ backgroundColor: `var(--highlight-${c})` }}
-                    title={c}
-                  />
-                ))}
+                {/* Integrated Color Picker */}
+                <div className="flex gap-0.5">
+                  {colors.map((c) => (
+                    <button
+                      key={c}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleColorChange(c);
+                      }}
+                      className={`
+                                              w-[22px] h-[22px] border transition-all hover:scale-110
+                                              ${color === c ? "border-[var(--color-text-primary)] scale-110 shadow-sm" : "border-transparent opacity-70 hover:opacity-100"}
+                                          `}
+                      style={{ backgroundColor: `var(--highlight-${c})` }}
+                      title={c}
+                    />
+                  ))}
+                </div>
               </div>
 
+              {/* RIGHT GROUP: Cancel + Save */}
               <div className="flex gap-2 tracking-wide">
                 <button
                   onClick={(e) => {
