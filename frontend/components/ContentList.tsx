@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import ContentItem from "./ContentItem";
@@ -11,6 +10,7 @@ import { ContentItem as ContentItemType, List } from "@/types";
 import { useProcessingPolling } from "@/hooks/useProcessingPolling";
 import { useLists } from "@/contexts/ListsContext";
 import { useHotkeys } from "@/hooks/useHotkeys";
+import { FilterDropdownContent } from "./FilterDropdownContent";
 
 /**
  * Filter type matching the reading status values:
@@ -94,6 +94,12 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
   // Filter dropdown state
   const [filterOpen, setFilterOpen] = useState(false);
 
+  // Tag filter state
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [availableTags, setAvailableTags] = useState<
+    Array<{ tag: string; count: number }>
+  >([]);
+
   /**
    * Expose method to parent component for adding new items optimistically
    */
@@ -116,6 +122,7 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
   useEffect(() => {
     fetchContents();
     fetchAvailableLists();
+    fetchAvailableTags();
   }, [filter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keyboard navigation state
@@ -273,6 +280,20 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
   };
 
   /**
+   * Fetches available tags for filtering
+   * Uses the contentAPI.getTags() helper from lib/api.ts
+   */
+  const fetchAvailableTags = async () => {
+    try {
+      const tags = await contentAPI.getTags();
+      setAvailableTags(tags);
+    } catch (err) {
+      console.error("Failed to fetch available tags:", err);
+      // Silently fail - tag filtering still works without counts
+    }
+  };
+
+  /**
    * Handles marking an item as read/unread or archived
    * Uses optimistic updates: update UI immediately, revert if API call fails
    */
@@ -347,6 +368,8 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
       setCachedData(updated, total);
       return updated;
     });
+    // Refresh tags to show new ones or update counts
+    fetchAvailableTags();
   };
 
   /**
@@ -366,46 +389,39 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
   };
 
   /**
-   * Client-side filtering based on reading_status
-   * Uses reading_status computed field from backend
+   * Client-side filtering based on reading_status and optional tag
+   * Uses reading_status computed field from backend and tags array
    */
   const filteredContents = (
     contents && Array.isArray(contents) ? contents : []
   ).filter((content) => {
+    // First filter by reading status
+    let matchesStatus = false;
     switch (filter) {
       case "unread":
-        return content.reading_status === "unread";
+        matchesStatus = content.reading_status === "unread";
+        break;
       case "in_progress":
-        return content.reading_status === "in_progress";
+        matchesStatus = content.reading_status === "in_progress";
+        break;
       case "read":
-        return content.reading_status === "read";
+        matchesStatus = content.reading_status === "read";
+        break;
       case "archived":
-        return content.reading_status === "archived";
+        matchesStatus = content.reading_status === "archived";
+        break;
       default: // 'all'
-        return content.reading_status !== "archived"; // Show all non-archived items
+        matchesStatus = content.reading_status !== "archived"; // Show all non-archived items
     }
-  });
 
-  /**
-   * Helper function to count items by filter type
-   * Used to show counts in the filter buttons like "Unread (5)"
-   */
-  const getCount = (filterType: FilterType): number => {
-    if (!contents || !Array.isArray(contents)) return 0;
-    switch (filterType) {
-      case "unread":
-        return contents.filter((c) => c.reading_status === "unread").length;
-      case "in_progress":
-        return contents.filter((c) => c.reading_status === "in_progress")
-          .length;
-      case "read":
-        return contents.filter((c) => c.reading_status === "read").length;
-      case "archived":
-        return contents.filter((c) => c.reading_status === "archived").length;
-      default:
-        return contents.filter((c) => c.reading_status !== "archived").length;
+    // Then filter by tag if any are selected
+    if (!matchesStatus) return false;
+    if (selectedTags.length > 0) {
+      // Show content that has AT LEAST ONE of the selected tags matching (OR logic)
+      return (content.tags || []).some((tag) => selectedTags.includes(tag));
     }
-  };
+    return true;
+  });
 
   return (
     <div className="space-y-4">
@@ -431,7 +447,17 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
             onClick={() => setFilterOpen(!filterOpen)}
             className="font-medium text-[var(--color-text-primary)] border-b border-dotted border-[var(--color-text-secondary)] hover:border-[var(--color-text-primary)] hover:border-solid transition-all flex items-center gap-1 pb-0.5"
           >
-            {filter === "in_progress" ? "In Progress" : filter}
+            <span className="flex items-center gap-1 lowercase">
+              {filter.replace("_", " ")}
+              {selectedTags.length > 0 && (
+                <>
+                  <span className="text-[var(--color-text-muted)]">•</span>
+                  <span className="text-[var(--color-accent)]">
+                    {selectedTags.map((t) => `#${t}`).join(", ")}
+                  </span>
+                </>
+              )}
+            </span>
             <svg
               className={`w-3 h-3 transition-transform ${filterOpen ? "rotate-180" : ""}`}
               fill="none"
@@ -453,34 +479,23 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
                 className="fixed inset-0 z-10"
                 onClick={() => setFilterOpen(false)}
               />
-              <div className="absolute left-0 top-full mt-1 w-48 bg-[var(--color-bg-primary)] border border-[var(--color-border)] shadow-lg z-20 flex flex-col">
-                {(
-                  ["all", "unread", "in_progress", "read", "archived"] as const
-                ).map((filterType) => (
-                  <Link
-                    key={filterType}
-                    href={
-                      filterType === "all"
-                        ? "/dashboard"
-                        : `/dashboard?filter=${filterType}`
-                    }
-                    onClick={() => setFilterOpen(false)}
-                    className={`text-left px-4 py-2 text-xs hover:bg-[var(--color-bg-secondary)] hover:text-[var(--color-accent)] transition-colors flex justify-between items-center ${
-                      filter === filterType
-                        ? "text-[var(--color-accent)] font-medium bg-[var(--color-bg-secondary)]"
-                        : "text-[var(--color-text-primary)]"
-                    }`}
-                  >
-                    <span className="capitalize">
-                      {filterType === "in_progress"
-                        ? "In Progress"
-                        : filterType}
-                    </span>
-                    <span className="text-[var(--color-text-muted)] text-[10px]">
-                      {getCount(filterType)}
-                    </span>
-                  </Link>
-                ))}
+              <div className="absolute left-0 top-full mt-1 w-64 bg-[var(--color-bg-primary)] border border-[var(--color-border)] shadow-lg z-20 flex flex-col">
+                <FilterDropdownContent
+                  currentFilter={filter}
+                  currentTags={selectedTags}
+                  availableTags={availableTags}
+                  onSelectFilter={() => setFilterOpen(false)}
+                  onToggleTag={(tag) => {
+                    setSelectedTags((prev) => {
+                      if (prev.includes(tag)) {
+                        return prev.filter((t) => t !== tag);
+                      }
+                      if (prev.length >= 3) return prev;
+                      return [...prev, tag];
+                    });
+                  }}
+                  onClearTags={() => setSelectedTags([])}
+                />
               </div>
             </>
           )}

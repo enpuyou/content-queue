@@ -23,6 +23,8 @@ class ContentItemResponse(BaseModel):
     content_type: str | None
     summary: str | None
     tags: list[str] | None = []
+    auto_tags: list[str] | None = []  # AI-suggested tags
+    status: str | None = None  # Reading status (read/unread/in_progress/archived)
 
     # Full content fields
     full_text: str | None

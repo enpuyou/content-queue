@@ -17,6 +17,7 @@ export interface ContentItem {
   thumbnail_url: string | null;
   content_type: string | null;
   tags: string[] | null;
+  auto_tags?: string[] | null;
   full_text: string | null;
   word_count: number | null;
   reading_time_minutes: number | null;

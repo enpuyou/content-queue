@@ -8,12 +8,14 @@ import { ContentItem } from "@/types";
 import { searchAPI, highlightsAPI, contentAPI } from "@/lib/api";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useReadingSettings } from "@/contexts/ReadingSettingsContext";
+import { sanitizeContentHtml } from "@/lib/bionicReading";
 import { useTTS } from "@/hooks/useTTS";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import HighlightToolbar from "./HighlightToolbar";
 import SequentialRetroLoader from "./SequentialRetroLoader";
 import HighlightRenderer from "./HighlightRenderer";
 import HighlightsPanel from "./HighlightsPanel";
+import ConnectionsPanel from "./ConnectionsPanel";
 import ThemeToggle from "./ThemeToggle";
 
 interface ExtendedSelection {
@@ -32,6 +34,7 @@ interface ReaderProps {
     is_read?: boolean;
     is_archived?: boolean;
     read_position?: number;
+    full_text?: string;
   }) => void;
 }
 
@@ -83,82 +86,154 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
   useHotkeys({
     esc: () => router.push("/dashboard"),
     h: () => setShowHighlightsPanel((prev) => !prev),
+    c: (e) => {
+      // Only toggle connections if NOT cmd+c (system copy)
+      if (!e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        // Only allow connections panel on desktop
+        if (window.innerWidth >= 1280) {
+          setShowConnectionsPanel((prev) => !prev);
+        }
+      }
+    },
+    f: (e) => {
+      // Only toggle focus mode if NOT cmd+f (browser search)
+      if (!e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        setFocusMode((prev) => !prev);
+      }
+    },
+    n: async (e) => {
+      // Create highlight with note when text is selected
+      const windowSelection = window.getSelection();
+      if (
+        !windowSelection ||
+        windowSelection.isCollapsed ||
+        !windowSelection.toString().trim()
+      ) {
+        return;
+      }
+
+      e.preventDefault();
+
+      try {
+        // Get range info (similar to HighlightToolbar logic)
+        const range = windowSelection.getRangeAt(0);
+        const selectedText = windowSelection.toString().trim();
+
+        // Find the article-content container to calculate offsets
+        const container = contentRef.current;
+        if (!container) return;
+
+        const preSelectionRange = range.cloneRange();
+        preSelectionRange.selectNodeContents(container);
+        preSelectionRange.setEnd(range.startContainer, range.startOffset);
+        const startOffset = preSelectionRange.toString().length;
+        const endOffset = startOffset + selectedText.length;
+
+        // Create highlight with default color (yellow)
+        const newHighlight = await highlightsAPI.create(content.id, {
+          text: selectedText,
+          start_offset: startOffset,
+          end_offset: endOffset,
+          color: "yellow",
+        });
+
+        // Refresh highlights and auto-open note editor for new highlight
+        await refreshHighlights(newHighlight.id);
+
+        // Clear selection
+        windowSelection.removeAllRanges();
+      } catch (error) {
+        console.error("Failed to create highlight with note:", error);
+      }
+    },
     t: () => (isPlaying ? pause() : resume()), // Simple toggle
     // Ephemeral formatting for user readability - NOW PERSISTED
     b: async (e) => {
       e.preventDefault();
-      const selection = window.getSelection();
-      if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
-        // Build a temporary document fragment to analyze
-        const range = selection.getRangeAt(0);
 
-        // Check if selection is already bold by looking at parent elements
-        // OR checking if the range contents are fully wrapped in B/STRONG
-        let isBold = false;
-        let parent = range.commonAncestorContainer.parentElement;
-        while (parent && parent !== contentRef.current) {
-          if (parent.tagName === "B" || parent.tagName === "STRONG") {
-            isBold = true;
-            break;
-          }
-          parent = parent.parentElement;
+      // CRITICAL FIX: Store ephemeral UI state and remove them before editing
+      const ephemeralElements = contentRef.current?.querySelectorAll(
+        '[data-ephemeral="true"]',
+      );
+      const ephemeralData: Array<{
+        element: Element;
+        parent: Node;
+        nextSibling: Node | null;
+      }> = [];
+
+      ephemeralElements?.forEach((el) => {
+        if (el.parentNode) {
+          ephemeralData.push({
+            element: el,
+            parent: el.parentNode,
+            nextSibling: el.nextSibling,
+          });
+          el.parentNode.removeChild(el);
         }
+      });
 
-        try {
-          if (isBold) {
-            // Basic un-bold implementation (execCommand is deprecated but robust for simple toggles in contentEditable)
-            // Since we are not contentEditable, we might need a more complex DOM manipulation
-            // Reverting to execCommand for simplicity if we made the area editable temporarily?
-            // Actually, surroundContents throws if partial.
-            // Let's stick to the current "Add Bold" but improve it:
-            // To properly UN-bold without execCommand is complex.
-            // A cheat: use execCommand on a hidden editable div? No.
-            // Given the constraints and the "Reader" nature, let's try to strip if strictly matching?
-            // For now, let's just APPLY bold. The user asked to UNBOLD.
-            // Retrying with a safer approach:
-            const span = document.createElement("span");
-            span.style.fontWeight = "bold";
-            // If already bold (via style or tag), we might want to set font-weight normal?
-            // But simpler: just toggle a class?
-            // Let's use the 'B' tag as requested.
+      try {
+        if (contentRef.current) {
+          contentRef.current.contentEditable = "true";
+          document.execCommand("bold");
+          contentRef.current.contentEditable = "false";
 
-            // NEW APPROACH: Simple Toggle using document.execCommand (safest visual toggle)
-            // We need `contentRef` to be `contentEditable` for a millisecond?
-            if (contentRef.current) {
-              contentRef.current.contentEditable = "true";
-              document.execCommand("bold");
-              contentRef.current.contentEditable = "false";
-
-              // Persist
-              const newHtml = contentRef.current.innerHTML;
-              await contentAPI.update(content.id, { full_text: newHtml });
-            }
-          } else {
-            // If not bold, make it bold
-            if (contentRef.current) {
-              contentRef.current.contentEditable = "true";
-              document.execCommand("bold");
-              contentRef.current.contentEditable = "false";
-
-              const newHtml = contentRef.current.innerHTML;
-              await contentAPI.update(content.id, { full_text: newHtml });
-            }
-          }
-        } catch (err) {
-          console.warn("Formatting failed", err);
+          const newHtml = contentRef.current.innerHTML;
+          const cleanHtml = sanitizeContentHtml(newHtml);
+          onStatusChange({ full_text: cleanHtml });
         }
+      } catch (err) {
+        console.warn("Formatting failed", err);
+      } finally {
+        // Restore ephemeral elements
+        ephemeralData.forEach(({ element, parent, nextSibling }) => {
+          parent.insertBefore(element, nextSibling);
+        });
       }
     },
     i: async (e) => {
       e.preventDefault();
-      // Similar approach for Italic
-      if (contentRef.current) {
-        contentRef.current.contentEditable = "true";
-        document.execCommand("italic");
-        contentRef.current.contentEditable = "false";
 
-        const newHtml = contentRef.current.innerHTML;
-        await contentAPI.update(content.id, { full_text: newHtml });
+      // CRITICAL FIX: Store ephemeral UI state and remove them before editing
+      const ephemeralElements = contentRef.current?.querySelectorAll(
+        '[data-ephemeral="true"]',
+      );
+      const ephemeralData: Array<{
+        element: Element;
+        parent: Node;
+        nextSibling: Node | null;
+      }> = [];
+
+      ephemeralElements?.forEach((el) => {
+        if (el.parentNode) {
+          ephemeralData.push({
+            element: el,
+            parent: el.parentNode,
+            nextSibling: el.nextSibling,
+          });
+          el.parentNode.removeChild(el);
+        }
+      });
+
+      try {
+        if (contentRef.current) {
+          contentRef.current.contentEditable = "true";
+          document.execCommand("italic");
+          contentRef.current.contentEditable = "false";
+
+          const newHtml = contentRef.current.innerHTML;
+          const cleanHtml = sanitizeContentHtml(newHtml);
+          onStatusChange({ full_text: cleanHtml });
+        }
+      } catch (err) {
+        console.warn("Formatting failed", err);
+      } finally {
+        // Restore ephemeral elements
+        ephemeralData.forEach(({ element, parent, nextSibling }) => {
+          parent.insertBefore(element, nextSibling);
+        });
       }
     },
   });
@@ -182,34 +257,52 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
 
   // Highlights panel visibility
   const [showHighlightsPanel, setShowHighlightsPanel] = useState(false);
+  const [showConnectionsPanel, setShowConnectionsPanel] = useState(false);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
   const handleImageZoom = useCallback((src: string) => {
     setZoomedImage(src);
   }, []);
 
-  // Gesture: Two-finger swipe to toggle highlights panel
+  // Gesture: Two-finger swipe to toggle panels (screen-half aware with close)
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
       // Threshold for horizontal swipe vs vertical scroll
       if (Math.abs(e.deltaX) > 30 && Math.abs(e.deltaY) < 30) {
-        setShowHighlightsPanel((prev) => {
-          if (e.deltaX > 0 && !prev) {
-            // Swipe Left (Pan Right visualization) -> Show Panel
-            return true;
+        const screenWidth = window.innerWidth;
+        const mouseX =
+          (e as WheelEvent & { clientX?: number }).clientX || screenWidth / 2; // Fallback to center
+        const isLeftHalf = mouseX < screenWidth / 2;
+
+        // Left half swipe logic
+        if (isLeftHalf) {
+          if (e.deltaX < 0) {
+            // Swipe right: open connections panel
+            setShowConnectionsPanel(true);
+            if (showHighlightsPanel) setShowHighlightsPanel(false);
+          } else if (e.deltaX > 0 && showConnectionsPanel) {
+            // Swipe left: close connections panel if open
+            setShowConnectionsPanel(false);
           }
-          if (e.deltaX < 0 && prev) {
-            // Swipe Right (Pan Left visualization) -> Hide Panel
-            return false;
+        }
+
+        // Right half swipe logic
+        if (!isLeftHalf) {
+          if (e.deltaX > 0) {
+            // Swipe left: open highlights panel
+            setShowHighlightsPanel(true);
+            if (showConnectionsPanel) setShowConnectionsPanel(false);
+          } else if (e.deltaX < 0 && showHighlightsPanel) {
+            // Swipe right: close highlights panel if open
+            setShowHighlightsPanel(false);
           }
-          return prev;
-        });
+        }
       }
     };
 
     window.addEventListener("wheel", handleWheel, { passive: true });
     return () => window.removeEventListener("wheel", handleWheel);
-  }, []);
+  }, [showHighlightsPanel, showConnectionsPanel]);
 
   // Navbar auto-hide state
   const [showNavbar, setShowNavbar] = useState(true);
@@ -1108,6 +1201,9 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
                 }}
                 onUpdateHighlight={refreshHighlights}
                 newlyCreatedHighlightId={newlyCreatedHighlightId}
+                onShowConnections={(_highlightId) => {
+                  setShowConnectionsPanel(true);
+                }}
               />
             ) : (
               <div className="text-center py-12 flex flex-col items-center gap-4">
@@ -1255,6 +1351,19 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
                   {showHighlightsPanel ? "Hide" : "Show"} Highlights{" "}
                   {highlights.length > 0 && `(${highlights.length})`}
                 </button>
+
+                {/* Connections button - HIDDEN on mobile */}
+                <button
+                  onClick={() => setShowConnectionsPanel(!showConnectionsPanel)}
+                  className={`hidden xl:inline-block text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-none border transition-colors ${
+                    showConnectionsPanel
+                      ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-accent)]"
+                      : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
+                  }`}
+                  title={`${showConnectionsPanel ? "Hide" : "Show"} Connections`}
+                >
+                  {showConnectionsPanel ? "Hide" : "Show"} Connections
+                </button>
               </div>
             </div>
           </div>
@@ -1277,8 +1386,24 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
         />
       </div>
 
+      {/* Connections Panel Sidebar - Left Side */}
+      <div
+        className={`hidden xl:flex fixed left-4 top-32 w-80 h-[calc(100vh-16rem)] z-20 overflow-hidden flex-col transition-all duration-300 ease-in-out transform ${
+          showConnectionsPanel
+            ? "translate-x-0 opacity-100 pointer-events-auto"
+            : "-translate-x-[120%] opacity-0 pointer-events-none"
+        }`}
+      >
+        <ConnectionsPanel
+          contentId={content.id}
+          isOpen={showConnectionsPanel}
+          onClose={() => setShowConnectionsPanel(false)}
+          onNavigateToArticle={(id) => router.push(`/content/${id}`)}
+        />
+      </div>
+
       {/* Table of Contents - Desktop Left Sidebar */}
-      {tocHeadings.length > 0 && (
+      {tocHeadings.length > 0 && !showConnectionsPanel && (
         <div
           ref={tocNavRef}
           onScroll={handleTocScrollInteraction}

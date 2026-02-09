@@ -195,6 +195,43 @@ export const contentAPI = {
       method: "POST",
     });
   },
+
+  // Get all unique tags with counts (GET /tags)
+  getTags: async () => {
+    return fetchWithAuth(`${API_BASE_URL}/content/tags`);
+  },
+
+  // Get content filtered by tag (GET /content?tag=x)
+  filterByTag: async (tag: string, skip = 0, limit = 50) => {
+    return fetchWithAuth(
+      `${API_BASE_URL}/content?tag=${encodeURIComponent(tag)}&skip=${skip}&limit=${limit}`,
+    );
+  },
+
+  // Accept auto-generated tags (POST /content/{item_id}/tags/accept)
+  acceptTags: async (id: string) => {
+    return fetchWithAuth(`${API_BASE_URL}/content/${id}/tags/accept`, {
+      method: "POST",
+    });
+  },
+
+  // Dismiss auto-generated tags (POST /content/{item_id}/tags/dismiss)
+  dismissTags: async (id: string) => {
+    return fetchWithAuth(`${API_BASE_URL}/content/${id}/tags/dismiss`, {
+      method: "POST",
+    });
+  },
+
+  // Get recommended content (GET /content/recommended)
+  getRecommended: async (skip = 0, limit = 10, mood?: string) => {
+    const params = new URLSearchParams();
+    params.append("skip", skip.toString());
+    params.append("limit", limit.toString());
+    if (mood) params.append("mood", mood);
+    return fetchWithAuth(
+      `${API_BASE_URL}/content/recommended?${params.toString()}`,
+    );
+  },
 };
 
 // Lists API - matches your /lists endpoints (for future use)
@@ -269,6 +306,24 @@ export const searchAPI = {
   semantic: async (query: string) => {
     return fetchWithAuth(
       `${API_BASE_URL}/search/semantic?query=${encodeURIComponent(query)}`,
+    );
+  },
+
+  // Find connections for a highlight (GET /search/connections/{highlight_id})
+  findHighlightConnections: async (
+    highlightId: string,
+    limit = 10,
+    threshold = 0.5,
+  ) => {
+    return fetchWithAuth(
+      `${API_BASE_URL}/search/connections/${highlightId}?limit=${limit}&threshold=${threshold}`,
+    );
+  },
+
+  // Find all connections for an article's highlights (GET /search/connections/article/{content_id})
+  findArticleConnections: async (contentId: string, threshold = 0.5) => {
+    return fetchWithAuth(
+      `${API_BASE_URL}/search/connections/article/${contentId}?threshold=${threshold}`,
     );
   },
 };
