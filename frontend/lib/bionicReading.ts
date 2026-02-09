@@ -7,7 +7,7 @@
  */
 export function toBionic(html: string): string {
   // Only process text nodes, not HTML tags
-  return html.replace(/>([^<]+)</g, (match, text) => {
+  return html.replace(/>([^<]+)</g, (_match, text) => {
     const bionicText = text.replace(/\b(\w+)\b/g, (word: string) => {
       if (word.length <= 1) return word;
       const boldLen = Math.ceil(word.length * 0.5);
@@ -54,6 +54,33 @@ export function addHeadingAnchors(html: string): string {
 
     // Prepend anchor to heading
     heading.prepend(anchor);
+  });
+
+  return doc.body.innerHTML;
+}
+
+/**
+ * Sanitize HTML content before saving.
+ * Removes:
+ * 1. Heading anchors (# links)
+ * 2. Ephemeral UI elements (highlight editors, indicators)
+ */
+export function sanitizeContentHtml(html: string): string {
+  if (typeof document === "undefined") return html;
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
+
+  // Remove heading anchors
+  doc.querySelectorAll(".heading-anchor").forEach((anchor) => {
+    anchor.remove();
+  });
+
+  // Remove ephemeral UI (editors, indicators)
+  // These are temporarily removed before formatting and restored after,
+  // but we still need to clean them before saving
+  doc.querySelectorAll('[data-ephemeral="true"]').forEach((el) => {
+    el.remove();
   });
 
   return doc.body.innerHTML;

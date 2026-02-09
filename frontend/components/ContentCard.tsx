@@ -40,11 +40,29 @@ export default function ContentCard({
   const [tagInput, setTagInput] = useState("");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [acceptingTags, setAcceptingTags] = useState(false);
+  const [dismissingTags, setDismissingTags] = useState(false);
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Load available tags when editing starts
+  useEffect(() => {
+    if (isEditingTags) {
+      contentAPI
+        .getTags()
+        .then((tags: Array<{ name: string; count: number }>) => {
+          setAvailableTags(tags.map((t) => t.name));
+        })
+        .catch((err) => {
+          console.error("Failed to load tags:", err);
+        });
+    }
+  }, [isEditingTags]);
 
   const handleAddTag = async () => {
     if (!tagInput.trim()) return;
@@ -74,6 +92,34 @@ export default function ContentCard({
       }
     } catch (error) {
       console.error("Failed to remove tag:", error);
+    }
+  };
+
+  const handleAcceptAutoTags = async () => {
+    try {
+      setAcceptingTags(true);
+      const updated = await contentAPI.acceptTags(content.id);
+      if (onUpdate) {
+        onUpdate(updated);
+      }
+    } catch (error) {
+      console.error("Failed to accept auto-tags:", error);
+    } finally {
+      setAcceptingTags(false);
+    }
+  };
+
+  const handleDismissAutoTags = async () => {
+    try {
+      setDismissingTags(true);
+      const updated = await contentAPI.dismissTags(content.id);
+      if (onUpdate) {
+        onUpdate(updated);
+      }
+    } catch (error) {
+      console.error("Failed to dismiss auto-tags:", error);
+    } finally {
+      setDismissingTags(false);
     }
   };
 
@@ -213,72 +259,190 @@ export default function ContentCard({
           ) : null}
 
           {/* Tags */}
-          {content.tags && content.tags.length > 0 && (
-            <div className="flex items-center gap-2 flex-wrap mb-2">
-              {content.tags.slice(0, 3).map((tag, index) => (
-                <span
-                  key={index}
-                  className="text-xs text-[var(--color-text-muted)] border-b border-[var(--color-border)] pb-0.5 flex items-center gap-1"
-                >
-                  {tag}
-                  {isEditingTags && (
+          {content.tags?.length ||
+          0 > 0 ||
+          content.auto_tags?.length ||
+          0 > 0 ? (
+            <div className="space-y-2 mb-3">
+              {/* User-confirmed tags */}
+              {content.tags && content.tags.length > 0 && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  {content.tags.slice(0, 3).map((tag, index) => (
+                    <span
+                      key={`user-${index}`}
+                      className="text-xs text-[var(--color-text-muted)] border-b border-[var(--color-border)] pb-0.5 flex items-center gap-1"
+                    >
+                      {tag}
+                      {isEditingTags && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveTag(tag);
+                          }}
+                          className="text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] ml-1"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </span>
+                  ))}
+                  {content.tags.length > 3 && (
+                    <span className="text-xs text-[var(--color-text-faint)]">
+                      +{content.tags.length - 3} more
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Auto-suggested tags */}
+              {content.auto_tags && content.auto_tags.length > 0 && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  {content.auto_tags.slice(0, 2).map((tag, index) => (
+                    <span
+                      key={`auto-${index}`}
+                      className="text-xs text-[var(--color-text-muted)] opacity-60 border-b border-[var(--color-border)] border-dashed pb-0.5 flex items-center gap-1"
+                    >
+                      +{tag}
+                    </span>
+                  ))}
+                  {content.auto_tags.length > 2 && (
+                    <span className="text-xs text-[var(--color-text-faint)] opacity-60">
+                      +{content.auto_tags.length - 2} suggested
+                    </span>
+                  )}
+                  {/* Accept/Dismiss buttons for auto-tags */}
+                  <div className="flex gap-1">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleRemoveTag(tag);
+                        handleAcceptAutoTags();
                       }}
-                      className="text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] ml-1"
+                      disabled={acceptingTags}
+                      className="text-xs px-2 py-0.5 text-[var(--color-accent)] hover:bg-[var(--color-bg-secondary)] border border-[var(--color-accent)] rounded disabled:opacity-50"
                     >
-                      ×
+                      {acceptingTags ? "..." : "✓"}
                     </button>
-                  )}
-                </span>
-              ))}
-              {content.tags.length > 3 && (
-                <span className="text-xs text-[var(--color-text-faint)]">
-                  +{content.tags.length - 3} more
-                </span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDismissAutoTags();
+                      }}
+                      disabled={dismissingTags}
+                      className="text-xs px-2 py-0.5 text-[var(--color-text-muted)] hover:text-red-600 hover:border-red-300 border border-[var(--color-border)] rounded disabled:opacity-50"
+                    >
+                      {dismissingTags ? "..." : "✕"}
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
-          )}
+          ) : null}
 
           {/* Tag editing UI */}
           {isEditingTags && (
-            <div className="mb-2 flex items-center gap-2 flex-wrap">
-              <input
-                type="text"
-                value={tagInput}
-                onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
+            <div className="mb-2 space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    value={tagInput}
+                    onChange={(e) => {
+                      setTagInput(e.target.value);
+                      setShowSuggestions(e.target.value.length > 0);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddTag();
+                        setShowSuggestions(false);
+                      }
+                    }}
+                    onFocus={() => {
+                      if (tagInput.length > 0) setShowSuggestions(true);
+                    }}
+                    onBlur={() => {
+                      // Delay hiding suggestions to allow click on suggestion
+                      setTimeout(() => setShowSuggestions(false), 200);
+                    }}
+                    placeholder="Add tag..."
+                    className="w-full px-2 py-1 text-xs border border-[var(--color-border)] bg-transparent focus:outline-none focus:!ring-0"
+                    autoFocus
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                  {/* Autocomplete suggestions */}
+                  {showSuggestions && tagInput.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded shadow-sm z-10">
+                      {availableTags
+                        .filter(
+                          (tag) =>
+                            tag
+                              .toLowerCase()
+                              .includes(tagInput.toLowerCase()) &&
+                            !content.tags?.includes(tag),
+                        )
+                        .slice(0, 5)
+                        .map((tag) => (
+                          <button
+                            key={tag}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setTagInput(tag);
+                              setShowSuggestions(false);
+                              // Auto-add the tag
+                              setTimeout(() => {
+                                const newTags = [...(content.tags || []), tag];
+                                contentAPI
+                                  .update(content.id, {
+                                    tags: newTags,
+                                  })
+                                  .then((updated) => {
+                                    if (onUpdate) onUpdate(updated);
+                                    setTagInput("");
+                                  })
+                                  .catch((err) =>
+                                    console.error("Failed to add tag:", err),
+                                  );
+                              }, 0);
+                            }}
+                            className="w-full text-left px-2 py-1 text-xs text-[var(--color-text-muted)] hover:bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)] last:border-b-0"
+                          >
+                            {tag}
+                          </button>
+                        ))}
+                      {availableTags.filter(
+                        (tag) =>
+                          tag.toLowerCase().includes(tagInput.toLowerCase()) &&
+                          !content.tags?.includes(tag),
+                      ).length === 0 && (
+                        <div className="px-2 py-1 text-xs text-[var(--color-text-faint)]">
+                          No matching tags
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
                     handleAddTag();
-                  }
-                }}
-                placeholder="Add tag..."
-                className="px-2 py-1 text-xs border border-[var(--color-border)] bg-transparent focus:outline-none focus:border-[var(--color-accent)] flex-1 min-w-[100px]"
-                autoFocus
-                onClick={(e) => e.stopPropagation()}
-              />
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleAddTag();
-                }}
-                className="text-xs px-2 py-1 bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)]"
-              >
-                Add
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsEditingTags(false);
-                  setTagInput("");
-                }}
-                className="text-xs px-2 py-1 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
-              >
-                Done
-              </button>
+                    setShowSuggestions(false);
+                  }}
+                  className="text-xs px-2 py-1 bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)]"
+                >
+                  Add
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsEditingTags(false);
+                    setTagInput("");
+                    setShowSuggestions(false);
+                  }}
+                  className="text-xs px-2 py-1 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+                >
+                  Done
+                </button>
+              </div>
             </div>
           )}
 

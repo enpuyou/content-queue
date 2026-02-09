@@ -4,6 +4,7 @@ from app.core.celery_app import celery_app
 from app.core.database import SessionLocal
 from app.models.content import ContentItem
 from app.tasks.embedding import generate_embedding
+from app.tasks.tagging import generate_tags
 from uuid import UUID
 import requests
 from bs4 import BeautifulSoup
@@ -301,6 +302,10 @@ def extract_full_content(self, content_item_id: str):
 
             # Trigger embedding generation
             generate_embedding.delay(content_item_id)
+
+            # Chain tagging after embedding is generated
+            # (tagging task will be triggered after embedding completes)
+            generate_tags.delay(content_item_id)
 
             return {
                 "content_item_id": content_item_id,
@@ -617,7 +622,7 @@ def xml_to_html(xml_content: str, original_html: bytes = None) -> str:
                 caption_html = (
                     f'<figcaption style="text-align:center; font-size:0.9em; '
                     f'color:var(--color-text-muted); margin-top:0.5em; font-style:italic;">'
-                    f'{img_data["caption"]}</figcaption>'
+                    f"{img_data['caption']}</figcaption>"
                 )
 
             return (

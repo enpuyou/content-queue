@@ -106,10 +106,13 @@ export default function SearchBar() {
     <div ref={searchRef} className="relative w-full">
       {/* Search Input - Transparent by default, highlighted on hover/focus */}
       <div
-        className="relative"
+        className="relative flex items-center gap-2 border border-transparent hover:border-[var(--color-border)] focus-within:!border-[var(--color-accent)] focus-within:bg-[var(--color-bg-secondary)] hover:bg-[var(--color-bg-secondary)] transition-all px-3"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
+        <span className="text-[var(--color-text-muted)] font-mono text-lg select-none">
+          &gt;
+        </span>
         <input
           ref={inputRef}
           type="text"
@@ -118,7 +121,7 @@ export default function SearchBar() {
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           placeholder="Search..."
-          className="w-full px-3 py-2 border border-transparent bg-transparent rounded-none font-mono text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] transition-all focus:outline-none focus:border-[var(--color-accent)] focus:bg-[var(--color-bg-secondary)] hover:border-[var(--color-border)] hover:bg-[var(--color-bg-secondary)]"
+          className="w-full py-2 bg-transparent rounded-none font-mono text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none border-none outline-none focus:!ring-0"
         />
 
         {/* Retro Loading State */}

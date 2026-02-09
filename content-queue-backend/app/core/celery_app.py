@@ -19,10 +19,19 @@ celery_app.conf.update(
     task_soft_time_limit=25 * 60,  # Soft limit at 25 minutes
     worker_prefetch_multiplier=1,  # Take one task at a time
     worker_max_tasks_per_child=1000,  # Restart worker after 1000 tasks
+    beat_schedule={
+        # Cleanup old deleted items daily at 3 AM UTC
+        "cleanup-old-deleted-items": {
+            "task": "app.tasks.cleanup.cleanup_old_deleted_items",
+            "schedule": 60 * 60 * 24,  # Every 24 hours
+            # Alternative: Use crontab for specific time
+            # "schedule": crontab(hour=3, minute=0),
+        },
+    },
 )
 
 # # Auto-discover tasks from app/tasks/ directory
 # celery_app.autodiscover_tasks(['app.tasks'])
 
 # Import tasks here (explicit import)
-from app.tasks import extraction, summarization
+from app.tasks import extraction, summarization, cleanup

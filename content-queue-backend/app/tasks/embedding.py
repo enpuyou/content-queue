@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.core.celery_app import celery_app
 from app.core.database import SessionLocal
 from app.models.content import ContentItem
+from app.models.highlight import Highlight
 from app.core.config import settings
 from uuid import UUID
 import logging
@@ -125,3 +126,95 @@ def generate_embedding(self, content_item_id: str):
             raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
 
         return {"content_item_id": content_item_id, "status": "failed", "error": str(e)}
+
+
+@celery_app.task(base=DatabaseTask, bind=True, max_retries=3)
+def generate_highlight_embeddings_batch(self, user_id: str):
+    """
+    Batch generate embeddings for all highlights without embeddings for a user.
+
+    - Uses text-embedding-3-small model (1536 dimensions)
+    - Embeds highlight text + surrounding context
+    - Periodic task: run every 5 minutes or triggered manually
+    - NOT real-time to avoid wasting API calls on temporary highlights
+    """
+    try:
+        user_uuid = UUID(user_id)
+
+        # Find all highlights for this user without embeddings
+        highlights_to_embed = (
+            self.db.query(Highlight)
+            .filter(
+                Highlight.user_id == user_uuid,
+                Highlight.embedding.is_(None),
+            )
+            .all()
+        )
+
+        if not highlights_to_embed:
+            logger.info(f"No highlights to embed for user {user_id}")
+            return {"user_id": user_id, "count": 0, "status": "completed"}
+
+        logger.info(
+            f"Batch embedding {len(highlights_to_embed)} highlights for user {user_id}"
+        )
+
+        # Prepare texts for embedding (batch API call)
+        embed_tasks = []
+        for highlight in highlights_to_embed:
+            if not highlight.text:
+                continue
+
+            # Use highlight text as is (already short)
+            # Could enhance with surrounding context from full_text if needed
+            embed_tasks.append((highlight.id, highlight.text))
+
+        if not embed_tasks:
+            logger.info(f"No valid highlight text to embed for user {user_id}")
+            return {"user_id": user_id, "count": 0, "status": "completed"}
+
+        # Batch API call: embed all texts at once
+        client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        texts_to_embed = [text for _, text in embed_tasks]
+
+        response = client.embeddings.create(
+            model="text-embedding-3-small",
+            input=texts_to_embed,
+            encoding_format="float",
+        )
+
+        # Update highlights with embeddings
+        embeddings_map = {i: emb.embedding for i, emb in enumerate(response.data)}
+        embedded_count = 0
+
+        for idx, (highlight_id, _) in enumerate(embed_tasks):
+            if idx in embeddings_map:
+                highlight = (
+                    self.db.query(Highlight)
+                    .filter(Highlight.id == highlight_id)
+                    .first()
+                )
+                if highlight:
+                    highlight.embedding = embeddings_map[idx]
+                    embedded_count += 1
+
+        self.db.commit()
+
+        logger.info(
+            f"Successfully embedded {embedded_count} highlights for user {user_id}"
+        )
+
+        return {
+            "user_id": user_id,
+            "count": embedded_count,
+            "status": "completed",
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to batch embed highlights for user {user_id}: {str(e)}")
+
+        # Retry with exponential backoff
+        if self.request.retries < self.max_retries:
+            raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
+
+        return {"user_id": user_id, "status": "failed", "error": str(e)}

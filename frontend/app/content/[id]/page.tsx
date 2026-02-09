@@ -39,6 +39,7 @@ export default function ContentPage() {
     is_read?: boolean;
     is_archived?: boolean;
     read_position?: number;
+    full_text?: string;
   }) => {
     if (!content) return;
 

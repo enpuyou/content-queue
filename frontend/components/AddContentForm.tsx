@@ -50,7 +50,10 @@ export default function AddContentForm({
         </div>
       )}
 
-      <div className="flex items-center gap-2 group focus-within:opacity-100 opacity-80 transition-opacity duration-300">
+      <div className="flex items-center gap-2 group focus-within:opacity-100 opacity-80 transition-opacity duration-300 border-b border-[var(--color-border)] focus-within:border-[var(--color-accent)]">
+        <span className="text-[var(--color-text-muted)] font-mono text-lg select-none">
+          &gt;
+        </span>
         <input
           type="url"
           id="url"
@@ -58,7 +61,7 @@ export default function AddContentForm({
           onChange={(e) => setUrl(e.target.value)}
           placeholder="Paste article URL..."
           required
-          className="flex-1 px-0 py-2 border-b border-[var(--color-border)] bg-transparent rounded-none focus:outline-none focus:!ring-0 focus:!border-[var(--color-border)] focus:!shadow-none placeholder-[var(--color-text-muted)] transition-all font-mono text-sm"
+          className="flex-1 px-0 py-2 bg-transparent rounded-none focus:outline-none focus:!ring-0 focus:!shadow-none placeholder-[var(--color-text-muted)] transition-all font-mono text-sm border-none"
         />
 
         <button

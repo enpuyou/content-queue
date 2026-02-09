@@ -1,18 +1,26 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { highlightsAPI } from "@/lib/api";
+import { SHOW_HIGHLIGHT_CONNECTIONS } from "@/lib/flags";
+import { highlightsAPI, searchAPI } from "@/lib/api";
 
 interface InlineHighlightProps {
   id: string;
   color: string;
   initialNote?: string;
-  initialOpen?: boolean;
+  // Controlled state props
+  isOpen?: boolean;
+  onToggle?: (isOpen: boolean) => void;
+  draftNote?: string;
+  onNoteChange?: (note: string) => void;
+
   children: React.ReactNode;
   onDelete?: (id: string) => void;
   onUpdate?: () => void;
   onHighlightClick?: (id: string, element: Element) => void;
   isMobile?: boolean;
+  onShowConnections?: (highlightId: string) => void;
+  showIndicators?: boolean;
 }
 
 const colors = ["yellow", "green", "blue", "pink", "purple"];
@@ -21,40 +29,84 @@ export default function InlineHighlight({
   id,
   color: initialColor,
   initialNote,
-  initialOpen = false,
+  // Controlled props with fallbacks for backward compatibility (if any)
+  isOpen: propsIsOpen,
+  onToggle,
+  draftNote: propsDraftNote,
+  onNoteChange,
+
   children,
   onDelete,
   onUpdate,
   onHighlightClick: _onHighlightClick,
   isMobile = false,
+  onShowConnections,
+  showIndicators = true,
 }: InlineHighlightProps) {
-  const [isOpen, setIsOpen] = useState(initialOpen);
-  const [note, setNote] = useState(initialNote || "");
-  const [visualNote, setVisualNote] = useState(initialNote || ""); // For display when collapsed
+  // Internal state for uncontrolled usage (fallback)
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const [internalNote, setInternalNote] = useState(initialNote || "");
   const [color, setColor] = useState(initialColor);
   const [isSaving, setIsSaving] = useState(false);
+  const [hasConnections, setHasConnections] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Derived state
+  const isControlled = propsIsOpen !== undefined;
+  const isOpen = isControlled ? propsIsOpen : internalIsOpen;
+  const note = isControlled
+    ? propsDraftNote !== undefined
+      ? propsDraftNote
+      : internalNote
+    : internalNote;
+
+  // Handlers
+  const handleSetIsOpen = (open: boolean) => {
+    if (isControlled) {
+      onToggle?.(open);
+    } else {
+      setInternalIsOpen(open);
+    }
+  };
+
+  const handleSetNote = (newNote: string) => {
+    if (isControlled && onNoteChange) {
+      onNoteChange(newNote);
+    } else {
+      setInternalNote(newNote);
+    }
+  };
+
+  // Sync internal note if initialNote changes (only for uncontrolled or display)
+  // For controlled mode, the parent handles the "saved" note vs "draft" note logic
+  // But we still need "visualNote" behavior?
+  // actually, let's use initialNote as the "saved" state and note as "current".
 
   // Update local state if prop changes (e.g. from parent refresh)
   useEffect(() => {
-    if (initialNote !== undefined) {
-      setNote(initialNote);
-      setVisualNote(initialNote);
+    if (initialNote !== undefined && !isControlled) {
+      setInternalNote(initialNote);
     }
     setColor(initialColor);
-  }, [initialNote, initialColor]);
+  }, [initialNote, initialColor, isControlled]);
 
-  // Force open if initialOpen changes to true (e.g. from parent "Note" button)
+  // Check for connections on mount
   useEffect(() => {
-    if (initialOpen) {
-      setIsOpen(true);
-    }
-  }, [initialOpen]);
+    const checkConnections = async () => {
+      try {
+        const connections = await searchAPI.findHighlightConnections(id, 1);
+        setHasConnections(connections.length > 0);
+      } catch {
+        setHasConnections(false);
+      }
+    };
+
+    checkConnections();
+  }, [id]);
 
   useEffect(() => {
     if (isOpen && textareaRef.current) {
       textareaRef.current.focus();
-      // Move cursor to end
       textareaRef.current.setSelectionRange(
         textareaRef.current.value.length,
         textareaRef.current.value.length,
@@ -77,35 +129,25 @@ export default function InlineHighlight({
   }, [isOpen, note]);
 
   const handleToggle = (e: React.MouseEvent) => {
-    // If mobile, prevent opening editor
-    if (isMobile) {
-      return;
-    }
+    if (isMobile) return;
 
-    // If currently open, ANY click on the highlight header should SAVE and CLOSE it
     if (isOpen) {
       e.stopPropagation();
       e.preventDefault();
       if (typeof window !== "undefined") {
         window.getSelection()?.removeAllRanges();
       }
-      handleSave(); // Auto-save on close
+      handleSave();
       return;
     }
 
-    // If closed...
-    if (visualNote) {
-      // Case 1: Has Note -> Open Editor + Suppress Global Toolbar
+    if (initialNote) {
       e.stopPropagation();
       e.preventDefault();
-      // Force clear selection to prevent global toolbar from appearing
       if (typeof window !== "undefined") {
         window.getSelection()?.removeAllRanges();
       }
-      setIsOpen(true);
-    } else {
-      // Case 2: No Note -> Standard Highlight Click (Show Global Toolbar)
-      // We intentionally let it bubble so Reader can handle the selection/click
+      handleSetIsOpen(true);
     }
   };
 
@@ -119,9 +161,9 @@ export default function InlineHighlight({
         note: note || undefined,
         color: color,
       });
-      setVisualNote(note);
-      setIsOpen(false);
-      onUpdate?.(); // Sync parent
+      // Close editor
+      handleSetIsOpen(false);
+      onUpdate?.();
     } catch (error) {
       console.error("Failed to save note:", error);
     } finally {
@@ -132,13 +174,11 @@ export default function InlineHighlight({
   const handleColorChange = async (newColor: string) => {
     if (color === newColor) return;
     setColor(newColor);
-    // Auto-save color change
     try {
       await highlightsAPI.update(id, { color: newColor });
       onUpdate?.();
     } catch (error) {
       console.error(error);
-      // Revert on error?
     }
   };
 
@@ -161,7 +201,7 @@ export default function InlineHighlight({
         data-highlight-id={id}
         className={`
             relative transition-colors duration-200 box-decoration-clone
-            ${!isMobile ? "cursor-pointer hover:saturate-150" : ""}
+            ${!isMobile ? "cursor-pointer hover:saturate-120" : ""}
             ${isOpen ? "ring-1 ring-[var(--color-text-primary)] z-10" : ""}
         `}
         style={{
@@ -172,36 +212,69 @@ export default function InlineHighlight({
         onClick={handleToggle}
         title={
           !isMobile
-            ? visualNote
+            ? initialNote
               ? "Click to edit note"
               : "Click to add note"
             : ""
         }
       >
-        {children}
-        {/* Dot at the end of content instead of absolute positioning */}
-        {visualNote && !isOpen && (
-          <span
-            className="inline-block w-0 h-0 relative overflow-visible"
-            style={{ verticalAlign: "super" }}
-          >
-            <span className="absolute flex h-2 w-2 -right-[4px] -top-[12px]">
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-[var(--color-text-primary)]"></span>
+        {/* Connection Indicator - Bottom left of highlight start */}
+        {SHOW_HIGHLIGHT_CONNECTIONS &&
+          hasConnections &&
+          !isOpen &&
+          showIndicators && (
+            <span
+              className="ephemeral-ui absolute"
+              style={{
+                left: 0,
+                top: "100%",
+                width: 0,
+                height: 0,
+                overflow: "visible",
+              }}
+              data-ephemeral="true"
+              contentEditable={false}
+              suppressContentEditableWarning
+            >
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onShowConnections?.(id);
+                }}
+                className="absolute -bottom-1 -left-1 w-2 h-2 bg-blue-500 rounded-full cursor-pointer hover:scale-125 transition-transform"
+                title="This highlight has connections to other articles"
+              />
             </span>
+          )}
+        {children}
+        {/* Note Indicator - Top right corner at end of highlight */}
+        {initialNote && !isOpen && showIndicators && (
+          <span
+            className="ephemeral-ui absolute"
+            style={{
+              right: 0,
+              top: 0,
+              width: 0,
+              height: 0,
+              overflow: "visible",
+            }}
+            data-ephemeral="true"
+            contentEditable={false}
+            suppressContentEditableWarning
+          >
+            <span className="absolute -right-1 -top-1 rounded-full h-2 w-2 bg-[var(--color-text-primary)]"></span>
           </span>
         )}
       </span>
-
-      {/* Editor - Rendered as a block after the span effectively via CSS or structure
-          To "break" the flow inside a paragraph, we use a block span or div.
-          Note: This technically might be inside a <p> tag from the parent HTML.
-      */}
       {isOpen && (
         <span
-          className="flex justify-center w-full py-8 animate-fade-in block"
+          className="ephemeral-ui flex justify-center w-full py-8 animate-fade-in block"
           style={{
             paddingRight: "20px",
           }}
+          data-ephemeral="true"
+          contentEditable={false}
+          suppressContentEditableWarning
         >
           <span
             className="block bg-[var(--color-bg-primary)] w-[95%]"
@@ -210,7 +283,7 @@ export default function InlineHighlight({
             <textarea
               ref={textareaRef}
               value={note}
-              onChange={(e) => setNote(e.target.value)}
+              onChange={(e) => handleSetNote(e.target.value)}
               onInput={adjustHeight}
               onKeyDown={handleKeyDown}
               placeholder="Write a note..."
@@ -220,7 +293,7 @@ export default function InlineHighlight({
                 minHeight: "60px",
               }}
             />
-            <span className="flex items-center justify-between pt-2 bg-[var(--color-bg-primary)]">
+            <div className="flex items-center justify-between pt-2 bg-[var(--color-bg-primary)]">
               {/* LEFT GROUP: Delete + Color Picker */}
               <div className="flex items-center gap-2">
                 <button
@@ -240,9 +313,9 @@ export default function InlineHighlight({
                         handleColorChange(c);
                       }}
                       className={`
-                                              w-[22px] h-[22px] border transition-all hover:scale-110
-                                              ${color === c ? "border-[var(--color-text-primary)] scale-110 shadow-sm" : "border-transparent opacity-70 hover:opacity-100"}
-                                          `}
+                          w-[22px] h-[22px] border transition-all hover:scale-110
+                          ${color === c ? "border-[var(--color-text-primary)] scale-110 shadow-sm" : "border-transparent opacity-70 hover:opacity-100"}
+                      `}
                       style={{ backgroundColor: `var(--highlight-${c})` }}
                       title={c}
                     />
@@ -255,8 +328,8 @@ export default function InlineHighlight({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    setIsOpen(false);
-                    setNote(visualNote);
+                    handleSetIsOpen(false);
+                    handleSetNote(initialNote || "");
                   }}
                   className="text-xs px-2 py-0.5 leading-none rounded-none border bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors font-sans"
                 >
@@ -270,7 +343,7 @@ export default function InlineHighlight({
                   {isSaving ? "Saving..." : "Save"}
                 </button>
               </div>
-            </span>
+            </div>
           </span>
         </span>
       )}

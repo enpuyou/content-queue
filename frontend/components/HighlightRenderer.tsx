@@ -53,15 +53,22 @@ const HighlightRenderer = ({
   onDeleteHighlight,
   onUpdateHighlight,
   newlyCreatedHighlightId, // to trigger auto-open
+  onShowConnections,
 }: HighlightRendererProps & {
   onDeleteHighlight?: (id: string) => void;
   onUpdateHighlight?: () => void;
   newlyCreatedHighlightId?: string | null;
+  onShowConnections?: (highlightId: string) => void;
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [renderedHtml, setRenderedHtml] = useState<string>(html);
   const { settings } = useReadingSettings();
   const [isMobile, setIsMobile] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Removed: formattingTimestamp effect was too aggressive
+  // Formatting operations already handle ephemeral elements properly
+  // and don't need to force-close all note editors globally
 
   // Detect mobile
   useEffect(() => {
@@ -92,6 +99,7 @@ const HighlightRenderer = ({
 
     // IMPORTANT: Count character positions on the ORIGINAL html first
     const originalDoc = parser.parseFromString(html, "text/html");
+
     const walker = document.createTreeWalker(
       originalDoc.body,
       NodeFilter.SHOW_TEXT,
@@ -115,6 +123,16 @@ const HighlightRenderer = ({
       charIndex += nodeText.length;
     }
 
+    // Start with collecting operations instead of mutating immediately
+    type Operation = {
+      node: Text;
+      segments: Array<Segment>;
+    };
+
+    const operations: Operation[] = [];
+    // Map to track all segments for a specific highlight ID across multiple text nodes
+    const highlightSegmentsMap: Record<string, Segment[]> = {};
+
     textNodes.forEach(({ node, startChar, endChar }) => {
       const parent = node.parentNode;
       if (!parent) return;
@@ -128,6 +146,7 @@ const HighlightRenderer = ({
         start: number;
         end: number;
         highlight?: Highlight;
+        isLast?: boolean;
       }
 
       const segments: Segment[] = [];
@@ -155,7 +174,20 @@ const HighlightRenderer = ({
           const segmentEnd = highlightEnd;
 
           if (segmentStart < segmentEnd) {
-            segments.push({ start: segmentStart, end: segmentEnd, highlight });
+            const segment: Segment = {
+              start: segmentStart,
+              end: segmentEnd,
+              highlight,
+              isLast: false, // Default to false, will solve in post-process
+            };
+            segments.push(segment);
+
+            // Track for post-processing
+            if (!highlightSegmentsMap[highlight.id]) {
+              highlightSegmentsMap[highlight.id] = [];
+            }
+            highlightSegmentsMap[highlight.id].push(segment);
+
             currentPos = segmentEnd;
           }
         });
@@ -165,7 +197,28 @@ const HighlightRenderer = ({
         segments.push({ start: currentPos, end: nodeText.length });
       }
 
+      // Record operation to be performed later
+      if (segments.length > 0) {
+        operations.push({ node, segments });
+      }
+    });
+
+    // POST-PROCESS: Mark the last segment for each highlight
+    Object.values(highlightSegmentsMap).forEach((segments) => {
+      if (segments.length > 0) {
+        // The last segment pushed to the array is physically the last one in the DOM order
+        segments[segments.length - 1].isLast = true;
+      }
+    });
+
+    // APPLY OPERATIONS
+    operations.forEach(({ node, segments }) => {
+      const parent = node.parentNode;
+      if (!parent) return; // Should verify parent still exists (it should)
+
+      const nodeText = node.textContent || "";
       const fragment = document.createDocumentFragment();
+
       segments.forEach((segment) => {
         const rawText = nodeText.substring(segment.start, segment.end);
         // Apply Bionic Reading transformation if enabled
@@ -175,12 +228,14 @@ const HighlightRenderer = ({
 
         if (segment.highlight) {
           const span = document.createElement("span");
-          // NOTE: We don't need colorClasses here if InlineHighlight handles it contextually,
-          // but we need to mark it for parser replacement.
-          // We apply the ID so logic later can find it.
           span.dataset.highlightId = segment.highlight.id;
-          span.dataset.highlightColor = segment.highlight.color; // Pass color via dataset
-          span.dataset.highlightNote = segment.highlight.note || ""; // Pass note
+          span.dataset.highlightColor = segment.highlight.color;
+          span.dataset.highlightNote = segment.highlight.note || "";
+
+          if (segment.isLast) {
+            span.dataset.highlightIsLast = "true";
+          }
+
           span.innerHTML = contentHtml;
           fragment.appendChild(span);
         } else {
@@ -202,7 +257,31 @@ const HighlightRenderer = ({
   }, [html, highlights, settings.bionicReading]);
 
   // ... (transform function)
-  const transform = (node: DOMNode, _index: number) => {
+  // const [editingId, setEditingId] = useState<string | null>(null); // REMOVED DUPLICATE
+  const [draftNote, setDraftNote] = useState<string>("");
+
+  // Auto-open newly created highlight
+  useEffect(() => {
+    if (newlyCreatedHighlightId) {
+      setEditingId(newlyCreatedHighlightId);
+      setDraftNote(""); // New highlights have no note initially
+    }
+  }, [newlyCreatedHighlightId]);
+
+  // Sync draft note when opening an existing highlight
+  const handleToggleHighlight = (id: string, isOpen: boolean) => {
+    if (isOpen) {
+      const highlight = highlights.find((h) => h.id === id);
+      setEditingId(id);
+      setDraftNote(highlight?.note || "");
+    } else {
+      setEditingId(null);
+      setDraftNote("");
+    }
+  };
+
+  // ... (transform function)
+  const transform = (node: DOMNode, index: number) => {
     if (
       node instanceof Element &&
       node.name === "span" &&
@@ -211,18 +290,25 @@ const HighlightRenderer = ({
       const id = node.attribs["data-highlight-id"];
       const color = node.attribs["data-highlight-color"];
       const note = node.attribs["data-highlight-note"];
+      const isLast = node.attribs["data-highlight-is-last"] === "true";
 
       const highlight = highlights.find((h) => h.id === id);
       // Fallback if highlight not found in props (should match)
       const currentNote = highlight ? highlight.note : note;
 
+      const isOpen = editingId === id;
+
       return (
         <InlineHighlight
-          key={id}
+          key={`${id}-${index}`}
           id={id}
           color={color}
           initialNote={currentNote}
-          initialOpen={newlyCreatedHighlightId === id}
+          isOpen={isOpen && isLast}
+          onToggle={(open) => handleToggleHighlight(id, open)}
+          draftNote={isOpen ? draftNote : undefined}
+          onNoteChange={setDraftNote}
+          showIndicators={isLast}
           onDelete={onDeleteHighlight}
           onUpdate={onUpdateHighlight}
           onHighlightClick={
@@ -238,7 +324,8 @@ const HighlightRenderer = ({
                     },
                   )
               : undefined
-          } // Mock highlight object if missing, but should be found. Actually standard behavior is fine.
+          }
+          onShowConnections={onShowConnections}
           isMobile={isMobile}
         >
           {domToReact(node.children as DOMNode[], { replace: transform })}

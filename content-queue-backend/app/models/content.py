@@ -41,7 +41,8 @@ class ContentItem(Base):
         String(50), index=True
     )  # 'article', 'video', 'pdf', 'tweet', 'unknown'
     author = Column(String(255))
-    tags = Column(ARRAY(String(100)), default=list)  # User-defined tags
+    tags = Column(ARRAY(String(100)), default=list)  # User-confirmed tags
+    auto_tags = Column(ARRAY(String(100)), default=list)  # AI suggestions
     published_date = Column(DateTime(timezone=True))
 
     # Full content (extracted in background)

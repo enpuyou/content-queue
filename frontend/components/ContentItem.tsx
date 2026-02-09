@@ -336,7 +336,7 @@ export default function ContentItem({
                       }
                     }}
                     placeholder="Add tag..."
-                    className="px-2 py-0.5 text-xs border-0 border-b border-[var(--color-border)] bg-transparent rounded-none focus:outline-none focus:border-[var(--color-accent)]"
+                    className="px-2 py-0.5 text-xs border-0 border-b border-[var(--color-border)] bg-transparent rounded-none focus:outline-none focus:!ring-0]"
                     autoFocus
                   />
                   <button
@@ -374,7 +374,7 @@ export default function ContentItem({
                     }
                   }}
                   placeholder="Add tag..."
-                  className="px-2 py-0.5 text-xs border-0 border-b border-[var(--color-border)] bg-transparent rounded-none focus:outline-none focus:border-[var(--color-accent)]"
+                  className="px-2 py-0.5 text-xs border-0 border-b border-[var(--color-border)] bg-transparent rounded-none focus:outline-none"
                   autoFocus
                 />
                 <button
