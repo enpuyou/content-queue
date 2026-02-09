@@ -123,6 +123,14 @@ const HighlightRenderer = ({
       charIndex += nodeText.length;
     }
 
+    // Define Segment interface first
+    interface Segment {
+      start: number;
+      end: number;
+      highlight?: Highlight;
+      isLast?: boolean;
+    }
+
     // Start with collecting operations instead of mutating immediately
     type Operation = {
       node: Text;
@@ -141,13 +149,6 @@ const HighlightRenderer = ({
       const overlappingHighlights = activeHighlights
         .filter((h) => h.start_offset < endChar && h.end_offset > startChar)
         .sort((a, b) => a.start_offset - b.start_offset);
-
-      interface Segment {
-        start: number;
-        end: number;
-        highlight?: Highlight;
-        isLast?: boolean;
-      }
 
       const segments: Segment[] = [];
       let currentPos = 0;
