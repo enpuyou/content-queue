@@ -532,13 +532,13 @@ export default function RecordDetail({
                 return (
                   <div
                     key={video.uri}
-                    className="flex items-center gap-2 py-1 group/video"
+                    className="flex items-center gap-1.5 sm:gap-2 py-1 group/video"
                   >
                     <a
                       href={video.uri}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex-1 min-w-0 font-mono text-[12px] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] truncate no-underline transition-colors"
+                      className="flex-1 min-w-0 font-mono text-[11px] sm:text-[12px] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] truncate no-underline transition-colors"
                     >
                       {video.title ||
                         video.uri.replace(
@@ -557,7 +557,7 @@ export default function RecordDetail({
                               duration: video.duration ?? undefined,
                             })
                           }
-                          className="font-mono text-[11px] text-[var(--color-text-faint)] hover:text-[var(--color-accent)] opacity-0 group-hover/video:opacity-100 transition-opacity flex-shrink-0"
+                          className="compact-touch font-mono text-[11px] text-[var(--color-text-faint)] hover:text-[var(--color-accent)] sm:opacity-0 sm:group-hover/video:opacity-100 transition-opacity flex-shrink-0"
                           title="Play now"
                         >
                           &#9654;
@@ -571,10 +571,10 @@ export default function RecordDetail({
                               duration: video.duration ?? undefined,
                             })
                           }
-                          className={`font-mono text-[11px] flex-shrink-0 transition-all ${
+                          className={`compact-touch font-mono text-[11px] flex-shrink-0 transition-all ${
                             justQueued === vid
                               ? "text-[var(--color-accent)] opacity-100"
-                              : "text-[var(--color-text-faint)] hover:text-[var(--color-text-primary)] opacity-0 group-hover/video:opacity-100"
+                              : "text-[var(--color-text-faint)] hover:text-[var(--color-text-primary)] sm:opacity-0 sm:group-hover/video:opacity-100"
                           }`}
                           title="Add to queue"
                         >
@@ -583,14 +583,14 @@ export default function RecordDetail({
                       </>
                     )}
                     {video.duration && video.duration > 0 && (
-                      <span className="font-mono text-[11px] text-[var(--color-text-faint)] flex-shrink-0">
+                      <span className="font-mono text-[10px] sm:text-[11px] text-[var(--color-text-faint)] flex-shrink-0">
                         {Math.floor(video.duration / 60)}:
                         {String(video.duration % 60).padStart(2, "0")}
                       </span>
                     )}
                     <button
                       onClick={() => handleRemoveVideo(video.uri)}
-                      className="font-mono text-[11px] text-[var(--color-text-faint)] hover:text-red-400 opacity-0 group-hover/video:opacity-100 transition-opacity flex-shrink-0"
+                      className="compact-touch font-mono text-[11px] text-[var(--color-text-faint)] hover:text-red-400 sm:opacity-0 sm:group-hover/video:opacity-100 transition-opacity flex-shrink-0"
                     >
                       &times;
                     </button>
@@ -666,7 +666,7 @@ export default function RecordDetail({
             <div className="flex items-center gap-2 pt-3 mt-4 border-t border-[var(--color-border)]">
               <button
                 onClick={handleStatusToggle}
-                className="font-mono text-[10px] uppercase tracking-wider px-2 py-1 border border-[var(--color-border)] text-[var(--color-text-muted)] hover:border-[var(--color-text-primary)] hover:text-[var(--color-text-primary)] transition-colors"
+                className="compact-touch font-mono text-[10px] uppercase tracking-wider px-2 py-1 border border-[var(--color-border)] text-[var(--color-text-muted)] hover:border-[var(--color-text-primary)] hover:text-[var(--color-text-primary)] transition-colors"
               >
                 {record.status === "wantlist"
                   ? "\u2192 Collection"
@@ -677,7 +677,7 @@ export default function RecordDetail({
                 href={record.discogs_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-mono text-[10px] uppercase tracking-wider px-2 py-1 border border-[var(--color-border)] text-[var(--color-text-muted)] hover:border-[var(--color-text-primary)] hover:text-[var(--color-text-primary)] transition-colors no-underline"
+                className="compact-touch font-mono text-[10px] uppercase tracking-wider px-2 py-1 border border-[var(--color-border)] text-[var(--color-text-muted)] hover:border-[var(--color-text-primary)] hover:text-[var(--color-text-primary)] transition-colors no-underline"
               >
                 Discogs
               </a>
@@ -686,7 +686,7 @@ export default function RecordDetail({
 
               <button
                 onClick={handleDelete}
-                className={`font-mono text-[10px] uppercase tracking-wider px-2 py-1 border transition-colors ${
+                className={`compact-touch font-mono text-[10px] uppercase tracking-wider px-2 py-1 border transition-colors ${
                   confirmDelete
                     ? "border-red-400 text-red-400"
                     : "border-[var(--color-border)] text-[var(--color-text-muted)] hover:border-red-400 hover:text-red-400"

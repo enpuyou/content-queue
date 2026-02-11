@@ -12,6 +12,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ReadingSettingsProvider } from "@/contexts/ReadingSettingsContext";
 import { PlayerProvider } from "@/contexts/PlayerContext";
 import YouTubePlayer from "@/components/YouTubePlayer";
+import GlobalPlayer from "@/components/GlobalPlayer";
 import { ThemeScript } from "./theme-script";
 
 const inter = Inter({
@@ -65,6 +66,7 @@ export default function RootLayout({
                   <div className="min-h-screen bg-[var(--color-bg-primary)] transition-colors duration-300">
                     {children}
                   </div>
+                  <GlobalPlayer />
                   <YouTubePlayer />
                 </PlayerProvider>
               </ListsProvider>

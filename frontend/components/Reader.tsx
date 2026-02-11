@@ -1281,7 +1281,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
                   : "/dashboard"
               }
               scroll={false}
-              className="text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-none border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:border-[var(--color-accent)] transition-colors whitespace-nowrap flex-shrink-0 flex items-center"
+              className="compact-touch text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-none border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:border-[var(--color-accent)] transition-colors whitespace-nowrap flex-shrink-0 flex items-center"
               onClick={() => {
                 // Clear the return path after using it
                 if (typeof window !== "undefined") {
@@ -1302,7 +1302,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
                   <button
                     key={size}
                     onClick={() => updateSetting("fontSize", size)}
-                    className={`w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-none font-medium transition-colors ${
+                    className={`compact-touch w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-none font-medium transition-colors ${
                       settings.fontSize === size
                         ? "bg-[var(--color-border)] text-[var(--color-text-primary)]"
                         : "bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
@@ -1724,7 +1724,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
                 onClick={() =>
                   onStatusChange({ is_archived: !content.is_archived })
                 }
-                className={`text-xs px-2 py-0.5 leading-none rounded-none border transition-colors ${
+                className={`compact-touch text-xs px-2 py-0.5 leading-none rounded-none border transition-colors ${
                   content.is_archived
                     ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-accent)]"
                     : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
@@ -1735,7 +1735,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
               <button
                 onClick={handleFindSimilar}
                 disabled={loadingSimilar}
-                className={`text-xs px-2 py-0.5 leading-none rounded-none border transition-colors flex items-center gap-2
+                className={`compact-touch text-xs px-2 py-0.5 leading-none rounded-none border transition-colors flex items-center gap-2
                   ${
                     showSimilar
                       ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-accent)]"

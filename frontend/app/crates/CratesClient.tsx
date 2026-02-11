@@ -14,7 +14,9 @@ import VinylCard from "@/components/VinylCard";
 import RecordDetail from "@/components/RecordDetail";
 import RetroLoader from "@/components/RetroLoader";
 import KeyboardShortcuts from "@/components/KeyboardShortcuts";
+import ListeningMode from "@/components/ListeningMode";
 import { vinylAPI } from "@/lib/api";
+import { usePlayer } from "@/contexts/PlayerContext";
 import { VinylRecord } from "@/types";
 
 type StatusFilter = "all" | "collection" | "wantlist" | "library";
@@ -31,7 +33,9 @@ export default function CratesClient() {
   const [density, setDensity] = useState<"loose" | "tight">("loose");
   const [lastDug, setLastDug] = useState<VinylRecord | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [listenMode, setListenMode] = useState(false);
   const [visibleCount, setVisibleCount] = useState(18); // ~3 rows of 6
+  const { current: playerCurrent } = usePlayer();
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   // Load "now digging" from localStorage on mount
@@ -56,6 +60,10 @@ export default function CratesClient() {
         return;
       }
       if (e.key === "Escape") {
+        if (listenMode) {
+          setListenMode(false);
+          return;
+        }
         if (showShortcuts) {
           setShowShortcuts(false);
           return;
@@ -67,6 +75,12 @@ export default function CratesClient() {
         return;
       }
       if (inInput) return;
+      if (e.key === "l") {
+        if (playerCurrent || selectedRecord || lastDug) {
+          setListenMode((v) => !v);
+        }
+        return;
+      }
       if (e.key === "/") {
         e.preventDefault();
         const el = document.querySelector<HTMLInputElement>(
@@ -81,7 +95,14 @@ export default function CratesClient() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [showShortcuts, search]);
+  }, [
+    showShortcuts,
+    search,
+    listenMode,
+    playerCurrent,
+    selectedRecord,
+    lastDug,
+  ]);
 
   const fetchRecords = useCallback(async () => {
     try {
@@ -233,7 +254,7 @@ export default function CratesClient() {
                 <button
                   key={f.value}
                   onClick={() => setFilter(f.value)}
-                  className={`text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 border transition-colors ${
+                  className={`compact-touch text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 border transition-colors ${
                     filter === f.value
                       ? "border-[var(--color-accent)] text-[var(--color-text-primary)]"
                       : "border-[var(--color-border)] text-[var(--color-text-muted)] hover:border-[var(--color-accent)]"
@@ -269,8 +290,8 @@ export default function CratesClient() {
                 )}
               </div>
 
-              {/* Density toggle */}
-              <div className="flex items-center gap-1.5">
+              {/* Density toggle — hidden on mobile */}
+              <div className="hidden sm:flex items-center gap-1.5">
                 <button
                   onClick={() => setDensity("loose")}
                   title="Loose grid"
@@ -315,6 +336,17 @@ export default function CratesClient() {
                   </svg>
                 </button>
               </div>
+
+              {/* Listen mode toggle */}
+              {playerCurrent && (
+                <button
+                  onClick={() => setListenMode(true)}
+                  className="text-[10px] font-mono uppercase tracking-wider text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
+                  title="Listening mode (l)"
+                >
+                  Listen
+                </button>
+              )}
 
               {/* Sort options */}
               <div className="flex items-center gap-3">
@@ -470,6 +502,13 @@ export default function CratesClient() {
       <KeyboardShortcuts
         isOpen={showShortcuts}
         onClose={() => setShowShortcuts(false)}
+      />
+
+      {/* Listening mode overlay */}
+      <ListeningMode
+        isOpen={listenMode}
+        onClose={() => setListenMode(false)}
+        record={selectedRecord || lastDug}
       />
     </div>
   );

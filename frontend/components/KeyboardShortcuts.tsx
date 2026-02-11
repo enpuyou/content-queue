@@ -14,6 +14,7 @@ const shortcuts = [
   { key: "2", desc: "Sort by artist" },
   { key: "3", desc: "Sort by year" },
   { key: "d", desc: "Toggle grid density" },
+  { key: "l", desc: "Toggle listening mode" },
   { key: "?", desc: "Show this help" },
 ];
 
