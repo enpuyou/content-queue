@@ -13,6 +13,11 @@ from app.schemas.list import (
     AddContentToList,
     RemoveContentFromList,
 )
+from app.schemas.vinyl import (
+    VinylRecordCreate,
+    VinylRecordUpdate,
+    VinylRecordResponse,
+)
 
 
 __all__ = [
@@ -32,4 +37,7 @@ __all__ = [
     "ListWithContentCount",
     "AddContentToList",
     "RemoveContentFromList",
+    "VinylRecordCreate",
+    "VinylRecordUpdate",
+    "VinylRecordResponse",
 ]

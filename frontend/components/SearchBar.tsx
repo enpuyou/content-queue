@@ -106,13 +106,25 @@ export default function SearchBar() {
     <div ref={searchRef} className="relative w-full">
       {/* Search Input - Transparent by default, highlighted on hover/focus */}
       <div
-        className="relative flex items-center gap-2 border border-transparent hover:border-[var(--color-border)] focus-within:!border-[var(--color-accent)] focus-within:bg-[var(--color-bg-secondary)] hover:bg-[var(--color-bg-secondary)] transition-all px-3"
+        className="relative border border-transparent hover:border-[var(--color-border)] focus-within:!border-[var(--color-accent)] focus-within:bg-[var(--color-bg-secondary)] hover:bg-[var(--color-bg-secondary)] transition-all px-3"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        <span className="text-[var(--color-text-muted)] font-mono text-lg select-none">
-          &gt;
-        </span>
+        {/* Magnifier — absolutely positioned so it doesn't shift text centering */}
+        <svg
+          className={`absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--color-text-muted)] pointer-events-none transition-opacity ${isHovered || isFocused ? "opacity-100" : "opacity-0"}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+          />
+        </svg>
+
         <input
           ref={inputRef}
           type="text"
@@ -120,35 +132,18 @@ export default function SearchBar() {
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
-          placeholder="Search..."
-          className="w-full py-2 bg-transparent rounded-none font-mono text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none border-none outline-none focus:!ring-0"
+          placeholder="search"
+          className="w-full py-2 bg-transparent rounded-none font-mono text-sm text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none border-none outline-none text-center focus:text-left focus:pl-6"
         />
 
-        {/* Retro Loading State */}
+        {/* Retro Loading State — vertically centered */}
         {loading && (
-          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
             <RetroLoader
               text="Searching"
-              className="text-xs text-[var(--color-accent)]"
+              className="text-xs text-[var(--color-accent)] leading-none"
             />
           </div>
-        )}
-
-        {/* Search Icon - Only show on hover/focus */}
-        {!loading && (isHovered || isFocused) && (
-          <svg
-            className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[var(--color-text-muted)] pointer-events-none transition-opacity"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
-          </svg>
         )}
       </div>
 

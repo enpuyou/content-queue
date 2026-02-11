@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { ContentItem as ContentItemType } from "@/types";
 import StatusIndicator from "./StatusIndicator";
 import MobileActionsMenu from "./MobileActionsMenu";
-import ConfirmModal from "./ConfirmModal";
 import { contentAPI } from "@/lib/api";
 import RetroLoader from "./RetroLoader";
 
@@ -38,7 +37,7 @@ export default function ContentCard({
 }: ContentCardProps) {
   const [isEditingTags, setIsEditingTags] = useState(false);
   const [tagInput, setTagInput] = useState("");
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [acceptingTags, setAcceptingTags] = useState(false);
   const [dismissingTags, setDismissingTags] = useState(false);
@@ -461,7 +460,7 @@ export default function ContentCard({
                 })
               }
               onAddTag={() => setIsEditingTags(true)}
-              onDelete={() => setShowDeleteModal(true)}
+              onDelete={() => setConfirmDelete(true)}
               onAddToList={
                 availableLists && availableLists.length > 0 && onAddToList
                   ? (listId) => onAddToList(listId)
@@ -473,21 +472,38 @@ export default function ContentCard({
               availableLists={availableLists}
             />
           </div>
+
+          {/* Inline delete confirm strip */}
+          {confirmDelete && (
+            <div className="flex items-center justify-between mt-3 pt-2 border-t border-red-200 dark:border-red-800/40">
+              <span className="font-mono text-xs text-red-500 dark:text-red-400">
+                Delete this article?
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setConfirmDelete(false);
+                    onDelete(content.id);
+                  }}
+                  className="font-mono text-xs px-2 py-0.5 border border-red-400 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                >
+                  confirm
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setConfirmDelete(false);
+                  }}
+                  className="font-mono text-xs px-2 py-0.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
+                >
+                  cancel
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
-      <ConfirmModal
-        isOpen={showDeleteModal}
-        title="Delete Article"
-        message="This action cannot be undone."
-        confirmText="Delete"
-        cancelText="Cancel"
-        danger={true}
-        onConfirm={async () => {
-          setShowDeleteModal(false);
-          onDelete(content.id);
-        }}
-        onCancel={() => setShowDeleteModal(false)}
-      />
     </div>
   );
 }

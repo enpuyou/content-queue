@@ -5,6 +5,7 @@ from app.core.database import Base
 from app.core.config import settings
 
 # Import all models so Alembic can detect them
+import app.models  # noqa: F401
 
 config = context.config
 

@@ -397,3 +397,82 @@ export const highlightsAPI = {
     return response.json();
   },
 };
+
+// Vinyl API - matches your /vinyl endpoints
+export const vinylAPI = {
+  // Get all vinyl records (GET /vinyl)
+  getAll: async (params?: {
+    status?: string;
+    sort_by?: string;
+    sort_order?: string;
+  }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.status) searchParams.append("status", params.status);
+    if (params?.sort_by) searchParams.append("sort_by", params.sort_by);
+    if (params?.sort_order)
+      searchParams.append("sort_order", params.sort_order);
+    const qs = searchParams.toString();
+    return fetchWithAuth(`${API_BASE_URL}/vinyl${qs ? `?${qs}` : ""}`);
+  },
+
+  // Get a single vinyl record (GET /vinyl/{id})
+  getById: async (id: string) => {
+    return fetchWithAuth(`${API_BASE_URL}/vinyl/${id}`);
+  },
+
+  // Create from Discogs URL (POST /vinyl)
+  create: async (discogsUrl: string) => {
+    return fetchWithAuth(`${API_BASE_URL}/vinyl`, {
+      method: "POST",
+      body: JSON.stringify({ discogs_url: discogsUrl }),
+    });
+  },
+
+  // Update user fields (PATCH /vinyl/{id})
+  update: async (
+    id: string,
+    data: {
+      title?: string;
+      artist?: string;
+      notes?: string;
+      rating?: number;
+      tags?: string[];
+      status?: string;
+      cover_url?: string;
+      genres?: string[];
+      styles?: string[];
+      videos?: { title?: string; uri: string; duration?: number }[];
+    },
+  ) => {
+    return fetchWithAuth(`${API_BASE_URL}/vinyl/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Soft delete (DELETE /vinyl/{id})
+  delete: async (id: string) => {
+    const response = await fetch(`${API_BASE_URL}/vinyl/${id}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${getAuthToken()}`,
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("token");
+          window.location.href = "/login";
+        }
+      }
+      throw new Error(`Delete failed: ${response.status}`);
+    }
+
+    if (response.status === 204) {
+      return null;
+    }
+
+    return response.json();
+  },
+};

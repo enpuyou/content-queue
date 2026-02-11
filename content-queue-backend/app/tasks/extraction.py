@@ -1,10 +1,8 @@
-from celery import Task
-from sqlalchemy.orm import Session
 from app.core.celery_app import celery_app
-from app.core.database import SessionLocal
 from app.models.content import ContentItem
 from app.tasks.embedding import generate_embedding
 from app.tasks.tagging import generate_tags
+from app.tasks.base import DatabaseTask
 from uuid import UUID
 import requests
 from bs4 import BeautifulSoup
@@ -13,25 +11,6 @@ import logging
 import trafilatura
 
 logger = logging.getLogger(__name__)
-
-
-class DatabaseTask(Task):
-    """
-    Base task that provides a database session.
-    Automatically closes session after task completes.
-    """
-
-    _db: Session = None
-
-    def after_return(self, *args, **kwargs):
-        if self._db is not None:
-            self._db.close()
-
-    @property
-    def db(self) -> Session:
-        if self._db is None:
-            self._db = SessionLocal()
-        return self._db
 
 
 @celery_app.task(base=DatabaseTask, bind=True, max_retries=3)
@@ -444,9 +423,31 @@ def xml_to_html(xml_content: str, original_html: bytes = None) -> str:
 
                 # Extract context for images to re-insert them if missing
                 # We do this AFTER title extraction so we can use title_soup
+                seen_base_urls = set()
                 for img in title_soup.find_all("img"):
-                    src = img.get("src", "")
+                    # 1. Get the best available source (CDN/Lazy-loading aware)
+                    src = (
+                        img.get("data-src")
+                        or img.get("data-original-src")
+                        or img.get("data-lazy-src")
+                        or img.get("src", "")
+                    )
                     alt = img.get("alt", "")
+
+                    if not src:
+                        continue
+
+                    # 2. Normalize URL (strip, ensure absolute if needed - though mostly they are)
+                    src = src.strip()
+                    if src.startswith("//"):
+                        # Handle protocol-relative URLs
+                        src = f"https:{src}"
+
+                    # 3. De-duplicate by Base URL (ignore query parameters which often vary for same image)
+                    base_url = src.split("?")[0].split("#")[0].strip()
+                    if base_url in seen_base_urls:
+                        continue
+                    seen_base_urls.add(base_url)
 
                     # Skip icons/logos
                     width = img.get("width", "")
@@ -459,9 +460,18 @@ def xml_to_html(xml_content: str, original_html: bytes = None) -> str:
                             "logo",
                             "avatar",
                             "badge",
+                            "video",
+                            "play",
+                            "thumbnail",
+                            "poster",
+                            "vid",
                             "facebook",
                             "twitter",
                             "linkedin",
+                            "placeholder",
+                            "vid-thumbnail",
+                            "video-poster",
+                            "video_placeholder",
                         ]
                     ):
                         continue
@@ -469,7 +479,7 @@ def xml_to_html(xml_content: str, original_html: bytes = None) -> str:
                     # Get surrounding text context
                     # 1. Try to find previous substantial text block
                     prev_context = ""
-                    curr = img.parent
+                    curr = img
                     search_steps = 0
                     while curr and search_steps < 5:
                         prev = curr.find_previous_sibling()
@@ -485,7 +495,7 @@ def xml_to_html(xml_content: str, original_html: bytes = None) -> str:
 
                     # 2. Try to find next substantial text block
                     next_context = ""
-                    curr = img.parent
+                    curr = img
                     search_steps = 0
                     while curr and search_steps < 5:
                         next_node = curr.find_next_sibling()
@@ -707,9 +717,51 @@ def xml_to_html(xml_content: str, original_html: bytes = None) -> str:
                 paragraph_text_pure = elem.get_text(strip=True)
 
                 if paragraph_html:
+                    # Skip short credit links (e.g., "CNN", "Social Media")
+                    clean_p_text = paragraph_text_pure.strip().lower()
+
+                    # More aggressive check for single links like "CNN"
+                    is_short_link = False
+                    if len(clean_p_text) < 15:
+                        # Extract first link href if exists
+                        p_soup = BS(f"<p>{paragraph_html}</p>", "html.parser")
+                        a_tag = p_soup.find("a")
+                        if a_tag:
+                            href = a_tag.get("href", "").lower()
+                            # If it's a short link to a homepage or credit-like
+                            if (
+                                any(
+                                    x in clean_p_text
+                                    for x in ["cnn", "social", "media", "follow"]
+                                )
+                                or href.endswith(".com")
+                                or href.endswith(".com/")
+                            ):
+                                is_short_link = True
+
+                    if is_short_link or (
+                        len(clean_p_text) < 20
+                        and any(
+                            x in clean_p_text
+                            for x in [
+                                "cnn",
+                                "social media",
+                                "instagram",
+                                "twitter",
+                                "facebook",
+                                "photo:",
+                                "credit:",
+                                "image source",
+                            ]
+                        )
+                    ):
+                        logger.debug(
+                            f"Skipping credit-only paragraph: '{paragraph_html}'"
+                        )
+                        continue
+
                     # Skip if this paragraph matches the meta description
                     if page_description:
-                        # Remove HTML tags for comparison
                         para_text = (
                             BS(f"<p>{paragraph_html}</p>", "html.parser")
                             .get_text()
@@ -787,29 +839,65 @@ def xml_to_html(xml_content: str, original_html: bytes = None) -> str:
 
                 if src:
                     # Mark as inserted if we found it in original_images to avoid dupe
+                    # Use base URL for matching to handle variants
+                    src_base = src.split("?")[0].split("#")[0].strip()
+                    img_already_inserted = False
+
                     for img in original_images:
-                        if img["src"] == src:
-                            img["inserted"] = True
+                        target_base = img["src"].split("?")[0].split("#")[0].strip()
+                        if target_base == src_base:
+                            if img["inserted"]:
+                                img_already_inserted = True
+                            img["inserted"] = True  # Mark as inserted either way now
 
-                    caption = ""
-                    next_elem = elem.find_next_sibling()
-                    if (
-                        next_elem
-                        and next_elem.name in ["p", "hi"]
-                        and len(next_elem.get_text(strip=True)) < 200
-                    ):
-                        caption_text = next_elem.get_text(strip=True)
-                        if caption_text:
-                            caption = caption_text
+                    if not img_already_inserted:
+                        caption = ""
+                        next_elem = elem.find_next_sibling()
+                        if (
+                            next_elem
+                            and next_elem.name in ["p", "hi"]
+                            and len(next_elem.get_text(strip=True)) < 200
+                        ):
+                            caption_text = next_elem.get_text(strip=True)
+                            if caption_text:
+                                caption = caption_text
 
-                    html_parts.append(
-                        format_image_html({"src": src, "alt": alt, "caption": caption})
-                    )
+                        html_parts.append(
+                            format_image_html(
+                                {"src": src, "alt": alt, "caption": caption}
+                            )
+                        )
 
         if html_parts:
-            # Add any remaining images at the end if they haven't been inserted
-            # (Use sparingly or maybe only if strict criteria met, otherwise we might dump footer images)
-            return "\n".join(html_parts)
+            # POST-PROCESSING: De-duplicate sequential identical images
+            final_parts = []
+            seen_last_img_base = None
+
+            for part in html_parts:
+                if '<img src="' in part:
+                    # Extract src using simple string find/split
+                    try:
+                        temp = part.split('<img src="')[1]
+                        current_src = temp.split('"')[0]
+                        current_base = current_src.split("?")[0].split("#")[0].strip()
+
+                        if current_base == seen_last_img_base:
+                            logger.info(
+                                f"Filtered sequential duplicate image: {current_base}"
+                            )
+                            continue
+                        seen_last_img_base = current_base
+                    except Exception:
+                        pass
+                else:
+                    # If it's a substantial paragraph, reset the seen_last_img_base
+                    # This allows the same image to appear in different sections if needed
+                    if part.startswith("<p>") and len(part) > 100:
+                        seen_last_img_base = None
+
+                final_parts.append(part)
+
+            return "\n".join(final_parts)
         else:
             logger.warning("No structured elements found in XML, converting all text")
             text = soup.get_text(strip=False)

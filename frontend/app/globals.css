@@ -291,8 +291,6 @@ input:focus,
 textarea:focus,
 select:focus {
   outline: none;
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 2px rgba(61, 70, 194, 0.1);
 }
 
 /* ========================================
@@ -706,7 +704,7 @@ button:focus-visible {
 /* Large screens - optimize for reading */
 @media (min-width: 1025px) {
   /* Maximum width for optimal reading */
-  main,
+  main:not(.max-w-none),
   .max-w-2xl {
     max-width: 48rem;
     /* ~768px */
@@ -1567,6 +1565,73 @@ h4:hover .heading-anchor {
 /* ========================================
    HIGHLIGHT TEXT CONTRAST (DARK MODE)
    ======================================== */
+
+/* ========================================
+   NOW PLAYING - MARQUEE SCROLL
+   ======================================== */
+
+@keyframes scroll-text {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.animate-scroll-text {
+  animation: scroll-text 8s linear infinite;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/* Fade mask for marquee edges */
+.mask-linear-fade {
+  mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black 8%,
+    black 92%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black 8%,
+    black 92%,
+    transparent 100%
+  );
+}
+
+/* ========================================
+   NOW PLAYING - ROLLING TICKER
+   Vertical slot-machine scroll with a subtle
+   3D tilt. Two 16px-tall panels stacked.
+   Container clips to show one at a time.
+   ======================================== */
+
+.player-ticker {
+  height: 16px;
+  overflow: hidden;
+  position: relative;
+}
+
+.player-ticker-reel {
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s cubic-bezier(0.33, 1, 0.68, 1);
+}
+
+.player-ticker-reel.show-progress {
+  transform: translate3d(0, -16px, 0);
+}
+
+.player-ticker-face {
+  height: 16px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
 
 /* Make text more readable on highlights in dark mode */
 .dark [data-highlight-color] {

@@ -10,6 +10,8 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ListsProvider } from "@/contexts/ListsContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ReadingSettingsProvider } from "@/contexts/ReadingSettingsContext";
+import { PlayerProvider } from "@/contexts/PlayerContext";
+import YouTubePlayer from "@/components/YouTubePlayer";
 import { ThemeScript } from "./theme-script";
 
 const inter = Inter({
@@ -59,9 +61,12 @@ export default function RootLayout({
           <ThemeProvider>
             <AuthProvider>
               <ListsProvider>
-                <div className="min-h-screen bg-[var(--color-bg-primary)] transition-colors duration-300">
-                  {children}
-                </div>
+                <PlayerProvider>
+                  <div className="min-h-screen bg-[var(--color-bg-primary)] transition-colors duration-300">
+                    {children}
+                  </div>
+                  <YouTubePlayer />
+                </PlayerProvider>
               </ListsProvider>
             </AuthProvider>
           </ThemeProvider>

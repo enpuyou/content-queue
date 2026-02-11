@@ -5,7 +5,6 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ContentItem as ContentItemType } from "@/types";
-import ConfirmModal from "./ConfirmModal";
 import StatusIndicator from "./StatusIndicator";
 import MobileActionsMenu from "./MobileActionsMenu";
 import RetroLoader from "./RetroLoader";
@@ -60,7 +59,7 @@ export default function ContentItem({
    * Server and client would calculate different "now" times, causing mismatch
    */
   const [mounted, setMounted] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [showListDropdown, setShowListDropdown] = useState(false);
   const [isEditingTags, setIsEditingTags] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
@@ -410,7 +409,7 @@ export default function ContentItem({
                   })
                 }
                 onAddTag={() => setIsEditingTags(true)}
-                onDelete={() => setShowDeleteModal(true)}
+                onDelete={() => setConfirmDelete(true)}
                 onAddToList={
                   availableLists && availableLists.length > 0 && onAddToList
                     ? (listId) => onAddToList(listId)
@@ -507,13 +506,24 @@ export default function ContentItem({
                   Remove
                 </button>
               ) : (
-                /* Delete button (only show if not in list context) */
+                /* Delete button — inline confirm (only show if not in list context) */
                 <button
-                  onClick={() => setShowDeleteModal(true)}
-                  className="text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-rose-500 dark:text-red-400 border border-[var(--color-border)] hover:bg-rose-50 dark:hover:bg-red-900/20 transition-colors"
+                  onClick={() => {
+                    if (!confirmDelete) {
+                      setConfirmDelete(true);
+                      return;
+                    }
+                    setConfirmDelete(false);
+                    onDelete(content.id);
+                  }}
+                  className={`text-xs px-2 py-1 rounded-none border transition-colors ${
+                    confirmDelete
+                      ? "border-red-400 text-red-500 dark:text-red-400"
+                      : "bg-[var(--color-bg-secondary)] text-rose-500 dark:text-red-400 border-[var(--color-border)] hover:bg-rose-50 dark:hover:bg-red-900/20"
+                  }`}
                   title="Delete article"
                 >
-                  Delete
+                  {confirmDelete ? "Confirm?" : "Delete"}
                 </button>
               )}
             </div>
@@ -543,19 +553,35 @@ export default function ContentItem({
         )}
       </div>
 
-      <ConfirmModal
-        isOpen={showDeleteModal}
-        title="Delete Article"
-        message="This action cannot be undone."
-        confirmText="Delete"
-        cancelText="Cancel"
-        danger={true}
-        onConfirm={async () => {
-          setShowDeleteModal(false);
-          onDelete(content.id);
-        }}
-        onCancel={() => setShowDeleteModal(false)}
-      />
+      {/* Inline delete confirm strip (for mobile menu trigger) */}
+      {confirmDelete && (
+        <div className="flex items-center justify-between px-4 py-2 border-t border-red-200 dark:border-red-800/40 sm:hidden">
+          <span className="font-mono text-xs text-red-500 dark:text-red-400">
+            Delete this article?
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setConfirmDelete(false);
+                onDelete(content.id);
+              }}
+              className="font-mono text-xs px-2 py-0.5 border border-red-400 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+            >
+              confirm
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setConfirmDelete(false);
+              }}
+              className="font-mono text-xs px-2 py-0.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
+            >
+              cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

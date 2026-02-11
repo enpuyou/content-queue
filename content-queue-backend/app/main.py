@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api import auth, content, lists, search, analytics, highlights
+from app.api import auth, content, lists, search, analytics, highlights, vinyl
 from app.middleware.rate_limit import RateLimitMiddleware
 import os
 
@@ -33,6 +33,7 @@ app.include_router(highlights.router)
 app.include_router(lists.router)
 app.include_router(search.router)
 app.include_router(analytics.router)
+app.include_router(vinyl.router)
 
 
 @app.get("/")

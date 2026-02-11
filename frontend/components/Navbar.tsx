@@ -4,11 +4,39 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import SearchBar from "@/components/SearchBar";
 import ThemeToggle from "@/components/ThemeToggle";
-import { useAuth } from "@/contexts/AuthContext";
 import { usePathname } from "next/navigation";
+import { SHOW_CRATES } from "@/lib/flags";
+import NowPlaying from "@/components/NowPlaying";
+
+// Nav link that forces text-primary color (overrides global `a` color rule)
+function NavLink({
+  href,
+  active,
+  onClick,
+  children,
+}: {
+  href: string;
+  active: boolean;
+  onClick?: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      onClick={onClick}
+      className={`text-xs px-2 py-0.5 leading-none rounded-none border transition-colors no-underline ${
+        active
+          ? "bg-[var(--color-bg-secondary)] border-[var(--color-accent)]"
+          : "bg-[var(--color-bg-secondary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
+      }`}
+      style={{ color: "var(--color-text-primary)" }}
+    >
+      {children}
+    </Link>
+  );
+}
 
 export default function Navbar() {
-  const { logout } = useAuth();
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
@@ -17,6 +45,8 @@ export default function Navbar() {
   const isQueueActive = pathname === "/dashboard";
   const isListsActive = pathname === "/lists";
   const isSettingsActive = pathname === "/settings";
+  const isCratesActive =
+    pathname === "/crates" || pathname.startsWith("/crates/");
 
   // Scroll-based visibility
   useEffect(() => {
@@ -28,10 +58,8 @@ export default function Navbar() {
 
       if (Math.abs(deltaY) > SCROLL_THRESHOLD) {
         if (deltaY > 0 && scrollY > 100) {
-          // Scrolling down & past 100px - hide navbar
           setIsVisible(false);
         } else if (deltaY < 0 || scrollY < 50) {
-          // Scrolling up or near top - show navbar
           setIsVisible(true);
         }
         lastScrollY.current = scrollY;
@@ -44,74 +72,56 @@ export default function Navbar() {
 
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
-  const handleLogout = () => {
-    closeMobileMenu();
-    logout();
-  };
-
   return (
     <nav
       className={`sticky top-0 z-50 w-full transition-transform duration-300 ${isVisible ? "translate-y-0" : "-translate-y-full"}`}
     >
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between w-full h-14 pl-2">
-          {/* Left: Logo and Search */}
-          <div className="flex items-center gap-6 flex-1">
+          {/* Left: Logo & Player */}
+          <div className="flex items-center gap-4 w-1/4">
             <Link
               href="/dashboard"
-              className="text-xl font-normal text-[var(--color-text-primary)] whitespace-nowrap flex items-center"
-              style={{ fontFamily: "var(--font-logo)" }}
+              className="text-xl font-normal whitespace-nowrap flex items-center shrink-0 no-underline hover:opacity-100"
+              style={{
+                fontFamily: "var(--font-logo)",
+                color: "var(--color-text-primary)",
+              }}
             >
               sed.i
             </Link>
-            <div className="hidden md:block w-96">
+            <div className="hidden md:block">
+              <NowPlaying />
+            </div>
+          </div>
+
+          {/* Center: Search */}
+          <div className="hidden md:flex flex-1 justify-center max-w-lg mx-4">
+            <div className="w-full">
               <SearchBar />
             </div>
           </div>
 
-          {/* Right: Navigation Links, Theme Toggle and Logout (Desktop) */}
-          <div className="hidden md:flex items-center gap-2">
+          {/* Right: Navigation Links & Theme Toggle (Desktop) */}
+          <div className="hidden md:flex items-center justify-end gap-2 w-1/4">
             <ThemeToggle />
-            <button
-              onClick={() => (window.location.href = "/dashboard")}
-              className={`text-xs px-2 py-0.5 leading-none rounded-none border transition-colors ${
-                isQueueActive
-                  ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-accent)]"
-                  : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
-              }`}
-            >
+            <NavLink href="/dashboard" active={isQueueActive}>
               Queue
-            </button>
-            <button
-              onClick={() => (window.location.href = "/lists")}
-              className={`text-xs px-2 py-0.5 leading-none rounded-none border transition-colors ${
-                isListsActive
-                  ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-accent)]"
-                  : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
-              }`}
-            >
+            </NavLink>
+            <NavLink href="/lists" active={isListsActive}>
               Lists
-            </button>
-            <button
-              onClick={() => (window.location.href = "/settings")}
-              className={`text-xs px-2 py-0.5 leading-none rounded-none border transition-colors ${
-                isSettingsActive
-                  ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-accent)]"
-                  : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
-              }`}
-            >
+            </NavLink>
+            {SHOW_CRATES && (
+              <NavLink href="/crates" active={isCratesActive}>
+                Crates
+              </NavLink>
+            )}
+            <NavLink href="/settings" active={isSettingsActive}>
               Settings
-            </button>
-            <button
-              className="text-xs px-2 py-0.5 leading-none rounded-none border bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] transition-colors border-[var(--color-border)] hover:border-rose-400 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-red-900/30 dark:hover:text-red-400 dark:hover:border-red-500"
-              onClick={logout}
-            >
-              Logout
-            </button>
+            </NavLink>
           </div>
 
           {/* Mobile: Theme Toggle and Menu Button */}
-          {/* Adjusted padding/margin to balance with logo (-mr-2 to account for button padding + SVG internal spacing) */}
           <div className="flex md:hidden items-center gap-2 -mr-2">
             <ThemeToggle />
             <button
@@ -140,69 +150,48 @@ export default function Navbar() {
       {/* Mobile Menu Dropdown */}
       {isMobileMenuOpen && (
         <>
-          {/* Overlay to close menu on click outside */}
           <div
             className="fixed inset-0 z-10 md:hidden"
             onClick={closeMobileMenu}
             aria-hidden="true"
           />
 
-          {/* Mobile Menu Content */}
           <div className="absolute top-full left-0 right-0 bg-[var(--color-bg-primary)] border-b border-[var(--color-border)] shadow-lg z-20 md:hidden">
             <div className="px-4 py-4 space-y-3">
-              {/* Search Bar */}
               <SearchBar />
 
-              {/* Navigation Links */}
               <div className="flex flex-col gap-2">
-                <button
-                  onClick={() => {
-                    window.location.href = "/dashboard";
-                    closeMobileMenu();
-                  }}
-                  className={`w-full text-xs px-2 py-1 leading-none rounded-none border transition-colors ${
-                    isQueueActive
-                      ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-accent)]"
-                      : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
-                  }`}
+                <NavLink
+                  href="/dashboard"
+                  active={isQueueActive}
+                  onClick={closeMobileMenu}
                 >
                   Queue
-                </button>
-                <button
-                  onClick={() => {
-                    window.location.href = "/lists";
-                    closeMobileMenu();
-                  }}
-                  className={`w-full text-xs px-2 py-1 leading-none rounded-none border transition-colors ${
-                    isListsActive
-                      ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-accent)]"
-                      : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
-                  }`}
+                </NavLink>
+                <NavLink
+                  href="/lists"
+                  active={isListsActive}
+                  onClick={closeMobileMenu}
                 >
                   Lists
-                </button>
-                <button
-                  onClick={() => {
-                    window.location.href = "/settings";
-                    closeMobileMenu();
-                  }}
-                  className={`w-full text-xs px-2 py-1 leading-none rounded-none border transition-colors ${
-                    isSettingsActive
-                      ? "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-accent)]"
-                      : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
-                  }`}
+                </NavLink>
+                {SHOW_CRATES && (
+                  <NavLink
+                    href="/crates"
+                    active={isCratesActive}
+                    onClick={closeMobileMenu}
+                  >
+                    Crates
+                  </NavLink>
+                )}
+                <NavLink
+                  href="/settings"
+                  active={isSettingsActive}
+                  onClick={closeMobileMenu}
                 >
                   Settings
-                </button>
+                </NavLink>
               </div>
-
-              {/* Logout Button */}
-              <button
-                onClick={handleLogout}
-                className="w-full text-xs px-2 py-1 leading-none rounded-none border bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] transition-colors border-[var(--color-border)] hover:border-rose-400 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-red-900/30 dark:hover:text-red-400 dark:hover:border-red-500"
-              >
-                Logout
-              </button>
             </div>
           </div>
         </>
