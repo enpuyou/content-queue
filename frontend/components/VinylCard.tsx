@@ -1,8 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { VinylRecord } from "@/types";
-import { extractDominantColor } from "@/lib/dominantColor";
 
 interface VinylCardProps {
   record: VinylRecord;
@@ -18,27 +16,13 @@ export default function VinylCard({
   const initials = (record.artist?.[0] || "?") + (record.title?.[0] || "?");
 
   const isPending = record.processing_status === "pending";
-
-  const [accent, setAccent] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (record.cover_url) {
-      extractDominantColor(record.cover_url).then(setAccent);
-    }
-  }, [record.cover_url]);
-
   return (
     <button
       onClick={onClick}
       className="group text-left cursor-pointer p-0 focus:outline-none w-full"
     >
-      {/* Cover — square, accent top-border from dominant color */}
-      <div
-        className="relative aspect-square w-full overflow-hidden border border-[var(--color-border)] bg-[var(--color-bg-primary)]"
-        style={
-          accent ? { borderTopColor: accent, borderTopWidth: "2px" } : undefined
-        }
-      >
+      {/* Cover — square, accent top-border on hover */}
+      <div className="relative aspect-square w-full overflow-hidden border border-[var(--color-border)] bg-[var(--color-bg-primary)]">
         {record.cover_url ? (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
