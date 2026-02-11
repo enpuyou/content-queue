@@ -23,7 +23,12 @@ export default function NowPlaying({
   } = usePlayer();
   const [showQueue, setShowQueue] = useState(false);
   const [showProgress, setShowProgress] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Auto-rotate between info and progress every 8 seconds
   useEffect(() => {
@@ -58,6 +63,9 @@ export default function NowPlaying({
     const s = Math.floor(secs % 60);
     return `${m}:${s.toString().padStart(2, "0")}`;
   };
+
+  // Avoid hydration mismatch by not rendering until mounted
+  if (!isMounted) return null;
 
   // Empty state — show nothing
   if (!current && queue.length === 0) {
