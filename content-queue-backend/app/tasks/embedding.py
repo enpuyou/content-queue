@@ -217,4 +217,45 @@ def generate_highlight_embeddings_batch(self, user_id: str):
         if self.request.retries < self.max_retries:
             raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
 
-        return {"user_id": user_id, "status": "failed", "error": str(e)}
+
+@celery_app.task(base=DatabaseTask, bind=True, max_retries=3)
+def process_all_missing_embeddings(self):
+    """
+    Scanner task: Finds all users with unembedded highlights and triggers batch processing for them.
+
+    - Runs periodically (e.g. every 5 mins)
+    - Dispatches per-user tasks to distribute load
+    """
+    try:
+        # Find distinct user_ids that have highlights with missing embeddings
+        # We use distinct() to avoid duplicate user_ids
+        users_with_missing = (
+            self.db.query(Highlight.user_id)
+            .filter(Highlight.embedding.is_(None))
+            .distinct()
+            .all()
+        )
+
+        if not users_with_missing:
+            logger.info("No missing highlight embeddings found for any user.")
+            return {"count": 0, "status": "completed"}
+
+        logger.info(
+            f"Found {len(users_with_missing)} users with missing highlight embeddings. Dispatching tasks."
+        )
+
+        dispatched_count = 0
+        for (user_id,) in users_with_missing:
+            # Trigger the batch task for this specific user
+            generate_highlight_embeddings_batch.delay(str(user_id))
+            dispatched_count += 1
+
+        return {"dispatched_count": dispatched_count, "status": "completed"}
+
+    except Exception as e:
+        logger.error(f"Failed to scan for missing embeddings: {str(e)}")
+        # Retry with exponential backoff
+        if self.request.retries < self.max_retries:
+            raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
+
+        return {"status": "failed", "error": str(e)}

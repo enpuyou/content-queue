@@ -224,12 +224,11 @@ export default function InlineHighlight({
           !isOpen &&
           showIndicators && (
             <span
-              className="ephemeral-ui absolute"
+              className="ephemeral-ui inline-block relative"
               style={{
-                left: 0,
-                top: "100%",
                 width: 0,
                 height: 0,
+                verticalAlign: "text-bottom",
                 overflow: "visible",
               }}
               data-ephemeral="true"
@@ -247,22 +246,24 @@ export default function InlineHighlight({
             </span>
           )}
         {children}
-        {/* Note Indicator - Top right corner at end of highlight */}
+        {/* Note Indicator - Top right corner of the highlight end */}
         {initialNote && !isOpen && showIndicators && (
           <span
             className="ephemeral-ui absolute"
             style={{
-              right: 0,
-              top: 0,
+              height: "1em",
               width: 0,
-              height: 0,
+              display: "inline-block",
+              position: "relative",
+              verticalAlign: "top",
               overflow: "visible",
+              pointerEvents: "none",
             }}
             data-ephemeral="true"
             contentEditable={false}
             suppressContentEditableWarning
           >
-            <span className="absolute -right-1 -top-1 rounded-full h-2 w-2 bg-[var(--color-text-primary)]"></span>
+            <span className="absolute right-0 top-1 translate-x-1/2 -translate-y-1/2 rounded-full h-2 w-2 bg-[var(--color-text-primary)] shadow-sm"></span>
           </span>
         )}
       </span>

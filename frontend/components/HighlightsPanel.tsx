@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { highlightsAPI } from "@/lib/api";
-import ConfirmModal from "@/components/ConfirmModal";
 
 interface Highlight {
   id: string;
@@ -230,12 +229,26 @@ export default function HighlightsPanel({
                       Edit
                     </button>
                     <button
-                      onClick={() => setDeleteConfirmId(highlight.id)}
+                      onClick={() => {
+                        if (deleteConfirmId === highlight.id) {
+                          handleDelete(highlight.id);
+                        } else {
+                          setDeleteConfirmId(highlight.id);
+                        }
+                      }}
                       disabled={isBeingDeleted}
-                      className="text-xs px-2 py-1 rounded-none bg-rose-50 dark:bg-red-900/30 text-rose-500 dark:text-red-400 hover:bg-red-50 hover:text-red-400 dark:hover:bg-red-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className={`text-xs px-2 py-1 rounded-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                        deleteConfirmId === highlight.id
+                          ? "border border-red-400 text-red-500 dark:text-red-400"
+                          : "bg-rose-50 dark:bg-red-900/30 text-rose-500 dark:text-red-400 hover:bg-red-50 hover:text-red-400 dark:hover:bg-red-900/50"
+                      }`}
                       aria-label="Delete"
                     >
-                      {isBeingDeleted ? "Deleting..." : "Delete"}
+                      {isBeingDeleted
+                        ? "Deleting..."
+                        : deleteConfirmId === highlight.id
+                          ? "Confirm?"
+                          : "Delete"}
                     </button>
                   </>
                 )}
@@ -244,18 +257,6 @@ export default function HighlightsPanel({
           );
         })}
       </div>
-
-      {/* Delete Confirmation Modal */}
-      <ConfirmModal
-        isOpen={deleteConfirmId !== null}
-        title="Delete Highlight"
-        message="This action cannot be undone."
-        confirmText="Delete"
-        cancelText="Cancel"
-        danger={true}
-        onConfirm={() => deleteConfirmId && handleDelete(deleteConfirmId)}
-        onCancel={() => setDeleteConfirmId(null)}
-      />
     </div>
   );
 }

@@ -342,7 +342,7 @@ describe("HighlightsPanel", () => {
       },
     ];
 
-    it("deletes highlight with confirmation", async () => {
+    it("requires confirmation to delete", async () => {
       mockedHighlightsAPI.delete.mockResolvedValue(null);
 
       render(
@@ -354,21 +354,16 @@ describe("HighlightsPanel", () => {
         />,
       );
 
-      const deleteButton = screen.getByLabelText(/^delete$/i);
+      const deleteButton = screen.getByRole("button", { name: /^delete$/i });
+
+      // First click: Ask for confirmation
       fireEvent.click(deleteButton);
 
-      // Wait for modal to appear
-      await waitFor(() => {
-        expect(screen.getByText("Delete Highlight")).toBeInTheDocument();
-      });
+      expect(screen.getByText("Confirm?")).toBeInTheDocument();
+      expect(mockedHighlightsAPI.delete).not.toHaveBeenCalled();
 
-      expect(
-        screen.getByText(/this action cannot be undone/i),
-      ).toBeInTheDocument();
-
-      // Click the Delete button in the modal (last Delete button)
-      const allDeleteButtons = screen.getAllByText("Delete");
-      fireEvent.click(allDeleteButtons[allDeleteButtons.length - 1]);
+      // Second click: Confirm delete
+      fireEvent.click(screen.getByText("Confirm?"));
 
       await waitFor(() => {
         expect(mockedHighlightsAPI.delete).toHaveBeenCalledWith("delete-test");
@@ -376,7 +371,7 @@ describe("HighlightsPanel", () => {
       });
     });
 
-    it("does not delete when user cancels", async () => {
+    it("does not delete if confirmation is not clicked", async () => {
       render(
         <HighlightsPanel
           highlights={highlightToDelete}
@@ -386,22 +381,14 @@ describe("HighlightsPanel", () => {
         />,
       );
 
-      const deleteButton = screen.getByLabelText(/^delete$/i);
+      const deleteButton = screen.getByRole("button", { name: /^delete$/i });
       fireEvent.click(deleteButton);
 
-      // Modal should appear
-      expect(screen.getByText("Delete Highlight")).toBeInTheDocument();
+      // Verify state changed to confirm
+      expect(screen.getByText("Confirm?")).toBeInTheDocument();
 
-      // Click Cancel
-      const cancelButton = screen.getByRole("button", { name: /cancel/i });
-      fireEvent.click(cancelButton);
-
-      await waitFor(() => {
-        expect(screen.queryByText("Delete Highlight")).not.toBeInTheDocument();
-      });
-
+      // But API not called
       expect(mockedHighlightsAPI.delete).not.toHaveBeenCalled();
-      expect(mockOnHighlightDeleted).not.toHaveBeenCalled();
     });
 
     it("handles delete error gracefully", async () => {
@@ -416,21 +403,20 @@ describe("HighlightsPanel", () => {
         />,
       );
 
-      const deleteButton = screen.getByLabelText(/^delete$/i);
+      const deleteButton = screen.getByRole("button", { name: /^delete$/i });
       fireEvent.click(deleteButton);
 
-      // Wait for modal to appear
-      await waitFor(() => {
-        expect(screen.getByText("Delete Highlight")).toBeInTheDocument();
-      });
-
-      // Click the Delete button in the modal (last Delete button)
-      const allDeleteButtons = screen.getAllByText("Delete");
-      fireEvent.click(allDeleteButtons[allDeleteButtons.length - 1]);
+      // Confirm
+      fireEvent.click(screen.getByText("Confirm?"));
 
       await waitFor(() => {
-        expect(mockOnHighlightDeleted).not.toHaveBeenCalled();
+        expect(mockedHighlightsAPI.delete).toHaveBeenCalled();
+        // Should verify it resets or logs error?
+        // Logic: console.error and finally setIsDeleting(null).
+        // The component doesn't show visual error state, just logs.
       });
+      // Verification: onHighlightDeleted NOT called
+      expect(mockOnHighlightDeleted).not.toHaveBeenCalled();
     });
   });
 

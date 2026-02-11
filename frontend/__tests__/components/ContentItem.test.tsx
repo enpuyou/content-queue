@@ -505,7 +505,7 @@ describe("ContentItem", () => {
   });
 
   describe("Delete Functionality", () => {
-    it("shows confirmation modal when delete button clicked", () => {
+    it("requires confirmation to delete", () => {
       render(
         <ContentItem
           content={mockContent}
@@ -517,13 +517,12 @@ describe("ContentItem", () => {
       const deleteButton = screen.getByTitle("Delete article");
       fireEvent.click(deleteButton);
 
-      expect(screen.getByText("Delete Article")).toBeInTheDocument();
-      expect(
-        screen.getByText(/this action cannot be undone/i),
-      ).toBeInTheDocument();
+      // Button text should change to "Confirm?"
+      expect(screen.getByText("Confirm?")).toBeInTheDocument();
+      expect(mockOnDelete).not.toHaveBeenCalled();
     });
 
-    it("calls onDelete when deletion confirmed", async () => {
+    it("calls onDelete when deletion confirmed", () => {
       render(
         <ContentItem
           content={mockContent}
@@ -535,22 +534,13 @@ describe("ContentItem", () => {
       const deleteButton = screen.getByTitle("Delete article");
       fireEvent.click(deleteButton);
 
-      // Wait for modal to appear
-      await waitFor(() => {
-        expect(screen.getByText("Delete Article")).toBeInTheDocument();
-      });
+      // Click again to confirm
+      fireEvent.click(screen.getByText("Confirm?"));
 
-      // Find all Delete buttons and click the one in the modal (the second one)
-      const allDeleteButtons = screen.getAllByText("Delete");
-      // First Delete is in the actions menu, second Delete is in the modal
-      fireEvent.click(allDeleteButtons[allDeleteButtons.length - 1]);
-
-      await waitFor(() => {
-        expect(mockOnDelete).toHaveBeenCalledWith("test-content-123");
-      });
+      expect(mockOnDelete).toHaveBeenCalledWith("test-content-123");
     });
 
-    it("closes modal when deletion cancelled", async () => {
+    it("closes confirmation when cancelled via mobile menu", () => {
       render(
         <ContentItem
           content={mockContent}
@@ -562,13 +552,17 @@ describe("ContentItem", () => {
       const deleteButton = screen.getByTitle("Delete article");
       fireEvent.click(deleteButton);
 
-      const cancelButton = screen.getByRole("button", { name: /cancel/i });
+      // Verify confirm state
+      expect(screen.getByText("Confirm?")).toBeInTheDocument();
+
+      // Find and click the mobile cancel button
+      const cancelButton = screen.getByText("cancel");
       fireEvent.click(cancelButton);
 
-      await waitFor(() => {
-        expect(screen.queryByText("Delete Article")).not.toBeInTheDocument();
-        expect(mockOnDelete).not.toHaveBeenCalled();
-      });
+      // Should revert state
+      expect(screen.getByText("Delete")).toBeInTheDocument();
+      expect(screen.queryByText("Confirm?")).not.toBeInTheDocument();
+      expect(mockOnDelete).not.toHaveBeenCalled();
     });
   });
 

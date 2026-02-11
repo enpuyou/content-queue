@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crates — sed.i</title>
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600&family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #fffef7;
+      --bg2: #faf9f5;
+      --bg3: #f5f4f0;
+      --fg: #1a1a1a;
+      --fg2: #4a4a4a;
+      --muted: #666;
+      --faint: #999;
+      --border: #e5e4e0;
+      --accent: #3d46c2;
+      --space-1: 5px;
+      --space-2: 10px;
+      --space-3: 15px;
+      --space-4: 20px;
+      --space-5: 30px;
+      --space-6: 40px;
+      --space-7: 60px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Navbar ── */
+    .nav {
+      position: sticky; top: 0; z-index: 50;
+      height: 52px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 var(--space-5);
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .nav-left { display: flex; align-items: center; gap: var(--space-5); }
+    .logo {
+      font-family: 'EB Garamond', serif; font-size: 19px;
+      color: var(--fg); text-decoration: none; letter-spacing: 0.01em;
+    }
+    .nav-links { display: flex; gap: var(--space-1); }
+    .nav-link {
+      font-size: 11px; padding: 3px 8px; border: 1px solid transparent;
+      background: none; color: var(--muted); cursor: pointer;
+      letter-spacing: 0.02em; transition: all 0.15s;
+    }
+    .nav-link:hover { color: var(--fg); border-color: var(--border); }
+    .nav-link.active { color: var(--fg); border-color: var(--fg); }
+
+    /* ── Page Shell ── */
+    .page {
+      padding: var(--space-6) var(--space-5) var(--space-7);
+      max-width: none;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* ── Page Header — full width, generous spacing ── */
+    .header {
+      display: flex; justify-content: space-between; align-items: flex-end;
+      padding-bottom: var(--space-5);
+      border-bottom: 1px solid var(--border);
+      margin-bottom: var(--space-5);
+    }
+    .header-left {}
+    .header-title {
+      font-family: 'Libre Caslon Text', Georgia, serif;
+      font-size: 28px; font-weight: 400; line-height: 1;
+      letter-spacing: -0.01em;
+    }
+    .header-count {
+      font-size: 12px; color: var(--muted); margin-top: 6px;
+      letter-spacing: 0.02em;
+    }
+
+    /* ── Add bar ── */
+    .add-bar {
+      display: flex; gap: var(--space-2);
+      margin-bottom: var(--space-5);
+    }
+    .add-input {
+      flex: 1; padding: 10px 14px; border: 1px solid var(--border);
+      background: transparent; color: var(--fg); font-size: 13px;
+      font-family: 'Inter', sans-serif; letter-spacing: 0.01em;
+      transition: border-color 0.2s;
+    }
+    .add-input::placeholder { color: var(--faint); }
+    .add-input:focus {
+      outline: none; border-color: var(--fg);
+    }
+    .add-btn {
+      padding: 10px 20px; background: var(--fg); color: var(--bg);
+      border: 1px solid var(--fg); font-size: 11px; cursor: pointer;
+      letter-spacing: 0.04em; font-family: 'Inter', sans-serif;
+      transition: opacity 0.15s;
+    }
+    .add-btn:hover { opacity: 0.8; }
+
+    /* ── Toolbar: filters + view toggle ── */
+    .toolbar {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: var(--space-5);
+    }
+    .filters { display: flex; gap: var(--space-1); }
+    .filter {
+      font-size: 11px; padding: 4px 10px; border: 1px solid transparent;
+      background: none; color: var(--muted); cursor: pointer;
+      letter-spacing: 0.03em; transition: all 0.15s;
+    }
+    .filter:hover { color: var(--fg); }
+    .filter.active { color: var(--fg); border-color: var(--fg); }
+    .sort-label {
+      font-size: 10px; color: var(--faint); letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    /* ── The Grid — full-width seamless squares ── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1px;
+      background: var(--border);
+    }
+
+    /* ── Block / Card — pure square, info on hover ── */
+    .block {
+      position: relative;
+      cursor: pointer;
+      aspect-ratio: 1;
+      overflow: hidden;
+      background: var(--bg);
+    }
+
+    /* Cover fills entire block */
+    .block-cover {
+      width: 100%; height: 100%;
+      background: var(--bg3);
+      overflow: hidden;
+      position: relative;
+    }
+    .block-cover img {
+      width: 100%; height: 100%; object-fit: cover;
+      display: block;
+    }
+
+    /* Placeholder — letter initials */
+    .block-placeholder {
+      width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Libre Caslon Text', Georgia, serif;
+      font-size: 24px; color: var(--faint);
+      letter-spacing: 0.05em;
+      background: var(--bg3);
+    }
+
+    /* Hover overlay — info appears on cover */
+    .block-overlay {
+      position: absolute; inset: 0;
+      background: rgba(0,0,0,0.7);
+      opacity: 0; transition: opacity 0.2s;
+      display: flex; flex-direction: column; justify-content: flex-end;
+      padding: var(--space-3);
+    }
+    .block:hover .block-overlay { opacity: 1; }
+    .overlay-artist {
+      font-size: 10px; font-weight: 500; text-transform: uppercase;
+      letter-spacing: 0.05em; color: rgba(255,255,255,0.6);
+      line-height: 1.2; margin-bottom: 2px;
+    }
+    .overlay-title {
+      font-family: 'Libre Caslon Text', Georgia, serif;
+      font-size: 14px; font-weight: 400; color: #fff;
+      line-height: 1.3;
+    }
+    .overlay-meta {
+      font-family: monospace; font-size: 10px; color: rgba(255,255,255,0.4);
+      letter-spacing: 0.03em; margin-top: 4px;
+    }
+    .overlay-tag {
+      font-size: 9px; font-family: monospace; text-transform: uppercase;
+      letter-spacing: 0.08em; padding: 2px 6px;
+      background: var(--bg); color: var(--muted);
+      border: 1px solid var(--border);
+      position: absolute; top: 0; left: 0;
+    }
+
+    /* Signal indicator — subtle bottom-right dot */
+    .block-signal {
+      position: absolute; bottom: 8px; right: 8px;
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--accent);
+      opacity: 0.7; z-index: 1;
+    }
+
+    /* ── Detail Overlay — Gatefold: two perfect squares ── */
+    .detail-bg {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 100;
+      display: flex; align-items: center; justify-content: center;
+      padding: var(--space-5);
+    }
+    .detail {
+      background: var(--bg); border: 1px solid var(--border);
+      width: min(90vw, 80vh * 2); /* two squares = 2:1 aspect, limited by viewport */
+      aspect-ratio: 2 / 1;
+      display: flex; flex-direction: row;
+      overflow: hidden; position: relative;
+    }
+
+    /* Detail cover — left panel, perfect square */
+    .detail-cover-wrap {
+      width: 50%; height: 100%;
+      background: var(--bg3);
+      border-right: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .detail-cover-wrap .block-placeholder {
+      font-size: 48px;
+    }
+
+    /* Detail body — right panel, perfect square, scrollable */
+    .detail-body {
+      width: 50%; height: 100%;
+      padding: var(--space-4);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .detail-artist {
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--muted); margin-bottom: 4px;
+    }
+    .detail-title {
+      font-family: 'Libre Caslon Text', serif;
+      font-size: 22px; font-weight: 400; line-height: 1.3;
+      margin-bottom: 10px; letter-spacing: -0.01em;
+    }
+    .detail-meta {
+      font-family: monospace; font-size: 10px; color: var(--muted);
+      letter-spacing: 0.03em; line-height: 1.7;
+    }
+
+    .detail-section {
+      border-top: 1px solid var(--border);
+      padding-top: var(--space-3); margin-top: var(--space-4);
+    }
+    .detail-section-label {
+      font-size: 9px; font-family: monospace; text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--muted); margin-bottom: var(--space-2);
+    }
+
+    .track {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 4px 0; font-size: 13px; color: var(--fg2);
+      border-bottom: 1px solid rgba(0,0,0,0.04);
+    }
+    .track:last-child { border-bottom: none; }
+    .track-pos {
+      font-family: monospace; font-size: 10px; color: var(--faint);
+      width: 28px; flex-shrink: 0;
+    }
+    .track-name { flex: 1; }
+    .track-dur {
+      font-family: monospace; font-size: 10px; color: var(--faint);
+    }
+    .side-label {
+      font-size: 9px; font-family: monospace; text-transform: uppercase;
+      letter-spacing: 0.12em; color: var(--faint); margin: 10px 0 4px;
+    }
+    .side-label:first-child { margin-top: 0; }
+
+    /* Signals */
+    .signal {
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(0,0,0,0.04);
+    }
+    .signal:last-child { border-bottom: none; }
+    .signal-type {
+      font-size: 9px; font-family: monospace; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--accent); margin-bottom: 4px;
+    }
+    .signal-text {
+      font-size: 13px; color: var(--fg2); line-height: 1.5;
+      font-style: italic;
+    }
+    .signal-date {
+      font-size: 9px; color: var(--faint); margin-top: 4px;
+    }
+
+    /* Detail actions */
+    .detail-actions {
+      display: flex; gap: var(--space-2); margin-top: var(--space-4);
+      padding-top: var(--space-3); border-top: 1px solid var(--border);
+    }
+    .action-btn {
+      font-size: 10px; padding: 5px 12px; border: 1px solid var(--border);
+      background: none; color: var(--muted); cursor: pointer;
+      letter-spacing: 0.04em; transition: all 0.15s;
+    }
+    .action-btn:hover { border-color: var(--fg); color: var(--fg); }
+    .action-btn.danger:hover { border-color: #C4453C; color: #C4453C; }
+
+    /* Close */
+    .close {
+      position: absolute; top: var(--space-3); right: var(--space-3);
+      background: var(--bg); border: 1px solid var(--border);
+      width: 28px; height: 28px; cursor: pointer;
+      color: var(--muted); font-size: 16px; z-index: 101;
+      display: flex; align-items: center; justify-content: center;
+      transition: border-color 0.15s;
+    }
+    .close:hover { border-color: var(--fg); color: var(--fg); }
+
+    /* Detail actions — always at bottom */
+    .detail-actions {
+      margin-top: auto;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .grid { grid-template-columns: repeat(2, 1fr); gap: var(--space-2); }
+      .page { padding: var(--space-3); }
+      .header-title { font-size: 22px; }
+      /* Mobile: gatefold stacks vertically */
+      .detail { flex-direction: column; }
+      .detail-cover-wrap { width: 100%; border-right: none; border-bottom: 1px solid var(--border); }
+      .detail-body { width: 100%; }
+    }
+    @media (min-width: 1200px) {
+      .grid { grid-template-columns: repeat(5, 1fr); }
+    }
+    @media (min-width: 1600px) {
+      .grid { grid-template-columns: repeat(6, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav-left">
+      <a href="#" class="logo">sed.i</a>
+      <div class="nav-links">
+        <button class="nav-link">Queue</button>
+        <button class="nav-link">Lists</button>
+        <button class="nav-link active">Crates</button>
+      </div>
+    </div>
+    <div class="nav-links">
+      <button class="nav-link">Settings</button>
+    </div>
+  </nav>
+
+  <div class="page">
+
+    <div class="header">
+      <div class="header-left">
+        <h1 class="header-title">Crates</h1>
+        <p class="header-count">12 records</p>
+      </div>
+    </div>
+
+    <div class="add-bar">
+      <input type="text" class="add-input" placeholder="Paste a Discogs URL..." />
+      <button class="add-btn">Add</button>
+    </div>
+
+    <div class="toolbar">
+      <div class="filters">
+        <button class="filter active">All</button>
+        <button class="filter">Collection</button>
+        <button class="filter">Wantlist</button>
+      </div>
+      <span class="sort-label">Recently added</span>
+    </div>
+
+    <div class="grid">
+
+      <div class="block" onclick="document.getElementById('detail').style.display='flex'">
+        <div class="block-cover">
+          <div class="block-placeholder">MD</div>
+          <div class="block-overlay">
+            <div class="overlay-artist">Miles Davis</div>
+            <div class="overlay-title">Kind of Blue</div>
+            <div class="overlay-meta">Columbia · CS 8163 · 1959</div>
+          </div>
+          <span class="block-signal"></span>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="block-cover">
+          <div class="block-placeholder">JC</div>
+          <div class="block-overlay">
+            <div class="overlay-artist">John Coltrane</div>
+            <div class="overlay-title">A Love Supreme</div>
+            <div class="overlay-meta">Impulse! · A-77 · 1965</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="block-cover">
+          <div class="block-placeholder">TM</div>
+          <span class="overlay-tag">wantlist</span>
+          <div class="block-overlay">
+            <div class="overlay-artist">Thelonious Monk</div>
+            <div class="overlay-title">Brilliant Corners</div>
+            <div class="overlay-meta">Riverside · RLP 226 · 1957</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="block-cover">
+          <div class="block-placeholder">SY</div>
+          <div class="block-overlay">
+            <div class="overlay-artist">Sonic Youth</div>
+            <div class="overlay-title">Daydream Nation</div>
+            <div class="overlay-meta">Enigma · 1988</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="block-cover">
+          <div class="block-placeholder">DG</div>
+          <div class="block-overlay">
+            <div class="overlay-artist">Dexter Gordon</div>
+            <div class="overlay-title">Our Man in Paris</div>
+            <div class="overlay-meta">Blue Note · BLP 4146 · 1963</div>
+          </div>
+          <span class="block-signal"></span>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="block-cover">
+          <div class="block-placeholder">MF</div>
+          <div class="block-overlay">
+            <div class="overlay-artist">MF DOOM</div>
+            <div class="overlay-title">Mm..Food</div>
+            <div class="overlay-meta">Rhymesayers · 2004</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="block-cover">
+          <div class="block-placeholder">BE</div>
+          <span class="overlay-tag">wantlist</span>
+          <div class="block-overlay">
+            <div class="overlay-artist">Bill Evans</div>
+            <div class="overlay-title">Explorations</div>
+            <div class="overlay-meta">Riverside · RLP 351 · 1961</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="block-cover">
+          <div class="block-placeholder">ML</div>
+          <div class="block-overlay">
+            <div class="overlay-artist">Madlib</div>
+            <div class="overlay-title">Shades of Blue</div>
+            <div class="overlay-meta">Blue Note · 2003</div>
+          </div>
+          <span class="block-signal"></span>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="block-cover">
+          <div class="block-placeholder">NJ</div>
+          <div class="block-overlay">
+            <div class="overlay-artist">Nujabes</div>
+            <div class="overlay-title">Metaphorical Music</div>
+            <div class="overlay-meta">Hydeout · 2003</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="block">
+        <div class="block-cover">
+          <div class="block-placeholder">AiC</div>
+          <div class="block-overlay">
+            <div class="overlay-artist">Alice in Chains</div>
+            <div class="overlay-title">Dirt</div>
+            <div class="overlay-meta">Columbia · 1992</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Detail — click Miles Davis to open -->
+  <div class="detail-bg" id="detail" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+    <div class="detail">
+      <button class="close" onclick="document.getElementById('detail').style.display='none'">&times;</button>
+
+      <div class="detail-cover-wrap">
+        <div class="block-placeholder">MD</div>
+      </div>
+
+      <div class="detail-body">
+        <div class="detail-artist">Miles Davis</div>
+        <div class="detail-title">Kind of Blue</div>
+        <div class="detail-meta">
+          Columbia · CS 8163 · 1959 · US<br>
+          LP, Album, Stereo<br>
+          Condition: VG+ / VG
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-section-label">Tracklist</div>
+          <div class="side-label">Side A</div>
+          <div class="track"><span class="track-pos">A1</span><span class="track-name">So What</span><span class="track-dur">9:22</span></div>
+          <div class="track"><span class="track-pos">A2</span><span class="track-name">Freddie Freeloader</span><span class="track-dur">9:46</span></div>
+          <div class="track"><span class="track-pos">A3</span><span class="track-name">Blue in Green</span><span class="track-dur">5:37</span></div>
+          <div class="side-label">Side B</div>
+          <div class="track"><span class="track-pos">B1</span><span class="track-name">All Blues</span><span class="track-dur">11:33</span></div>
+          <div class="track"><span class="track-pos">B2</span><span class="track-name">Flamenco Sketches</span><span class="track-dur">9:26</span></div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-section-label">Signals</div>
+          <div class="signal">
+            <div class="signal-type">dig note</div>
+            <div class="signal-text">"Found this at Everyday Music on Capitol Hill. $18 — sleeve has ring wear but wax plays clean."</div>
+            <div class="signal-date">Nov 2024</div>
+          </div>
+          <div class="signal">
+            <div class="signal-type">connection</div>
+            <div class="signal-text">"Bill Evans' playing here directly leads to Explorations."</div>
+            <div class="signal-date">Dec 2024</div>
+          </div>
+        </div>
+
+        <div class="detail-actions">
+          <button class="action-btn">Edit</button>
+          <button class="action-btn">Move to Wantlist</button>
+          <button class="action-btn danger">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

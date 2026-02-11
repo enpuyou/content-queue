@@ -24,8 +24,11 @@ celery_app.conf.update(
         "cleanup-old-deleted-items": {
             "task": "app.tasks.cleanup.cleanup_old_deleted_items",
             "schedule": 60 * 60 * 24,  # Every 24 hours
-            # Alternative: Use crontab for specific time
-            # "schedule": crontab(hour=3, minute=0),
+        },
+        # Check for missing highlight embeddings every 5 minutes
+        "process-missing-embeddings": {
+            "task": "app.tasks.embedding.process_all_missing_embeddings",
+            "schedule": 300.0,  # Every 5 minutes
         },
     },
 )
@@ -34,4 +37,4 @@ celery_app.conf.update(
 # celery_app.autodiscover_tasks(['app.tasks'])
 
 # Import tasks here (explicit import)
-from app.tasks import extraction, summarization, cleanup
+from app.tasks import extraction, summarization, cleanup, discogs, embedding

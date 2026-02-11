@@ -27,6 +27,7 @@ export default function ListBlockCard({
   const [isHovered, setIsHovered] = useState(false);
   const [preview, setPreview] = useState<ContentItemType[]>([]);
   const [loadingPreview, setLoadingPreview] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   // Load preview content on hover
   useEffect(() => {
@@ -124,11 +125,20 @@ export default function ListBlockCard({
               <button
                 onClick={(e) => {
                   e.preventDefault();
+                  if (!confirmDelete) {
+                    setConfirmDelete(true);
+                    return;
+                  }
+                  setConfirmDelete(false);
                   onDelete(id);
                 }}
-                className="flex-1 text-xs px-2 py-1 rounded-none bg-rose-50 dark:bg-red-900/30 text-rose-500 dark:text-red-400 hover:bg-red-50 hover:text-red-400 dark:hover:bg-red-900/50 transition-colors"
+                className={`flex-1 text-xs px-2 py-1 rounded-none transition-colors ${
+                  confirmDelete
+                    ? "border border-red-400 text-red-500 dark:text-red-400"
+                    : "bg-rose-50 dark:bg-red-900/30 text-rose-500 dark:text-red-400 hover:bg-red-50 hover:text-red-400 dark:hover:bg-red-900/50"
+                }`}
               >
-                Delete
+                {confirmDelete ? "Confirm?" : "Delete"}
               </button>
             </div>
           </div>

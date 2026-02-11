@@ -13,6 +13,7 @@ import { useTTS } from "@/hooks/useTTS";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import HighlightToolbar from "./HighlightToolbar";
 import SequentialRetroLoader from "./SequentialRetroLoader";
+import NowPlaying from "./NowPlaying";
 import HighlightRenderer from "./HighlightRenderer";
 import HighlightsPanel from "./HighlightsPanel";
 import ConnectionsPanel from "./ConnectionsPanel";
@@ -1291,6 +1292,8 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
               ← Back
             </Link>
 
+            {/* Player moved to bottom left */}
+
             {/* Reading Controls */}
             <div className="flex items-center gap-2 sm:gap-3">
               {/* Font Size Control - now visible on mobile */}
@@ -1368,6 +1371,11 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Player - Fixed Bottom Left */}
+      <div className="hidden md:block fixed bottom-4 left-4 z-40">
+        <NowPlaying direction="up" />
       </div>
 
       {/* Highlights Panel Sidebar */}

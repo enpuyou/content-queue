@@ -30,6 +30,43 @@ export interface ContentItem {
   updated_at: string;
 }
 
+export interface VinylTrack {
+  position: string;
+  title: string;
+  duration: string | null;
+}
+
+export interface VinylVideo {
+  title: string | null;
+  uri: string;
+  duration: number | null;
+}
+
+export interface VinylRecord {
+  id: string;
+  user_id: string;
+  discogs_url: string;
+  discogs_release_id: number | null;
+  title: string | null;
+  artist: string | null;
+  label: string | null;
+  catalog_number: string | null;
+  year: number | null;
+  cover_url: string | null;
+  genres: string[];
+  styles: string[];
+  tracklist: VinylTrack[];
+  videos: VinylVideo[];
+  notes: string | null;
+  rating: number | null;
+  tags: string[];
+  status: "collection" | "wantlist" | "library";
+  processing_status: string;
+  processing_error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface List {
   id: string;
   name: string;

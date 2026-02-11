@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react";
 import { listsAPI } from "@/lib/api";
 import ListModal from "@/components/ListModal";
 import RetroLoader from "@/components/RetroLoader";
-import ConfirmModal from "@/components/ConfirmModal";
 import ListBlockCard from "@/components/ListBlockCard";
 import { useLists } from "@/contexts/ListsContext";
 import Navbar from "@/components/Navbar";
@@ -39,7 +38,6 @@ export default function ListsPage() {
   // Modal state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingList, setEditingList] = useState<ListWithCount | null>(null);
-  const [deletingList, setDeletingList] = useState<ListWithCount | null>(null);
 
   const fetchLists = useCallback(async () => {
     try {
@@ -68,8 +66,7 @@ export default function ListsPage() {
   const handleDeleteList = async (listId: string) => {
     try {
       await listsAPI.delete(listId);
-      setDeletingList(null);
-      fetchLists(); // Refresh the list
+      fetchLists();
     } catch (err) {
       console.error("Failed to delete list:", err);
     }
@@ -178,7 +175,7 @@ export default function ListsPage() {
                 contentCount={listCounts[list.id] ?? list.content_count}
                 isShared={list.is_shared}
                 onEdit={() => setEditingList(list)}
-                onDelete={() => setDeletingList(list)}
+                onDelete={() => handleDeleteList(list.id)}
               />
             ))}
           </div>
@@ -202,22 +199,6 @@ export default function ListsPage() {
           fetchLists();
         }}
         list={editingList || undefined}
-      />
-
-      {/* Delete Confirmation Modal */}
-      <ConfirmModal
-        isOpen={deletingList !== null}
-        title="Delete List"
-        message={`Are you sure you want to delete "${deletingList?.name}"? This will not delete the content items, just the list itself.`}
-        confirmText="Delete List"
-        cancelText="Cancel"
-        danger={true}
-        onConfirm={() => {
-          if (deletingList) {
-            handleDeleteList(deletingList.id);
-          }
-        }}
-        onCancel={() => setDeletingList(null)}
       />
     </div>
   );
