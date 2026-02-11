@@ -7,6 +7,8 @@ import ThemeToggle from "@/components/ThemeToggle";
 import { usePathname } from "next/navigation";
 import { SHOW_CRATES } from "@/lib/flags";
 import NowPlaying from "@/components/NowPlaying";
+import SediLogo from "@/components/SediLogo";
+import { usePlayer } from "@/contexts/PlayerContext";
 
 // Nav link that forces text-primary color (overrides global `a` color rule)
 function NavLink({
@@ -24,7 +26,7 @@ function NavLink({
     <Link
       href={href}
       onClick={onClick}
-      className={`text-xs px-2 py-0.5 leading-none rounded-none border transition-colors no-underline ${
+      className={`compact-touch text-xs px-2 py-0.5 leading-none rounded-none border transition-colors no-underline ${
         active
           ? "bg-[var(--color-bg-secondary)] border-[var(--color-accent)]"
           : "bg-[var(--color-bg-secondary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
@@ -41,6 +43,7 @@ export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const lastScrollY = useRef(0);
+  const { current: playerCurrent, isPlaying, toggle } = usePlayer();
 
   const isQueueActive = pathname === "/dashboard";
   const isListsActive = pathname === "/lists";
@@ -77,17 +80,21 @@ export default function Navbar() {
       className={`sticky top-0 z-50 w-full transition-transform duration-300 ${isVisible ? "translate-y-0" : "-translate-y-full"}`}
     >
       <div className="px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between w-full h-14 pl-2">
+        <div className="flex items-center justify-between w-full h-14">
           {/* Left: Logo & Player */}
           <div className="flex items-center gap-4 w-1/4">
             <Link
               href="/dashboard"
-              className="text-xl font-normal whitespace-nowrap flex items-center shrink-0 no-underline hover:opacity-100"
+              className="text-xl font-normal whitespace-nowrap flex items-center gap-2 shrink-0 no-underline hover:opacity-100"
               style={{
                 fontFamily: "var(--font-logo)",
                 color: "var(--color-text-primary)",
               }}
             >
+              <SediLogo
+                size={20}
+                className="text-[var(--color-text-primary)]"
+              />
               sed.i
             </Link>
             <div className="hidden md:block">
@@ -121,12 +128,47 @@ export default function Navbar() {
             </NavLink>
           </div>
 
-          {/* Mobile: Theme Toggle and Menu Button */}
-          <div className="flex md:hidden items-center gap-2 -mr-2">
+          {/* Mobile: Mini Player, Theme Toggle and Menu Button */}
+          <div className="flex md:hidden items-center gap-2">
+            {/* Mini player — album art + play/pause */}
+            {playerCurrent && (
+              <button
+                onClick={toggle}
+                className="compact-touch relative w-6 h-6 flex-shrink-0 overflow-hidden border border-[var(--color-border)] bg-[var(--color-bg-tertiary)]"
+                title={isPlaying ? "Pause" : "Play"}
+              >
+                {playerCurrent.cover_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={playerCurrent.cover_url}
+                    alt=""
+                    className={`w-full h-full object-cover ${isPlaying ? "" : "opacity-50"}`}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <span className="font-mono text-[8px] text-[var(--color-text-faint)]">
+                      {isPlaying ? "||" : "▶"}
+                    </span>
+                  </div>
+                )}
+                {!isPlaying && playerCurrent.cover_url && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <svg
+                      width="10"
+                      height="10"
+                      viewBox="0 0 10 10"
+                      fill="var(--color-text-primary)"
+                    >
+                      <polygon points="3,1 3,9 9,5" />
+                    </svg>
+                  </div>
+                )}
+              </button>
+            )}
             <ThemeToggle />
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors p-1"
+              className="compact-touch text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors p-1"
               aria-label="Toggle mobile menu"
             >
               <svg
@@ -156,42 +198,50 @@ export default function Navbar() {
             aria-hidden="true"
           />
 
-          <div className="absolute top-full left-0 right-0 bg-[var(--color-bg-primary)] border-b border-[var(--color-border)] shadow-lg z-20 md:hidden">
-            <div className="px-4 py-4 space-y-3">
+          <div className="absolute top-full left-0 right-0 bg-[var(--color-bg-primary)] border-b border-[var(--color-border)] z-20 md:hidden">
+            <div className="px-5 pt-3 pb-2">
               <SearchBar />
-
-              <div className="flex flex-col gap-2">
-                <NavLink
-                  href="/dashboard"
-                  active={isQueueActive}
+            </div>
+            <nav className="border-t border-[var(--color-border-subtle)]">
+              {[
+                { href: "/dashboard", label: "Queue", active: isQueueActive },
+                { href: "/lists", label: "Lists", active: isListsActive },
+                ...(SHOW_CRATES
+                  ? [
+                      {
+                        href: "/crates",
+                        label: "Crates",
+                        active: isCratesActive,
+                      },
+                    ]
+                  : []),
+                {
+                  href: "/settings",
+                  label: "Settings",
+                  active: isSettingsActive,
+                },
+              ].map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
                   onClick={closeMobileMenu}
+                  className={`compact-touch flex items-center px-5 py-3 font-mono text-[11px] uppercase tracking-widest no-underline transition-colors border-b border-[var(--color-border-subtle)] ${
+                    item.active
+                      ? "text-[var(--color-text-primary)] bg-[var(--color-bg-secondary)]"
+                      : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+                  }`}
+                  style={{
+                    color: item.active
+                      ? "var(--color-text-primary)"
+                      : "var(--color-text-muted)",
+                  }}
                 >
-                  Queue
-                </NavLink>
-                <NavLink
-                  href="/lists"
-                  active={isListsActive}
-                  onClick={closeMobileMenu}
-                >
-                  Lists
-                </NavLink>
-                {SHOW_CRATES && (
-                  <NavLink
-                    href="/crates"
-                    active={isCratesActive}
-                    onClick={closeMobileMenu}
-                  >
-                    Crates
-                  </NavLink>
-                )}
-                <NavLink
-                  href="/settings"
-                  active={isSettingsActive}
-                  onClick={closeMobileMenu}
-                >
-                  Settings
-                </NavLink>
-              </div>
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+            <div className="px-5 py-3">
+              <NowPlaying />
             </div>
           </div>
         </>

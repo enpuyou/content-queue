@@ -611,11 +611,10 @@ button:focus-visible {
 
 /* Mobile-first spacing adjustments */
 @media (max-width: 640px) {
-  /* Increase padding on mobile for easier touch targets */
-  button,
-  a {
+  /* Touch-friendly targets on mobile — opt out with .compact-touch */
+  button:not(.compact-touch),
+  a:not(.compact-touch) {
     min-height: 44px;
-    /* Touch-friendly minimum */
     min-width: 44px;
   }
 
@@ -1642,4 +1641,38 @@ h4:hover .heading-anchor {
 .true-black [data-highlight-color] {
   font-weight: 600;
   text-shadow: 0 0 1px rgba(255, 255, 255, 0.3);
+}
+
+/* ========================================
+   LANDING PAGE ANIMATIONS
+   ======================================== */
+
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-reveal-up {
+  animation: reveal-up 0.8s ease-out forwards;
+  opacity: 0;
+}
+
+@keyframes reveal-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-reveal-fade {
+  animation: reveal-fade 1s ease-out forwards;
+  opacity: 0;
 }

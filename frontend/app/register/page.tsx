@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { authAPI } from "@/lib/api";
 import ThemeToggle from "@/components/ThemeToggle";
+import SediLogo from "@/components/SediLogo";
+import NowPlaying from "@/components/NowPlaying";
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
@@ -21,7 +23,6 @@ export default function RegisterPage() {
 
     try {
       await authAPI.register(fullName, email, password);
-      // Registration successful, redirect to login
       router.push("/login?registered=true");
     } catch (err: unknown) {
       const error = err as {
@@ -37,83 +38,104 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--color-bg-primary)]">
-      {/* Theme Toggle */}
-      <div className="absolute top-4 right-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[var(--color-bg-primary)] px-6">
+      {/* Top bar */}
+      <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 h-14">
+        <div className="flex items-center gap-4">
+          <Link
+            href="/"
+            className="compact-touch flex items-center gap-2 no-underline hover:opacity-80 transition-opacity"
+            style={{ color: "var(--color-text-primary)" }}
+          >
+            <SediLogo size={16} className="text-[var(--color-text-primary)]" />
+            <span
+              className="text-lg font-normal"
+              style={{ fontFamily: "var(--font-logo)" }}
+            >
+              sed.i
+            </span>
+          </Link>
+          <div className="hidden md:block">
+            <NowPlaying />
+          </div>
+        </div>
         <ThemeToggle />
       </div>
 
-      <div className="max-w-md w-full space-y-8 p-8">
-        <div>
-          <h2 className="font-serif text-3xl font-normal text-center text-[var(--color-text-primary)]">
-            sed.i
-          </h2>
+      <div className="w-full max-w-xs">
+        {/* Header */}
+        <div className="text-center mb-10">
+          <h1
+            className="text-3xl font-normal text-[var(--color-text-primary)]"
+            style={{
+              fontFamily: "var(--font-logo), Georgia, serif",
+              letterSpacing: "-0.02em",
+            }}
+          >
+            Sign up
+          </h1>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="border-l-4 border-red-600 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 px-4 py-3 rounded-none">
+            <p className="font-mono text-[11px] text-center text-red-500">
               {error}
-            </div>
+            </p>
           )}
 
-          <div>
-            <input
-              id="fullName"
-              type="text"
-              required
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Full Name"
-              className="block w-full px-3 py-2 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] rounded-none hover:bg-[var(--color-bg-tertiary)] focus:outline-none focus:border-[var(--color-accent)] placeholder-[var(--color-text-muted)] transition-all"
-            />
-          </div>
+          <input
+            id="fullName"
+            type="text"
+            required
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            placeholder="Name"
+            className="block w-full px-3 py-2 text-sm font-mono border-b border-[var(--color-border)] bg-transparent focus:outline-none focus:border-[var(--color-accent)] placeholder:text-[var(--color-text-faint)] text-[var(--color-text-primary)] transition-colors"
+          />
 
-          <div>
-            <input
-              id="email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email"
-              className="block w-full px-3 py-2 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] rounded-none hover:bg-[var(--color-bg-tertiary)] focus:outline-none focus:border-[var(--color-accent)] placeholder-[var(--color-text-muted)] transition-all"
-            />
-          </div>
+          <input
+            id="email"
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Email"
+            className="block w-full px-3 py-2 text-sm font-mono border-b border-[var(--color-border)] bg-transparent focus:outline-none focus:border-[var(--color-accent)] placeholder:text-[var(--color-text-faint)] text-[var(--color-text-primary)] transition-colors"
+          />
 
-          <div>
-            <input
-              id="password"
-              type="password"
-              required
-              minLength={8}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
-              className="block w-full px-3 py-2 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] rounded-none hover:bg-[var(--color-bg-tertiary)] focus:outline-none focus:border-[var(--color-accent)] placeholder-[var(--color-text-muted)] transition-all"
-            />
-          </div>
+          <input
+            id="password"
+            type="password"
+            required
+            minLength={8}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password"
+            className="block w-full px-3 py-2 text-sm font-mono border-b border-[var(--color-border)] bg-transparent focus:outline-none focus:border-[var(--color-accent)] placeholder:text-[var(--color-text-faint)] text-[var(--color-text-primary)] transition-colors"
+          />
 
-          <div className="flex justify-center">
+          <div className="pt-4 flex justify-center">
             <button
               type="submit"
               disabled={isLoading}
-              className="text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"
+              className="compact-touch text-xs px-3 py-1 leading-none rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors disabled:opacity-50"
             >
-              {isLoading ? "Creating account..." : "Create Account"}
+              {isLoading ? "Creating account..." : "Create account"}
             </button>
           </div>
-
-          <p className="text-center text-sm text-[var(--color-text-secondary)]">
-            Already have an account?{" "}
-            <Link
-              href="/login"
-              className="font-medium text-[var(--color-accent)] hover:text-[var(--color-accent-hover)]"
-            >
-              Log in
-            </Link>
-          </p>
         </form>
+
+        {/* Footer link */}
+        <p className="mt-10 text-center font-mono text-[10px] uppercase tracking-widest text-[var(--color-text-faint)]">
+          Have an account?{" "}
+          <Link
+            href="/login"
+            className="compact-touch text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
+            style={{ color: "var(--color-text-muted)" }}
+          >
+            Log in
+          </Link>
+        </p>
       </div>
     </div>
   );

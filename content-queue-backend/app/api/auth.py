@@ -10,7 +10,9 @@ from app.models.user import User
 from app.schemas.user import UserCreate, UserResponse, Token
 from app.models.content import ContentItem
 from app.models.highlight import Highlight
+from app.models.vinyl import VinylRecord
 from app.tasks.extraction import extract_metadata
+from app.tasks.discogs import fetch_discogs_metadata
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -154,6 +156,40 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
 
     # Trigger background extraction for the example article
     extract_metadata.delay(str(example_article.id))
+
+    # ---------------------------------------------------------
+    # Add Example Article: Reintroducing Friction (Vogue)
+    # ---------------------------------------------------------
+    friction_article = ContentItem(
+        user_id=new_user.id,
+        original_url="https://www.vogue.com.au/culture/features/reintroducing-friction/news-story/af80aeac433d7b465c10e3d5de870225",
+        title="Reintroducing Friction",
+        description="Calculate the cost of convenience—and the surprising value of doing things the hard way.",
+        content_type="article",
+        processing_status="pending",
+        submitted_via="system_default",
+    )
+    db.add(friction_article)
+    db.commit()
+    db.refresh(friction_article)
+
+    # Trigger background extraction for the friction article
+    extract_metadata.delay(str(friction_article.id))
+
+    # ---------------------------------------------------------
+    # Add Default Vinyl Record: Hiroshi Yoshimura – A·I·R
+    # ---------------------------------------------------------
+    default_vinyl = VinylRecord(
+        user_id=new_user.id,
+        discogs_url="https://www.discogs.com/release/33729033-Hiroshi-Yoshimura-AIR-Air-In-Resort",
+        processing_status="pending",
+    )
+    db.add(default_vinyl)
+    db.commit()
+    db.refresh(default_vinyl)
+
+    # Trigger background Discogs metadata fetch
+    fetch_discogs_metadata.delay(str(default_vinyl.id))
 
     return new_user
 

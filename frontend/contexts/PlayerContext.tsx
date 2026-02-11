@@ -33,6 +33,7 @@ interface PlayerContextValue extends PlayerState {
   addToQueue: (track: QueueTrack) => void;
   addMultipleToQueue: (tracks: QueueTrack[]) => void;
   play: (index?: number) => void;
+  setIndex: (index: number) => void;
   pause: () => void;
   toggle: () => void;
   next: () => void;
@@ -158,6 +159,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setIsPlaying(true);
   }, []);
 
+  const setIndex = useCallback((index: number) => {
+    setCurrentIndex(index);
+    setIsPlaying(false);
+  }, []);
+
   const pause = useCallback(() => {
     setIsPlaying(false);
     playerRef.current?.pauseVideo();
@@ -274,6 +280,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         addToQueue,
         addMultipleToQueue,
         play,
+        setIndex,
         pause,
         toggle,
         next,
