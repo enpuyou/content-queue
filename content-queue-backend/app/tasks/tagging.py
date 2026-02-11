@@ -70,9 +70,9 @@ def generate_tags(self, content_item_id: str):
                 "source": "embedding_similarity",
             }
 
-        # PASS 2: LLM-based tagging (cheap with Haiku)
+        # PASS 2: LLM-based tagging (cheap with gpt-4o-mini)
         user_vocabulary = get_user_tag_vocabulary(self.db, item.user_id)
-        llm_tags = generate_tags_with_haiku(
+        llm_tags = generate_tags_with_llm(
             item.title, item.description, item.full_text, user_vocabulary
         )
 
@@ -84,7 +84,7 @@ def generate_tags(self, content_item_id: str):
             return {
                 "content_item_id": content_item_id,
                 "tags": llm_tags,
-                "source": "haiku_llm",
+                "source": "llm_tagging",
             }
 
         return {"content_item_id": content_item_id, "status": "no_tags_generated"}
@@ -146,10 +146,10 @@ def get_user_tag_vocabulary(db: Session, user_id: UUID) -> list:
     return [tag[0] for tag in existing_tags if tag[0]]
 
 
-def generate_tags_with_haiku(
+def generate_tags_with_llm(
     title: str, description: str, full_text: str, user_vocabulary: list
 ) -> list:
-    """Call Claude Haiku to generate tags."""
+    """Call OpenAI (gpt-4o-mini) to generate tags."""
     client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
     # Prepare context from article
@@ -172,19 +172,28 @@ Return ONLY a JSON list of tags (strings). Example: ["Technology", "AI", "Opinio
 Reuse the user's existing tags when relevant."""
 
     try:
-        response = client.messages.create(
-            model="claude-3-5-haiku-20241022",
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
             max_tokens=100,
             messages=[{"role": "user", "content": prompt}],
+            response_format={"type": "json_object"},
         )
 
         # Parse tags from response
-        content = response.content[0].text
+        content = response.choices[0].message.content
         # Try to extract JSON list
         try:
-            tags = json.loads(content)
-            if isinstance(tags, list):
-                return [str(tag)[:100] for tag in tags[:5]]  # Limit tag length
+            # Handle potential wrapper object if model outputs {"tags": [...]}
+            data = json.loads(content)
+            if isinstance(data, list):
+                tags = data
+            elif isinstance(data, dict):
+                # Look for list values
+                tags = next((v for v in data.values() if isinstance(v, list)), [])
+            else:
+                tags = []
+
+            return [str(tag)[:100] for tag in tags[:5]]  # Limit tag length
         except json.JSONDecodeError:
             # If JSON parsing fails, extract quoted strings
             matches = re.findall(r'"([^"]+)"', content)
@@ -194,5 +203,5 @@ Reuse the user's existing tags when relevant."""
         return []
 
     except Exception as e:
-        logger.error(f"Haiku tagging failed: {str(e)}")
+        logger.error(f"LLM tagging failed: {str(e)}")
         return []
