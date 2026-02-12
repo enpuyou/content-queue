@@ -122,6 +122,22 @@ export default function ContentCard({
     }
   };
 
+  const handleRemoveAutoTag = async (tagToRemove: string) => {
+    try {
+      const updatedAutoTags = (content.auto_tags || []).filter(
+        (t) => t !== tagToRemove,
+      );
+      const updated = await contentAPI.update(content.id, {
+        auto_tags: updatedAutoTags,
+      });
+      if (onUpdate) {
+        onUpdate(updated);
+      }
+    } catch (error) {
+      console.error("Failed to remove auto-tag:", error);
+    }
+  };
+
   const handleCardClick = (e: React.MouseEvent) => {
     // Don't navigate if clicking on action buttons or links
     if (
@@ -166,6 +182,31 @@ export default function ContentCard({
         </div>
       )}
 
+      {/* Absolute Mobile Actions Menu (Top Right) */}
+      <div className="absolute top-2 right-2 z-10">
+        <MobileActionsMenu
+          onRead={() =>
+            onStatusChange(content.id, { is_read: !content.is_read })
+          }
+          onArchive={() =>
+            onStatusChange(content.id, {
+              is_archived: !content.is_archived,
+            })
+          }
+          onAddTag={() => setIsEditingTags(true)}
+          onDelete={() => setConfirmDelete(true)}
+          onAddToList={
+            availableLists && availableLists.length > 0 && onAddToList
+              ? (listId) => onAddToList(listId)
+              : undefined
+          }
+          onRemoveFromList={onRemoveFromList}
+          isRead={content.is_read}
+          isArchived={content.is_archived}
+          availableLists={availableLists}
+        />
+      </div>
+
       <div className="flex items-start gap-4">
         {/* Thumbnail */}
         {content.thumbnail_url && (
@@ -196,12 +237,28 @@ export default function ContentCard({
           {!isProcessing && (
             <div className="flex items-center gap-2 mb-2 text-xs text-[var(--color-text-muted)]">
               {hasFailed ? (
-                <>
-                  <span className="inline-block w-2 h-2 rounded-full bg-red-500 flex-shrink-0"></span>
-                  <span className="text-xs px-2 py-0.5 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800">
-                    Failed to extract
-                  </span>
-                </>
+                (() => {
+                  const isBlocked =
+                    content.processing_error?.includes("403") ||
+                    content.processing_error?.includes("forbidden") ||
+                    content.processing_error?.includes("bot");
+
+                  return isBlocked ? (
+                    <>
+                      <span className="inline-block w-2 h-2 rounded-full bg-orange-400 flex-shrink-0"></span>
+                      <span className="text-xs px-2 py-0.5 bg-orange-50 dark:bg-orange-950/20 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-800">
+                        This article is blocked from us :/
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="inline-block w-2 h-2 rounded-full bg-red-500 flex-shrink-0"></span>
+                      <span className="text-xs px-2 py-0.5 bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800">
+                        Failed to extract
+                      </span>
+                    </>
+                  );
+                })()
               ) : (
                 <StatusIndicator readingStatus={content.reading_status} />
               )}
@@ -224,14 +281,21 @@ export default function ContentCard({
           )}
 
           {/* Title */}
-          <h3 className="font-serif text-lg font-medium text-[var(--color-text-primary)] mb-1 line-clamp-2">
+          <h3 className="font-serif text-lg font-medium text-[var(--color-text-primary)] mb-1 line-clamp-2 pr-6 sm:pr-0">
             {(() => {
               // Show helpful title based on state
               if (content.title) {
                 return content.title;
               }
               if (hasFailed) {
-                return "We couldn't load your article";
+                const isBlocked =
+                  content.processing_error?.includes("403") ||
+                  content.processing_error?.includes("forbidden") ||
+                  content.processing_error?.includes("bot");
+
+                return isBlocked
+                  ? "This article is playing hard to get"
+                  : "We couldn't load your article";
               }
               return "Untitled";
             })()}
@@ -293,47 +357,73 @@ export default function ContentCard({
                 </div>
               )}
 
-              {/* Auto-suggested tags */}
-              {content.auto_tags && content.auto_tags.length > 0 && (
-                <div className="flex items-center gap-2 flex-wrap">
-                  {content.auto_tags.slice(0, 2).map((tag, index) => (
-                    <span
-                      key={`auto-${index}`}
-                      className="text-xs text-[var(--color-text-muted)] opacity-60 border-b border-[var(--color-border)] border-dashed pb-0.5 flex items-center gap-1"
+              {/* Auto-suggested tags (filtered to exclude existing tags) */}
+              {(() => {
+                const existingTags = new Set(content.tags || []);
+                const suggestedTags = (content.auto_tags || []).filter(
+                  (tag) => !existingTags.has(tag),
+                );
+
+                if (suggestedTags.length === 0) return null;
+
+                return (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {suggestedTags.slice(0, 2).map((tag, index) => (
+                      <span
+                        key={`auto-${index}`}
+                        className="group text-xs text-[var(--color-text-muted)] opacity-60 border-b border-[var(--color-border)] border-dashed pb-0.5 flex items-center gap-1 cursor-pointer hover:opacity-100 transition-opacity"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Maybe clicking the tag accepts it? For now just show X
+                        }}
+                      >
+                        +{tag}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveAutoTag(tag);
+                          }}
+                          className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 text-[var(--color-text-muted)] hover:text-red-500 ml-0.5 transition-opacity"
+                          title="Dismiss suggestion"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                    {suggestedTags.length > 2 && (
+                      <span className="text-xs text-[var(--color-text-faint)] opacity-60">
+                        +{suggestedTags.length - 2} suggested
+                      </span>
+                    )}
+                    {/* Accept/Dismiss buttons for auto-tags (Hidden on mobile) */}
+                    <div
+                      className="hidden sm:flex gap-1"
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      +{tag}
-                    </span>
-                  ))}
-                  {content.auto_tags.length > 2 && (
-                    <span className="text-xs text-[var(--color-text-faint)] opacity-60">
-                      +{content.auto_tags.length - 2} suggested
-                    </span>
-                  )}
-                  {/* Accept/Dismiss buttons for auto-tags */}
-                  <div className="flex gap-1">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleAcceptAutoTags();
-                      }}
-                      disabled={acceptingTags}
-                      className="text-xs px-2 py-0.5 text-[var(--color-accent)] hover:bg-[var(--color-bg-secondary)] border border-[var(--color-accent)] rounded disabled:opacity-50"
-                    >
-                      {acceptingTags ? "..." : "✓"}
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDismissAutoTags();
-                      }}
-                      disabled={dismissingTags}
-                      className="text-xs px-2 py-0.5 text-[var(--color-text-muted)] hover:text-red-600 hover:border-red-300 border border-[var(--color-border)] rounded disabled:opacity-50"
-                    >
-                      {dismissingTags ? "..." : "✕"}
-                    </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAcceptAutoTags();
+                        }}
+                        disabled={acceptingTags}
+                        className="text-xs px-2 py-0.5 text-[var(--color-accent)] hover:bg-[var(--color-bg-secondary)] border border-[var(--color-accent)] rounded disabled:opacity-50"
+                      >
+                        {acceptingTags ? "..." : "✓"}
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDismissAutoTags();
+                        }}
+                        disabled={dismissingTags}
+                        className="text-xs px-2 py-0.5 text-[var(--color-text-muted)] hover:text-red-600 hover:border-red-300 border border-[var(--color-border)] rounded disabled:opacity-50"
+                      >
+                        {dismissingTags ? "..." : "✕"}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           ) : null}
 
@@ -444,34 +534,6 @@ export default function ContentCard({
               </div>
             </div>
           )}
-
-          {/* Actions */}
-          <div className="flex items-center justify-between mt-2">
-            <div className="text-xs text-[var(--color-text-faint)]">
-              {new Date(content.created_at).toLocaleDateString()}
-            </div>
-            <MobileActionsMenu
-              onRead={() =>
-                onStatusChange(content.id, { is_read: !content.is_read })
-              }
-              onArchive={() =>
-                onStatusChange(content.id, {
-                  is_archived: !content.is_archived,
-                })
-              }
-              onAddTag={() => setIsEditingTags(true)}
-              onDelete={() => setConfirmDelete(true)}
-              onAddToList={
-                availableLists && availableLists.length > 0 && onAddToList
-                  ? (listId) => onAddToList(listId)
-                  : undefined
-              }
-              onRemoveFromList={onRemoveFromList}
-              isRead={content.is_read}
-              isArchived={content.is_archived}
-              availableLists={availableLists}
-            />
-          </div>
 
           {/* Inline delete confirm strip */}
           {confirmDelete && (

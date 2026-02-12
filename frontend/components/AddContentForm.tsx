@@ -61,7 +61,7 @@ export default function AddContentForm({
           onChange={(e) => setUrl(e.target.value)}
           placeholder="Paste article URL..."
           required
-          className="flex-1 px-0 py-2 bg-transparent rounded-none focus:outline-none focus:!ring-0 focus:!shadow-none placeholder-[var(--color-text-muted)] transition-all font-mono text-sm border-none"
+          className="flex-1 px-0 py-2 bg-transparent rounded-none focus:outline-none focus:!ring-0 focus:!shadow-none placeholder-[var(--color-text-muted)] transition-all font-mono text-xs sm:text-sm border-none"
         />
 
         <button

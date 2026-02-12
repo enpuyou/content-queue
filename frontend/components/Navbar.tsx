@@ -44,6 +44,11 @@ export default function Navbar() {
   const [isVisible, setIsVisible] = useState(true);
   const lastScrollY = useRef(0);
   const { current: playerCurrent, isPlaying, toggle } = usePlayer();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const isQueueActive = pathname === "/dashboard";
   const isListsActive = pathname === "/lists";
@@ -137,7 +142,7 @@ export default function Navbar() {
                 className="compact-touch relative w-6 h-6 flex-shrink-0 overflow-hidden border border-[var(--color-border)] bg-[var(--color-bg-tertiary)]"
                 title={isPlaying ? "Pause" : "Play"}
               >
-                {playerCurrent.cover_url ? (
+                {mounted && playerCurrent && playerCurrent.cover_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={playerCurrent.cover_url}
@@ -147,22 +152,25 @@ export default function Navbar() {
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <span className="font-mono text-[8px] text-[var(--color-text-faint)]">
-                      {isPlaying ? "||" : "▶"}
+                      {mounted && isPlaying ? "||" : "▶"}
                     </span>
                   </div>
                 )}
-                {!isPlaying && playerCurrent.cover_url && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <svg
-                      width="10"
-                      height="10"
-                      viewBox="0 0 10 10"
-                      fill="var(--color-text-primary)"
-                    >
-                      <polygon points="3,1 3,9 9,5" />
-                    </svg>
-                  </div>
-                )}
+                {!isPlaying &&
+                  mounted &&
+                  playerCurrent &&
+                  playerCurrent.cover_url && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <svg
+                        width="10"
+                        height="10"
+                        viewBox="0 0 10 10"
+                        fill="var(--color-text-primary)"
+                      >
+                        <polygon points="3,1 3,9 9,5" />
+                      </svg>
+                    </div>
+                  )}
               </button>
             )}
             <ThemeToggle />

@@ -1573,6 +1573,7 @@ h4:hover .heading-anchor {
   0% {
     transform: translate3d(0, 0, 0);
   }
+
   100% {
     transform: translate3d(-50%, 0, 0);
   }
@@ -1652,6 +1653,7 @@ h4:hover .heading-anchor {
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1667,6 +1669,7 @@ h4:hover .heading-anchor {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }

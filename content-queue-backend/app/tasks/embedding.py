@@ -112,6 +112,11 @@ def generate_embedding(self, content_item_id: str):
             f"Successfully generated embedding for {item.original_url} (dimension: {len(embedding)})"
         )
 
+        # Trigger tagging after embedding is generated
+        from app.tasks.tagging import generate_tags
+
+        generate_tags.delay(content_item_id)
+
         return {
             "content_item_id": content_item_id,
             "embedding_dimension": len(embedding),
@@ -124,6 +129,17 @@ def generate_embedding(self, content_item_id: str):
         # Retry with exponential backoff
         if self.request.retries < self.max_retries:
             raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
+
+        # Only update status if retries exhausted
+        item = (
+            self.db.query(ContentItem)
+            .filter(ContentItem.id == UUID(content_item_id))
+            .first()
+        )
+        if item:
+            item.processing_status = "completed"
+            item.processing_error = f"Embedding error: {str(e)}"
+            self.db.commit()
 
         return {"content_item_id": content_item_id, "status": "failed", "error": str(e)}
 

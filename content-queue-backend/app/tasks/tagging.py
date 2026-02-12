@@ -62,12 +62,14 @@ def generate_tags(self, content_item_id: str):
         if suggested_tags and should_accept_tags(suggested_tags):
             item.auto_tags = suggested_tags
             item.tags = suggested_tags  # Auto-accept if high confidence
+            item.processing_status = "completed"
             self.db.commit()
             logger.info(f"Auto-tagged {item.original_url} with {suggested_tags}")
             return {
                 "content_item_id": content_item_id,
                 "tags": suggested_tags,
                 "source": "embedding_similarity",
+                "status": "completed",
             }
 
         # PASS 2: LLM-based tagging (cheap with gpt-4o-mini)
@@ -79,18 +81,43 @@ def generate_tags(self, content_item_id: str):
         if llm_tags:
             item.auto_tags = llm_tags
             item.tags = llm_tags  # Auto-accept from LLM
+            item.processing_status = "completed"
             self.db.commit()
             logger.info(f"LLM-tagged {item.original_url} with {llm_tags}")
             return {
                 "content_item_id": content_item_id,
                 "tags": llm_tags,
                 "source": "llm_tagging",
+                "status": "completed",
             }
 
-        return {"content_item_id": content_item_id, "status": "no_tags_generated"}
+        # No tags generated, but processing is done
+        item.processing_status = "completed"
+        self.db.commit()
+        return {
+            "content_item_id": content_item_id,
+            "status": "completed",
+            "message": "No tags generated",
+        }
 
     except Exception as e:
         logger.error(f"Failed to generate tags for {content_item_id}: {str(e)}")
+        # Ensure we don't get stuck in processing
+        try:
+            # re-query item to avoid detached instance issues if session closed?
+            # But self.db is session.
+            item = (
+                self.db.query(ContentItem)
+                .filter(ContentItem.id == UUID(content_item_id))
+                .first()
+            )
+            if item:
+                item.processing_status = "completed"
+                # Optional: item.processing_error = f"Tagging error: {str(e)}"
+                self.db.commit()
+        except Exception as db_e:
+            logger.error(f"Failed to update status on tagging error: {db_e}")
+
         return {"content_item_id": content_item_id, "status": "failed", "error": str(e)}
 
 
