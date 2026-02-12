@@ -26,6 +26,7 @@ export interface ContentItem {
   read_position?: number;
   reading_status: "unread" | "in_progress" | "read" | "archived";
   processing_status: string;
+  processing_error?: string;
   created_at: string;
   updated_at: string;
 }

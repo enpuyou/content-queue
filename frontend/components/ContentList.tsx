@@ -445,7 +445,7 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
         <div className="relative inline-block">
           <button
             onClick={() => setFilterOpen(!filterOpen)}
-            className="font-medium text-[var(--color-text-primary)] border-b border-dotted border-[var(--color-text-secondary)] hover:border-[var(--color-text-primary)] hover:border-solid transition-all flex items-center gap-1 pb-0.5"
+            className="compact-touch font-medium text-[var(--color-text-primary)] border-b border-dotted border-[var(--color-text-secondary)] hover:border-[var(--color-text-primary)] hover:border-solid transition-all flex items-center gap-1 pb-0.5"
           >
             <span className="flex items-center gap-1 lowercase">
               {filter.replace("_", " ")}

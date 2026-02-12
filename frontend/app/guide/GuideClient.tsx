@@ -13,7 +13,7 @@ const sections = [
   { id: "crates", title: "Crates" },
   { id: "lists", title: "Lists" },
   { id: "search", title: "Search" },
-  { id: "ai", title: "AI Features" },
+  { id: "ai", title: "AI-Facilitated Features" },
   { id: "shortcuts", title: "Keyboard Shortcuts" },
 ];
 
@@ -317,7 +317,7 @@ export default function GuideClient() {
 
           {/* 06 AI Features */}
           <section>
-            <SectionHeader num={6} id="ai" title="AI Features" />
+            <SectionHeader num={6} id="ai" title="AI-Facilitated Features" />
             <div className="mt-6 space-y-1 border-t border-[var(--color-border-subtle)] pt-4">
               <Feature label="Auto-tagging">
                 Articles are automatically tagged with relevant topics using AI

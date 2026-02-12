@@ -153,6 +153,7 @@ export const contentAPI = {
       is_archived?: boolean;
       read_position?: number;
       tags?: string[];
+      auto_tags?: string[];
       full_text?: string;
     },
   ) => {

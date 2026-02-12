@@ -97,7 +97,7 @@ export default function ListsPage() {
         <div className="mb-8">
           <div className="flex justify-between items-start">
             <div>
-              <h1 className="font-serif text-3xl font-normal text-[var(--color-text-primary)]">
+              <h1 className="font-serif text-3xl font-normal text-[var(--color-text-primary)] mt-6">
                 My Collections
               </h1>
             </div>

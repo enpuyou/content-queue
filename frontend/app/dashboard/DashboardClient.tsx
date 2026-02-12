@@ -32,7 +32,7 @@ export default function DashboardClient() {
         <div className="space-y-4">
           {/* Header with Title and Add Form */}
           <div>
-            <h1 className="font-serif text-3xl font-normal text-[var(--color-text-primary)]">
+            <h1 className="font-serif text-3xl font-normal text-[var(--color-text-primary)] mt-6">
               {/* Prevent flash: render nothing or skeleton while loading, default to Hello */}
               {!user ? (
                 // While loading or not logged in, show neutral

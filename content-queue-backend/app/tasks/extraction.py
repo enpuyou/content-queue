@@ -1,7 +1,6 @@
 from app.core.celery_app import celery_app
 from app.models.content import ContentItem
 from app.tasks.embedding import generate_embedding
-from app.tasks.tagging import generate_tags
 from app.tasks.base import DatabaseTask
 from uuid import UUID
 import requests
@@ -42,9 +41,13 @@ def extract_metadata(self, content_item_id: str):
         # Fetch the URL
         # Fetch the URL with improved headers
         headers = {
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-            "Accept-Language": "en-US,en;q=0.9",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.5",
+            "Referer": "https://www.google.com/",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1",
+            # Removing Sec- headers as they can trigger bot detection if TLS fingerprint doesn't match
         }
         response = requests.get(item.original_url, headers=headers, timeout=10)
         response.raise_for_status()
@@ -55,20 +58,27 @@ def extract_metadata(self, content_item_id: str):
         # Extract metadata
         metadata = extract_page_metadata(soup, item.original_url)
 
-        # Update item
+        # Update item metadata
         item.title = metadata.get("title")
         item.description = metadata.get("description")
         item.thumbnail_url = metadata.get("thumbnail")
         item.content_type = metadata.get("content_type", "article")
-        item.processing_status = "completed"
-        item.processing_error = None
 
-        self.db.commit()
-        logger.info(f"Successfully extracted metadata for {item.original_url}")
-
-        # Trigger full-text extraction for articles
+        # logic: if article, we continue processing. if not, we are done.
         if item.content_type == "article":
+            # Keep processing status
+            self.db.commit()
+            logger.info(
+                f"Successfully extracted metadata for {item.original_url}, proceeding to full text"
+            )
             extract_full_content.delay(content_item_id)
+        else:
+            item.processing_status = "completed"
+            item.processing_error = None
+            self.db.commit()
+            logger.info(
+                f"Successfully extracted metadata for {item.original_url} (non-article)"
+            )
 
         return {
             "content_item_id": content_item_id,
@@ -77,7 +87,15 @@ def extract_metadata(self, content_item_id: str):
         }
 
     except requests.RequestException as e:
-        # Network error - retry
+        # Check for 403 Forbidden - do not retry as it's likely a permanent block
+        if isinstance(e, requests.HTTPError) and e.response.status_code == 403:
+            logger.error(f"Access forbidden (403) for {content_item_id}: {str(e)}")
+            item.processing_status = "failed"
+            item.processing_error = "Access forbidden (403) - Site blocks bots"
+            self.db.commit()
+            return
+
+        # Network error - retry other errors
         logger.warning(f"Request failed for {content_item_id}: {str(e)}")
         item.processing_status = "failed"
         item.processing_error = f"Request error: {str(e)}"
@@ -203,6 +221,8 @@ def extract_full_content(self, content_item_id: str):
         except requests.RequestException as e:
             logger.warning(f"Request failed for {content_item_id}: {str(e)}")
             item.processing_error = f"Request error: {str(e)[:200]}"
+            # Graceful degradation: mark as completed so user can see metadata at least
+            item.processing_status = "completed"
             self.db.commit()
             return {
                 "content_item_id": content_item_id,
@@ -274,7 +294,7 @@ def extract_full_content(self, content_item_id: str):
             # Calculate reading time (average 200 words per minute)
             item.reading_time_minutes = max(1, round(len(words) / 200))
 
-            # Clear any previous errors
+            # Clear any previous errors but keep status as processing
             item.processing_error = None
 
             self.db.commit()
@@ -283,17 +303,14 @@ def extract_full_content(self, content_item_id: str):
             )
 
             # Trigger embedding generation
+            # (Tagging will be triggered by the embedding task to ensure sequence)
             generate_embedding.delay(content_item_id)
-
-            # Chain tagging after embedding is generated
-            # (tagging task will be triggered after embedding completes)
-            generate_tags.delay(content_item_id)
 
             return {
                 "content_item_id": content_item_id,
                 "word_count": item.word_count,
                 "reading_time": item.reading_time_minutes,
-                "status": "completed",
+                "status": "processing_embedding",
             }
         else:
             logger.warning(f"No substantial text extracted from {item.original_url}")
@@ -312,6 +329,7 @@ def extract_full_content(self, content_item_id: str):
         # Graceful degradation: keep the item, mark error
         if item:
             item.processing_error = f"Extraction error: {str(e)[:200]}"
+            item.processing_status = "completed"
             self.db.commit()
         # Don't retry errors for full content extraction (metadata already succeeded)
         return {"content_item_id": content_item_id, "status": "failed", "error": str(e)}

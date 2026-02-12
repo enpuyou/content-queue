@@ -158,23 +158,23 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
     extract_metadata.delay(str(example_article.id))
 
     # ---------------------------------------------------------
-    # Add Example Article: Reintroducing Friction (Vogue)
+    # Add Example Article: Why I Finally Quit Spotify (New Yorker)
     # ---------------------------------------------------------
-    friction_article = ContentItem(
+    spotify_article = ContentItem(
         user_id=new_user.id,
-        original_url="https://www.vogue.com.au/culture/features/reintroducing-friction/news-story/af80aeac433d7b465c10e3d5de870225",
-        title="Reintroducing Friction",
-        description="Calculate the cost of convenience—and the surprising value of doing things the hard way.",
+        original_url="https://www.newyorker.com/culture/infinite-scroll/why-i-finally-quit-spotify",
+        title="Why I Finally Quit Spotify",
+        description="The streaming service’s “smart shuffle” feature broke me.",
         content_type="article",
         processing_status="pending",
         submitted_via="system_default",
     )
-    db.add(friction_article)
+    db.add(spotify_article)
     db.commit()
-    db.refresh(friction_article)
+    db.refresh(spotify_article)
 
-    # Trigger background extraction for the friction article
-    extract_metadata.delay(str(friction_article.id))
+    # Trigger background extraction for the spotify article
+    extract_metadata.delay(str(spotify_article.id))
 
     # ---------------------------------------------------------
     # Add Default Vinyl Record: Hiroshi Yoshimura – A·I·R
