@@ -21,7 +21,7 @@ const features = [
   },
   {
     word: "Discover",
-    desc: "Semantic search, AI-generated tags, mood-based recommendations, connections between ideas.",
+    desc: "Semantic search, AI-facilitated tags generation, mood-based recommendations, connections between ideas.",
   },
 ];
 
