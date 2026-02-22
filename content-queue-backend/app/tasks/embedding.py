@@ -5,6 +5,7 @@ from app.core.database import SessionLocal
 from app.models.content import ContentItem
 from app.models.highlight import Highlight
 from app.core.config import settings
+from app.tasks.base import html_to_plain
 from uuid import UUID
 import logging
 from openai import OpenAI
@@ -55,15 +56,16 @@ def generate_embedding(self, content_item_id: str):
 
         logger.info(f"Generating embedding for {item.original_url}")
 
-        # Prepare text for embedding
-        # Combine title, description, and full text (truncate if too long)
+        # Prepare text for embedding — strip HTML tags first.
+        # full_text is always HTML (trafilatura, extension, PDF all store HTML).
+        # Stripping tags gives cleaner semantic signal for the embedding model.
         text_parts = []
         if item.title:
             text_parts.append(item.title)
         if item.description:
             text_parts.append(item.description)
         if item.full_text:
-            text_parts.append(item.full_text)
+            text_parts.append(html_to_plain(item.full_text))
 
         combined_text = "\n\n".join(text_parts)
 

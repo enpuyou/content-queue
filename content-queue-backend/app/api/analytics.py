@@ -29,7 +29,7 @@ async def get_user_stats(
 
     # Items unread
     items_unread = base_query.filter(
-        not ContentItem.is_read, not ContentItem.is_archived
+        ContentItem.is_read.is_(False), ContentItem.is_archived.is_(False)
     ).count()
 
     # Items archived

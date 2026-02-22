@@ -35,7 +35,7 @@ export default function CratesClient() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [listenMode, setListenMode] = useState(false);
   const [visibleCount, setVisibleCount] = useState(18); // ~3 rows of 6
-  const { current: playerCurrent } = usePlayer();
+  const { current: playerCurrent, isPlaying: playerIsPlaying } = usePlayer();
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   // Load "now digging" from localStorage on mount
@@ -337,11 +337,11 @@ export default function CratesClient() {
                 </button>
               </div>
 
-              {/* Listen mode toggle */}
+              {/* Listen mode toggle — desktop only; mobile uses the Now Digging bar button */}
               {playerCurrent && (
                 <button
                   onClick={() => setListenMode(true)}
-                  className="text-[10px] font-mono uppercase tracking-wider text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
+                  className="hidden sm:block text-[10px] font-mono uppercase tracking-wider text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
                   title="Listening mode (l)"
                 >
                   Listen
@@ -376,27 +376,34 @@ export default function CratesClient() {
             </div>
           </div>
 
-          {/* Now Digging bar */}
+          {/* Now Digging bar — mobile only (sm:hidden); desktop uses the Listen button in the sort bar */}
           {lastDug && !selectedRecord && (
             <button
-              onClick={() => setSelectedRecord(lastDug)}
+              onClick={() =>
+                playerCurrent ? setListenMode(true) : setSelectedRecord(lastDug)
+              }
               className="w-full flex items-center gap-3 mb-4 py-1.5 px-2 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] hover:border-[var(--color-accent)] transition-colors cursor-pointer text-left"
             >
-              {lastDug.cover_url && (
+              {/* Show the playing track's art when playing, otherwise the last dug record */}
+              {(playerCurrent?.cover_url || lastDug.cover_url) && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={lastDug.cover_url}
+                  src={playerCurrent?.cover_url ?? lastDug.cover_url!}
                   alt=""
-                  className="w-8 h-8 object-cover border border-[var(--color-border)]"
+                  className="w-8 h-8 object-cover border border-[var(--color-border)] flex-shrink-0"
                 />
               )}
               <div className="flex-1 min-w-0">
                 <span className="font-mono text-[9px] uppercase tracking-widest text-[var(--color-text-faint)]">
-                  Now digging
+                  {playerCurrent && playerIsPlaying
+                    ? "Now listening"
+                    : "Now digging"}
                 </span>
                 <p className="text-[11px] text-[var(--color-text-primary)] truncate leading-none">
-                  {lastDug.artist} —{" "}
-                  <span className="font-serif italic">{lastDug.title}</span>
+                  {playerCurrent?.artist ?? lastDug.artist} —{" "}
+                  <span className="font-serif italic">
+                    {playerCurrent?.title ?? lastDug.title}
+                  </span>
                 </p>
               </div>
             </button>

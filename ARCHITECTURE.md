@@ -1,480 +1,706 @@
-# Content Queue Architecture and Design Doc
+# Content Queue — Architecture & Design Doc
+
+> **Living document.** Update in the same commit as the feature change.
+> Goal: any new contributor (or future AI session) can get oriented quickly.
 
 ---
 
-## 1) What the app does
-Content Queue is a read-it-later app. Users paste a URL and the system:
-1) Saves it to their personal queue.
-2) Extracts the title, description, and thumbnail.
-3) Extracts the article text so it can be read in the app.
-4) Allows organization into lists.
-5) Supports semantic search (search by meaning, not exact words).
+## 1. What the app does
+
+Content Queue is a read-it-later app branded **sed.i**. Users paste a URL and the
+system:
+
+1. Saves it to their personal queue immediately.
+2. Extracts title, description, thumbnail, and author in a background job.
+3. Extracts the full article text for an in-app reader.
+4. Generates an embedding for semantic search.
+5. Auto-suggests tags with a hybrid free/cheap-LLM approach.
+6. Supports organization into lists, highlights, and a vinyl record collection.
 
 ---
 
-## 2) Glossary (simple definitions)
-- **Frontend**: Code running in the browser (UI, buttons, pages).
-- **Backend**: Code running on the server (security, data rules, API).
-- **API**: A set of URLs that the frontend calls to get or update data.
-- **Database**: A system that stores structured data as tables and rows.
-- **Relational DB**: A database with tables that can be linked by keys.
-- **ORM**: Object-Relational Mapper. Lets you use classes instead of raw SQL.
-- **JWT**: JSON Web Token. A signed string that proves a user is logged in.
-- **Hashing**: Turning a password into an irreversible string.
-- **Background job**: Work done after a user request returns.
-- **Queue**: A waiting line for background jobs.
-- **Worker**: A process that pulls jobs from the queue and runs them.
-- **Embedding**: A vector (list of numbers) representing text meaning.
-- **Vector search**: Finding similar items by comparing embeddings.
-- **CORS**: Browser rule controlling which websites can call APIs.
-- **SSRF**: Server-Side Request Forgery (dangerous server-side URL fetches).
-- **XSS**: Cross-Site Scripting (malicious HTML/JS in the browser).
+## 2. Glossary
+
+| Term | Definition |
+|------|-----------|
+| **Frontend** | Code running in the browser (UI, pages, state). |
+| **Backend** | Code running on the server (auth, data rules, API). |
+| **API** | Set of HTTP routes the frontend calls to get or update data. |
+| **ORM** | Object-Relational Mapper — use classes instead of raw SQL. |
+| **JWT** | JSON Web Token — signed string that proves a user is logged in. |
+| **Background job** | Work queued and executed after the HTTP request returns. |
+| **Celery task** | A Python function run by a Celery worker process. |
+| **Embedding** | A vector (list of 1536 numbers) encoding text meaning. |
+| **pgvector** | Postgres extension for storing and querying vectors. |
+| **Cosine distance** | `<=>` operator in pgvector — 0 means identical, 2 means opposite. |
+| **Soft delete** | Mark rows with `deleted_at` rather than removing them. |
+| **SSRF** | Server-Side Request Forgery — backend fetches a URL controlled by attacker. |
+| **XSS** | Cross-Site Scripting — malicious HTML/JS in the browser. |
+| **Feature flag** | Env var–driven boolean that hides incomplete UI sections. |
 
 ---
 
-## 3) System overview (components and connections)
+## 3. System overview
 
 ```
-Browser
-  -> Next.js Frontend (Vercel)
-     -> FastAPI Backend (Railway)
-        -> Postgres DB (pgvector)
-        -> Redis (Celery broker/result)
-        -> Celery Workers (Railway)
-              -> URL fetch + metadata extraction
-              -> Full text extraction
-              -> Embedding generation
+Browser / Extension
+  └─> Next.js Frontend (Vercel)
+        └─> FastAPI Backend (Railway)
+              ├─> Postgres + pgvector  (data + vector search)
+              ├─> Redis               (Celery broker/result backend)
+              └─> Celery Workers (Railway)
+                    ├─> URL fetch + metadata extraction (requests + BS4 + trafilatura)
+                    ├─> PDF layout extraction (YOLO-based)
+                    ├─> Embedding generation (OpenAI text-embedding-3-small)
+                    ├─> Auto-tagging (pgvector similarity + gpt-4o-mini fallback)
+                    ├─> AI summarization (OpenAI)
+                    └─> Discogs metadata fetch (vinyl records)
 ```
 
-Why this split:
-- The frontend must feel fast and responsive.
-- The backend must enforce security and data ownership.
-- Slow work (fetching/parsing web pages) should not block user requests.
+**Why this split:**
+- Frontend must feel instantly responsive — API returns before slow work finishes.
+- Backend enforces auth and data ownership.
+- Workers handle slow/failable work (URL fetching, LLM calls).
 
 ---
 
-## 4) Technology choices and what they actually do
-
-### Frontend technologies
-
-**Next.js**
-- What it is: A framework on top of React that handles routing, builds, and
-  deployment optimization.
-- Why we use it: It provides a clean project structure, routing built in, and
-  easy deployment on Vercel.
-- How it works here: Pages live under `frontend/app`. Each folder maps to a URL.
-
-**App Router (Next.js feature)**
-- What it is: Next.js routing system where folders define routes.
-- Example: `frontend/app/lists/[id]/page.tsx` becomes `/lists/<id>`.
-- Why we use it: File-based routing is simple and predictable.
-
-**React**
-- What it is: A library for building UI with reusable components.
-- Why we use it: The UI is made of repeated pieces (cards, lists, modals).
-- Key concept: Components take props and manage state.
-
-**React Context**
-- What it is: A way to share state globally without passing props through every
-  component.
-- Example: List counts shown in the sidebar and lists page use a shared context.
-
-**Tailwind CSS**
-- What it is: A utility-first CSS framework where styles are written as classes
-  like `bg-gray-50` or `text-sm`.
-- Why we use it: It speeds up UI development and keeps styles close to code.
-
-### Backend technologies
-
-**FastAPI**
-- What it is: A Python web framework for building APIs.
-- Why we use it: It is lightweight, fast, and uses type hints for validation.
-- How it works: Functions decorated with `@router.get` or `@router.post`
-  become API endpoints.
-
-**Pydantic**
-- What it is: A validation library used by FastAPI.
-- Why it matters: It automatically checks request/response shapes and types.
-
-**SQLAlchemy**
-- What it is: An ORM (Object-Relational Mapper).
-- Why we use it: It lets us treat database tables like Python classes.
-- Example: `ContentItem` is a Python class mapped to a table.
-
-**Postgres**
-- What it is: A relational database.
-- Why we use it: Strong support for relationships (users, lists, content).
-- Example: A list can contain many items, and items can belong to many lists.
-
-**pgvector**
-- What it is: A Postgres extension that supports storing and searching vectors.
-- Why we use it: It enables similarity search inside Postgres itself.
-
-**Redis**
-- What it is: An in-memory data store used as a message broker.
-- Why we use it: Celery needs a fast queue system to store pending jobs.
-
-**Celery**
-- What it is: A task queue for Python.
-- Why we use it: It runs slow work (URL parsing, embeddings) in the background.
-
-**OpenAI Embeddings**
-- What it is: A model that turns text into vectors.
-- Why we use it: Enables semantic search by meaning.
-
----
-
-## 5) Data model (tables explained)
-
-### Users table
-Stores login identity.
-- `id`: unique user ID.
-- `email`: login identifier, unique.
-- `hashed_password`: stored hash, never plain text.
-- `full_name`, `is_active`.
-
-### Content items table
-Represents a saved URL.
-Fields include:
-- Ownership: `user_id`.
-- URL: `original_url`.
-- Metadata: `title`, `description`, `thumbnail_url`, `content_type`.
-- Full text: `full_text`, `word_count`, `reading_time_minutes`.
-- Status: `is_read`, `is_archived`, `read_position`.
-- Processing: `processing_status`, `processing_error`.
-- Embedding: `embedding` (pgvector).
-- Soft delete: `deleted_at`.
-
-### Lists table
-User-defined collections.
-- `owner_id`, `name`, `description`, `is_shared`.
-
-### content_list_membership table
-Join table for many-to-many relationship.
-- `content_item_id`, `list_id`.
-- `added_at`, `added_by`.
-
-Why this structure:
-- A user can have many lists.
-- A content item can appear in multiple lists.
-- The join table models this properly.
-
----
-
-## 6) Authentication (end-to-end explanation)
-
-### Registration
-1) User submits email and password.
-2) Backend hashes the password with bcrypt.
-3) User row is saved in the database.
-
-### Login
-1) User submits email and password.
-2) Backend compares password to stored hash.
-3) Backend generates a JWT token:
-   - Contains user email in the `sub` field.
-   - Has an expiration timestamp.
-4) Backend returns token to frontend.
-
-### Authenticated requests
-1) Frontend stores token in localStorage.
-2) Each API call adds:
-   `Authorization: Bearer <token>`
-3) Backend verifies token signature and expiration.
-4) Backend loads the user and continues request.
-
-Why JWT:
-- Stateless: any backend instance can verify it.
-- Scales easily without shared session storage.
-
-Security caveat:
-- localStorage is vulnerable to XSS. A production hardening would use httpOnly
-  cookies and strict CSP headers.
-
----
-
-## 7) API design (what each endpoint does)
-
-### Auth
-- `POST /auth/register`: create a user.
-- `POST /auth/login`: return a JWT token.
-- `GET /auth/me`: return current user info.
-
-### Content
-- `POST /content`: create item and enqueue extraction.
-- `GET /content`: list items (supports filters and pagination).
-- `GET /content/{id}`: fetch single item.
-- `GET /content/{id}/full`: fetch full text.
-- `PATCH /content/{id}`: update read/archive/tags/progress.
-- `DELETE /content/{id}`: soft delete item.
-
-### Lists
-- `POST /lists`: create list.
-- `GET /lists`: list all lists with content counts.
-- `GET /lists/{id}`: list details.
-- `PATCH /lists/{id}`: update name/description/share.
-- `DELETE /lists/{id}`: delete list.
-- `GET /lists/{id}/content`: items in a list.
-- `POST /lists/{id}/content`: add content to list.
-- `DELETE /lists/{id}/content`: remove content from list.
-
-### Search
-- `GET /search/semantic?query=...`: semantic search by embedding.
-- `GET /search/{id}/similar`: find items similar to a given item.
-
-### Analytics
-- `GET /analytics/stats`: totals for read/unread/archived and time.
-
----
-
-## 8) Frontend design (how pages are built)
-
-### Main pages
-- `/dashboard`: main queue list with filters and add form.
-- `/lists`: list management.
-- `/lists/[id]`: view items inside a list.
-- `/content/[id]`: reader view.
-
-### Key components
-- `AddContentForm`: collects URL.
-- `ContentList`: fetches items and applies filters.
-- `ContentItem`: individual card with actions.
-- `Reader`: shows full text and saves progress.
-- `Sidebar`: list navigation.
-
-### State and shared data
-React Context is used for shared state:
-- **AuthContext**: current user and login/logout.
-- **ListsContext**: list counts.
-- **ToastContext**: user notifications.
-
-Why context:
-- Without it, data would need to be passed through many components.
-
----
-
-## 9) Background processing (deep technical detail)
-
-### Why background jobs
-Fetching and parsing web pages can take seconds and can fail. If we did it in
-the API request, the UI would feel slow and unreliable.
-
-### How it works in this app
-1) API stores the content item.
-2) API enqueues a job in Redis.
-3) Celery worker picks it up and runs extraction steps.
-4) Worker updates the database.
-
-### Stage 1: Metadata extraction
-- Uses `requests` to fetch HTML.
-- Uses BeautifulSoup to parse OG/Twitter tags.
-- Updates title, description, thumbnail.
-
-### Stage 2: Full text extraction
-- Uses trafilatura to extract article text.
-- Converts structured XML to HTML.
-- Stores HTML in `full_text`.
-- Computes word count and reading time.
-
-### Stage 3: Embedding generation
-- Combines title + description + full text.
-- Calls OpenAI embeddings API.
-- Stores vector in Postgres (pgvector).
-
-Why separate stages:
-- Each step can fail independently.
-- Embeddings only make sense after text extraction.
-- Easier to debug and retry.
-
----
-
-## 10) Semantic search explained
-
-Keyword search looks for exact words. Semantic search looks for meaning.
-
-Steps:
-1) Each article gets an embedding vector (1536 numbers).
-2) Query text gets its own embedding.
-3) Postgres compares vectors using cosine distance.
-4) Items are ranked by similarity.
-
-Example:
-- Query: "electric cars"
-- Results may include articles about "EV charging" even if "electric cars" is
-  not a literal phrase in the article.
-
----
-
-## 11) Error handling and reliability
-
-### Backend
-- 401 if token invalid.
-- 404 if item not found or soft-deleted.
-- 429 on rate limit.
-
-### Background jobs
-- Retries on temporary network failures.
-- Saves error messages if extraction fails.
+## 4. Technology choices
 
 ### Frontend
-- Optimistic updates for responsiveness.
-- Reverts UI if API call fails.
-- Toasts inform the user of errors.
+
+| Technology | Role |
+|-----------|------|
+| **Next.js 14 App Router** | Routing, SSR, Vercel deployment. Folders under `frontend/app/` map to URLs. |
+| **React** | Component-based UI. Key pattern: props + local state + context. |
+| **Tailwind CSS** | Utility classes for all styling. |
+| **React Context** | Shared state without prop drilling (auth, lists, toasts, player). |
+| **YouTube IFrame API** | Vinyl player embedded via `YouTubePlayer.tsx`. |
+
+### Backend
+
+| Technology | Role |
+|-----------|------|
+| **FastAPI** | HTTP API framework. `@router.get/post/patch/delete` decorators define routes. |
+| **Pydantic** | Request/response validation. FastAPI uses it automatically. |
+| **SQLAlchemy** | ORM — Python classes map to Postgres tables. |
+| **Alembic** | Database migrations. Run `alembic upgrade head`. |
+| **Postgres + pgvector** | Main database. pgvector adds `Vector(1536)` column type and `<=>` cosine operator. |
+| **Redis** | Message broker for Celery. |
+| **Celery** | Distributed task queue. Workers pick up jobs from Redis and run Python functions. |
+| **OpenAI** | `text-embedding-3-small` for embeddings; `gpt-4o-mini` for tag generation fallback. |
+| **trafilatura** | Article text extraction from HTML. |
+| **BeautifulSoup** | HTML parsing for metadata and extension HTML cleanup. |
 
 ---
 
-## 12) Security considerations
+## 5. Data model
 
-Current protections:
-- Password hashing with bcrypt.
-- JWT authentication.
-- CORS restricted by environment variable.
-- Rate limiting for content creation.
+### `users`
 
-Known risks:
-- **XSS**: extracted HTML is rendered directly.
-- **SSRF**: backend fetches user-provided URLs.
-- **Rate limit scope**: in-memory only.
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | UUID PK | |
+| `email` | String unique | Login identifier. |
+| `hashed_password` | String | bcrypt hash, never plain text. |
+| `full_name` | String | Optional display name. |
+| `is_active` | Boolean | False = account disabled. |
+| `reading_patterns` | JSONB | Rolling stats updated on article completion: `avg_reading_time`, `readings` (last 20), `preferred_tags`. Used by `/content/recommended`. |
 
-Fixes:
-- Sanitize HTML or use sandboxed iframes.
-- Validate URLs and block internal IPs.
-- Move rate limiting to Redis.
+### `content_items`
 
----
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | UUID PK | |
+| `user_id` | UUID FK → users | Ownership. Never cross-user. |
+| `original_url` | Text | The URL as submitted. |
+| `submitted_via` | String | `'web'`, `'extension'`, `'api'`, `'email'`. |
+| `title`, `description`, `author` | Text | Extracted by Celery or provided by extension. |
+| `thumbnail_url` | Text | OG image or PDF figure. |
+| `content_type` | String | `'article'`, `'pdf'`, `'video'`, `'tweet'`, `'unknown'`. |
+| `summary` | Text | AI-generated summary (Celery task). |
+| `tags` | `ARRAY(String)` | User-confirmed tags. |
+| `auto_tags` | `ARRAY(String)` | AI-suggested tags (pending user accept/dismiss). |
+| `published_date` | DateTime | From OG metadata. |
+| `full_text` | Text | Full HTML from trafilatura or pre-extracted HTML. |
+| `word_count` | Integer | Computed from `full_text`. |
+| `reading_time_minutes` | Integer | `max(1, round(word_count / 200))`. |
+| `read_position` | Float (0.0–1.0) | Scroll progress. Auto-marks read at ≥ 0.9. |
+| `embedding` | `Vector(1536)` | OpenAI embedding. Null until Celery runs. |
+| `is_read`, `is_archived` | Boolean | Status flags. |
+| `read_at` | DateTime | Set when `is_read` becomes true. |
+| `processing_status` | String | `'pending'`, `'processing'`, `'completed'`, `'failed'`. |
+| `processing_error` | Text | Error message if extraction failed. |
+| `deleted_at` | DateTime | Soft delete. Null = active. Indexed. |
 
-## 13) Scaling and performance
+**Reading status helper (`compute_reading_status`):**
+Returns `'archived'`, `'read'`, `'in_progress'`, or `'unread'`.
+`'read'` triggers if `is_read=True` OR `read_position >= 0.9`.
 
-Potential growth issues:
-- Extraction jobs can backlog the queue.
-- Semantic search becomes expensive with many vectors.
+### `highlights`
 
-Scaling plan:
-- Add more FastAPI instances.
-- Add more Celery workers.
-- Add caching for analytics.
-- Add pagination and indexes for large datasets.
+User text selections within a content item.
 
----
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | UUID PK | |
+| `content_item_id` | UUID FK → content_items | CASCADE delete. |
+| `user_id` | UUID FK → users | |
+| `text` | Text | The selected text. |
+| `note` | Text | Optional user annotation. |
+| `start_offset`, `end_offset` | Integer | Character position in full_text. |
+| `color` | String | `'yellow'`, `'green'`, etc. |
+| `embedding` | `Vector(1536)` | Populated by Celery for connection search. |
+| `created_at` | DateTime | |
 
-## 14) Design tradeoffs (what we chose and why)
+Highlight connections are discovered via the `/search/connections/{highlight_id}`
+endpoint (cosine similarity across all of a user's highlights).
 
-- **Polling vs websockets**: polling is simple; websockets are faster but more
-  complex to operate.
-- **JWT vs sessions**: JWT is stateless and scales easily; sessions can be more
-  secure but need shared storage.
-- **pgvector vs vector DB**: pgvector keeps operations simple; vector DBs scale
-  better at large data sizes.
+### `lists`
 
----
+User-defined collections of content items.
 
-## 15) Interview Q&A (realistic and detailed)
+| Column | Type | Notes |
+|--------|------|-------|
+| `owner_id` | UUID FK → users | |
+| `name`, `description` | Text | |
+| `is_shared` | Boolean | Public share link (future). |
+| `deleted_at` | DateTime | Soft delete. |
 
-### Architecture and design
-Q: Why separate frontend and backend?
-A: Separating the frontend and backend keeps responsibilities clear and secure.
-The browser only handles UI and sends requests, while the backend enforces
-authentication, authorization, and data rules before touching the database.
-This also makes scaling easier because the UI and API can be deployed and
-scaled independently, and the contract between them is the API.
+### `content_list_membership`
 
-Q: Why use background jobs instead of synchronous processing?
-A: Synchronous processing would make the user wait while the server downloads
-and parses a webpage, which is slow and error-prone. Background jobs let the API
-return immediately, so the UI stays responsive while the heavy work happens in
-workers. It also lets us retry failures and smooth out spikes in workload with a
-queue.
+Join table (many-to-many: content ↔ lists).
 
-Q: Why choose Next.js App Router?
-A: The App Router uses a folder-based structure, so the URL layout matches the
-filesystem, which is easy to understand and maintain. It also supports nested
-layouts and route-level code splitting, so each page only loads what it needs.
-Because Vercel is built for Next.js, deployment and production optimizations are
-simple and reliable.
+| Column | Notes |
+|--------|-------|
+| `content_item_id`, `list_id` | Composite key. |
+| `added_at` | Timestamp of addition. |
+| `added_by` | User ID who added it. |
 
-Q: Why choose FastAPI instead of Django?
-A: FastAPI is lightweight and focused on APIs, which fits this project well.
-Its type hints and automatic request validation reduce bugs and make the API
-self-documenting. Django is great for large, full-featured apps, but here we
-wanted a smaller, faster framework with fewer built-in opinions.
+### `vinyl_records`
 
-
-### Auth and security
-Q: Explain JWT validation step-by-step.
-A: The backend reads the token from the `Authorization` header and verifies the
-signature using the server’s secret key, which proves the token was issued by
-this system. It checks the expiration time, extracts the user identifier from
-the `sub` field, and loads that user from the database. If any step fails (bad
-signature, expired token, or missing user), the request is rejected with 401.
-
-
-Q: How would you move from localStorage to safer auth?
-A: The safest approach is to store tokens in httpOnly cookies so JavaScript
-cannot read them, which reduces the risk from XSS. You would also add CSRF
-protection (for example, double-submit tokens) and tighten CSP headers to block
-inline scripts. This change keeps the same login flow but hardens it against
-browser-based attacks.
-
-### Data model
-Q: Why use a join table for lists?
-A: A join table is the correct relational model for a many-to-many relationship.
-Each list can contain many items, and each item can belong to multiple lists.
-The join table also lets us store extra fields like when the item was added or
-who added it, without duplicating content data.
-
-Q: Why soft delete instead of hard delete?
-A: Soft deletes keep a record of what was removed, which allows recovery,
-auditing, and future features like “undo.” It also prevents accidental data loss
-if a user deletes something by mistake. The tradeoff is that queries must always
-filter out deleted rows.
-
-### Search
-Q: Why semantic search?
-A: Semantic search lets users find content by meaning, which is much closer to
-how people remember articles. If a user remembers the concept but not the exact
-words, embeddings still return relevant results. This improves the usefulness of
-search compared to pure keyword matching.
-
-
-Q: What are the downsides of embeddings?
-A: Embeddings require external API calls, which add cost and latency. They can
-also return results that are loosely related rather than exact, which can feel
-noisy. Storing vectors increases database size, and similarity queries become
-more expensive as the dataset grows.
-
-
-### Scaling
-Q: What breaks first if traffic grows?
-A: The extraction pipeline is likely the first bottleneck because each URL
-requires multiple network calls and parsing steps. As queue length grows, users
-wait longer for content to finish processing. After that, database queries for
-search and analytics become slower as data volume increases.
-
-Q: How would you monitor health?
-A: You would monitor queue length, task duration, and task failure rates for
-background jobs, because those indicate processing health. For the API, you
-track request latency, error rates, and database query performance. Alerts
-should trigger on spikes in failures, slow response times, or rapidly growing
-queues.
-
-### Improvements
-Q: What would you harden for production?
-A: The top priorities are HTML sanitization (to prevent XSS), SSRF protections
-for URL fetching, and shared rate limiting in Redis. I would also add security
-headers (CSP, HSTS), better logging, and monitoring so failures are visible
-before they affect users.
-
-Q: What is the highest user-impact feature to add?
-A: A browser extension has the highest impact because it removes friction from
-the core workflow: saving links. If users can save content in one click from
-their browser, they will use the product more often and build a larger queue.
-
+See [§17 Crates](#17-crates--vinyl-record-collection).
 
 ---
 
-## 16) Quick summary (30-second version)
-Content Queue is a read-it-later app built with Next.js and FastAPI. When a user
-saves a URL, the backend stores it immediately and queues background jobs to
-extract metadata, full text, and embeddings for semantic search. The frontend
-stays responsive with optimistic updates and polling. The system is deployed on
-Vercel (frontend) and Railway (backend + workers).
+## 6. Authentication
+
+### Registration
+
+1. Client POSTs `{email, password, full_name}` to `/auth/register`.
+2. Backend checks email uniqueness (400 if taken).
+3. Password is hashed with bcrypt.
+4. User row is inserted.
+5. **Onboarding content is seeded:** a "Getting Started with sed.i" guide article
+   (`processing_status='completed'`) is created for the user, with a demo highlight
+   and a demo vinyl record entry. This runs synchronously in the register handler.
+6. Response: User object (201).
+
+### Login
+
+1. Client POSTs `{username=email, password}` to `/auth/login` (OAuth2PasswordRequestForm).
+2. Backend looks up user, verifies bcrypt hash.
+3. Generates JWT with `sub=email`, `exp=now+ACCESS_TOKEN_EXPIRE_MINUTES`.
+4. Response: `{access_token, token_type}`.
+
+### Authenticated requests
+
+- Frontend stores token in `localStorage` under key `token`.
+- Every API call adds `Authorization: Bearer <token>`.
+- `get_current_user` dependency in `app/core/deps.py` decodes the token, checks
+  signature + expiry, loads user from DB. Returns 401 on any failure.
+- `get_current_active_user` additionally checks `user.is_active`.
+
+**Security note:** `localStorage` is XSS-accessible. Production hardening:
+use httpOnly cookies + CSRF protection + strict CSP.
+
+---
+
+## 7. API routes
+
+All routes require `Authorization: Bearer <token>` unless noted.
+
+### Auth — `/auth`
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/auth/register` | Create user + seed onboarding content. |
+| POST | `/auth/login` | Return JWT token. |
+| GET | `/auth/me` | Current user info. |
+
+### Content — `/content`
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/content` | Save URL. Immediately returns 201. Queues extraction. Rate-limited to 20 req/min per user. |
+| GET | `/content` | List items. Filters: `is_read`, `is_archived`, `tag`. Pagination: `skip`, `limit`. |
+| GET | `/content/tags` | All unique tags for current user with occurrence counts. |
+| GET | `/content/recommended` | Scored unread items. Params: `mood` (`quick_read`, `deep_dive`, `light`). |
+| GET | `/content/{id}` | Single item (no full text). |
+| GET | `/content/{id}/full` | Single item with `full_text` (reader view). |
+| PATCH | `/content/{id}` | Update: `is_read`, `is_archived`, `read_position`, `tags`, `full_text`. |
+| DELETE | `/content/{id}` | Soft delete (sets `deleted_at`). Returns 204. |
+| POST | `/content/{id}/summary` | Trigger AI summary generation (async, returns 202). |
+| POST | `/content/{id}/tags/accept` | Copy `auto_tags` → `tags`. |
+| POST | `/content/{id}/tags/dismiss` | Clear `auto_tags`, keep user `tags`. |
+
+**Extension path** (`pre_extracted_html`): When the body includes
+`pre_extracted_html`, the backend skips trafilatura. It calls
+`_clean_extension_html()` to strip title H1 / description P / thumbnail IMG
+that would duplicate the card metadata, sets `processing_status='completed'`,
+and still calls `extract_metadata.delay()` for any missing fields + embedding.
+
+**Route ordering note:** literal paths (`/tags`, `/recommended`) are registered
+**before** `/{item_id}` in the router to prevent FastAPI parsing them as UUIDs.
+
+### Lists — `/lists`
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/lists` | Create list. |
+| GET | `/lists` | All lists with content counts. |
+| GET | `/lists/{id}` | List details. |
+| PATCH | `/lists/{id}` | Update name/description/share. |
+| DELETE | `/lists/{id}` | Soft delete list. |
+| GET | `/lists/{id}/content` | Items in list (excludes soft-deleted items). |
+| POST | `/lists/{id}/content` | Add content item to list. |
+| DELETE | `/lists/{id}/content` | Remove content item from list. |
+
+### Search — `/search`
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/search/semantic?query=...` | Semantic search. Embeds query, cosine-sorts user's content. |
+| GET | `/search/connections/{highlight_id}` | Highlights in other articles similar to this highlight. Threshold param (default 0.75). |
+| GET | `/search/connections/article/{content_id}` | All cross-article connections for highlights in the given article, grouped by connected article. |
+| GET | `/search/{item_id}/similar` | Articles in user's queue similar to the given item. |
+
+**Route ordering note:** `/semantic`, `/connections/...` must come **before**
+`/{item_id}/similar` in the router (same reason as content routes).
+
+**pgvector raw SQL:** All similarity queries use `text(...)` with
+`CAST(:emb AS vector)` instead of the SQLAlchemy ORM operator. This is because
+`op("<=>")` on a value doesn't carry pgvector type info and would fail.
+The embedding is serialized as `"[0.1, 0.2, ...]"` (PostgreSQL vector literal).
+
+**Similarity formula:** `1 - (embedding <=> CAST(:q AS vector)) / 2`
+Maps cosine distance [0, 2] → similarity score [1, 0].
+
+### Highlights — nested under `/content/{content_id}/highlights`
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/content/{id}/highlights` | Create highlight (text, offsets, color, optional note). |
+| GET | `/content/{id}/highlights` | Get all highlights, ordered by `start_offset`. |
+| PATCH | `/highlights/{highlight_id}` | Update note or color. |
+| DELETE | `/highlights/{highlight_id}` | Hard delete highlight. |
+
+### Analytics — `/analytics`
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/analytics/stats` | Total items, read, unread (`.is_(False)` — see bug note), archived, total reading time. |
+
+**Bug fixed:** The original code used Python `not ContentItem.is_read` which
+always evaluates to `False` (Column objects are truthy). Replaced with
+`ContentItem.is_read.is_(False)`.
+
+### Vinyl — `/vinyl`
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/vinyl` | List records. Filters: `status`. Sort: `created_at`, `year`, `artist`. |
+| POST | `/vinyl` | Create record from Discogs URL. Queues `fetch_discogs_metadata`. |
+| GET | `/vinyl/{id}` | Single record. |
+| PATCH | `/vinyl/{id}` | Update notes, rating, tags, status, videos. |
+| DELETE | `/vinyl/{id}` | Soft delete. |
+
+---
+
+## 8. Rate limiting
+
+**Implementation:** `app/middleware/rate_limit.py` — `RateLimitMiddleware`.
+
+- Applies to: `POST /content` only.
+- Algorithm: sliding window. Each user ID gets a `deque` of request timestamps.
+  On each request, timestamps older than the window are popped from the left.
+  If `len(deque) < max_requests`, request is allowed and timestamp is appended.
+- Limit: **10 requests / 60 seconds** AND **50 requests / 3600 seconds** per user
+  (identified by JWT user ID; falls back to client IP if auth not on request state).
+- Response on exceeded: HTTP 429. No `Retry-After` header is added.
+- **Known limitation:** State is in-memory per process. Does not work correctly
+  across multiple FastAPI instances. Production fix: move to Redis.
+- **Test isolation:** Tests must call `rate_limiter.requests.clear()` between
+  tests that POST to `/content`.
+
+---
+
+## 9. Background processing pipeline
+
+### Flow for a normal URL save
+
+```
+POST /content (201 returned)
+  └─> extract_metadata.delay(item_id)          # Stage 1
+        ├─> fetch URL (requests)
+        ├─> parse OG/Twitter tags (BS4)
+        ├─> update: title, description, thumbnail, author, published_date
+        ├─> detect content_type
+        ├─> run trafilatura → structured XML → HTML → full_text
+        ├─> compute word_count, reading_time_minutes
+        ├─> set processing_status = 'completed'
+        └─> chain:
+              ├─> generate_embedding.delay(item_id)   # Stage 2
+              │     ├─> combine title+description+full_text
+              │     ├─> call OpenAI text-embedding-3-small
+              │     └─> store Vector(1536)
+              └─> generate_tags.delay(item_id)        # Stage 3 (after embedding)
+```
+
+### Flow for extension save (`pre_extracted_html`)
+
+```
+POST /content (201, processing_status='completed' immediately)
+  ├─> _clean_extension_html() called inline
+  ├─> extract_metadata.delay(item_id)   # fills any missing metadata fields
+  └─> generate_embedding.delay(item_id)  # separate task (not chained via extract_metadata)
+```
+
+### Celery tasks
+
+| Task | File | Description |
+|------|------|-------------|
+| `extract_metadata` | `tasks/extraction.py` | Full pipeline: fetch → parse → trafilatura. |
+| `generate_embedding` | `tasks/embedding.py` | OpenAI embedding, stored in pgvector. Also embeds highlights. |
+| `generate_tags` | `tasks/tagging.py` | Hybrid two-pass. Pass 1 (pgvector similarity, free): if ≥2 high-confidence tag matches found, auto-accepts into both `auto_tags` and `tags`. Pass 2 (`gpt-4o-mini`): if pass 1 misses, calls LLM and also auto-accepts. `auto_tags`/`tags` endpoints exist for manual override. |
+| `generate_summary` | `tasks/summarization.py` | Triggered by `POST /content/{id}/summary`. Calls OpenAI to produce a summary. |
+| `fetch_discogs_metadata` | `tasks/discogs.py` | Fetches vinyl metadata from Discogs API. |
+| `cleanup` | `tasks/cleanup.py` | Periodic task (beat). Removes old data / temp files. |
+
+---
+
+## 10. PDF extraction
+
+If a saved URL returns `Content-Type: application/pdf`:
+
+1. Backend downloads the file.
+2. `_process_pdf()` in `tasks/extraction.py` runs YOLO-based layout analysis.
+3. Output converted to structured HTML.
+
+**Post-processing in `_process_pdf`:**
+
+| Step | Action |
+|------|--------|
+| Title | First `<h1>` or `<h2>` in body → stored as `item.title`. |
+| Author removal | Short `<p>` blocks (< 300 chars) between title and abstract heading removed (author/affiliation lines in arXiv papers). |
+| Abstract (arXiv style) | Standalone `<h1>ABSTRACT</h1>` + following `<p>` → stored as `item.description`. |
+| Abstract (journal/ACS style) | Inline `<p>ABSTRACT: text...</p>` → stored as `item.description`. |
+| Thumbnail | First `<div class="figure-block"><img src="data:..."/>` → stored as `item.thumbnail_url`, removed from body. |
+| Confidence badge | Injected as `<meta>` tag; parsed by the Reader with a regex that handles both BS4 attribute orderings. |
+
+---
+
+## 11. Auto-tagging pipeline (detail)
+
+**Goal:** Suggest relevant tags without spending money on every article.
+
+**Two-pass strategy in `generate_tags`:**
+
+1. **Free pass (pgvector):** Find user's already-tagged content with cosine distance
+   < 0.25. If ≥2 tags appear across ≥2 similar articles (`should_accept_tags`),
+   auto-write to both `auto_tags` **and** `tags` immediately.
+2. **LLM pass (gpt-4o-mini):** If pass 1 finds nothing, call `gpt-4o-mini` with
+   the article title + description + first **800 words** of plain text.
+   Parse JSON array from response; also auto-writes to both `auto_tags` and `tags`.
+
+**Both passes auto-accept immediately** — when tagging succeeds the item is
+considered done. The `/tags/accept` and `/tags/dismiss` endpoints exist for
+manual correction after the fact (UI can show suggested tags and let user override).
+
+---
+
+## 12. Semantic search and connections
+
+### Content search
+
+`GET /search/semantic?query=...` — embeds the query string (OpenAI), then
+runs a raw SQL cosine sort against all the user's `content_items` with embeddings.
+
+`GET /search/{item_id}/similar` — same but uses an existing item's embedding as
+the query vector.
+
+### Highlight connections
+
+Each Highlight gets an embedding (via `generate_embedding` task).
+
+`GET /search/connections/{highlight_id}` — finds highlights in **other** articles
+(same user) whose embedding is within a similarity threshold (default 0.75).
+This powers the "Connections" tab in the reader: showing how ideas in the current
+article link to ideas captured elsewhere in your queue.
+
+`GET /search/connections/article/{content_id}` — aggregates all connections for
+all highlights in an article, grouped by the connected article and sorted by
+total similarity score.
+
+---
+
+## 13. Recommendation engine
+
+`GET /content/recommended` — no ML required.
+
+Scoring per unread item (max 75 points):
+
+| Factor | Max points | Logic |
+|--------|-----------|-------|
+| Embedding similarity to recent reads | 30 | Cosine similarity to last 7 days' read articles. Takes max similarity. |
+| Reading time match | 15 | Penalizes items far from `user.reading_patterns.avg_reading_time`. |
+| Recency | 20 | Linear decay: `max(0, 20 - days_old / 10)`. Decays to 0 at 200 days. |
+| Tag overlap | 10/overlap | +10 per tag that matches `user.reading_patterns.preferred_tags`. |
+
+Optional `mood` filter:
+- `quick_read` — skips articles > 10 min.
+- `deep_dive` — skips articles < 10 min.
+- `light` — skips articles > 5000 words.
+
+`reading_patterns` on `User` is updated whenever an article is marked as read
+(manually or auto at scroll position ≥ 0.9).
+
+---
+
+## 14. Frontend structure
+
+### Pages (`frontend/app/`)
+
+| Route | File | Description |
+|-------|------|-------------|
+| `/` | `page.tsx` | Landing / marketing page. |
+| `/dashboard` | `dashboard/page.tsx` | Main queue. Add form, filters, content cards. |
+| `/content/[id]` | `content/[id]/page.tsx` | Reader view. Full text, TOC, bionic reading, highlights, connections. |
+| `/lists` | `lists/page.tsx` | List management. |
+| `/lists/[id]` | `lists/[id]/page.tsx` | Items inside a list. |
+| `/crates` | `crates/` | Vinyl record collection (feature-flagged). |
+| `/guide` | `guide/` | Static user guide page. |
+| `/login`, `/register` | auth pages | |
+| `/settings` | `settings/` | User preferences. |
+
+### Key components
+
+| Component | Location | Role |
+|-----------|----------|------|
+| `AddContentForm` | dashboard | Collects URL, submits to API. |
+| `ContentList` | dashboard | Fetches items, applies filters, pagination. |
+| `ContentItemCard` | dashboard | Individual card — mark read, archive, delete. |
+| `Reader` | content/[id] | Full article view. Saves scroll progress. |
+| `Sidebar` | layout | List navigation with counts. |
+| `CratesClient` | crates | Grid of records, search/sort/filter, Now Digging bar. |
+| `RecordDetail` | crates | Gatefold panel: art + metadata + tracklist + videos. |
+| `ListeningMode` | crates | Full-screen music player overlay. `z-[80]` > RecordDetail `z-50`. |
+| `VinylCard` | crates | Individual record card. |
+| `YouTubePlayer` | crates | Invisible div hosting YouTube IFrame API. Plays queue sequentially. |
+| `Navbar` | layout | Mini-player on mobile. `mounted` guard avoids SSR hydration mismatch. |
+
+### React Contexts
+
+| Context | State |
+|---------|-------|
+| `AuthContext` | Current user, login/logout. Token stored in `localStorage['token']`. |
+| `ListsContext` | List counts shown in sidebar. |
+| `ToastContext` | User notifications (success/error toasts). |
+| `PlayerContext` | Vinyl player: `QueueTrack[]`, `currentIndex`, play/pause, `YT.Player` ref. Queue persisted in `localStorage['sedi-player']`. |
+
+### Feature flags (`frontend/lib/flags.ts`)
+
+Environment variable driven — all default to `true` unless explicitly disabled:
+
+| Flag | Env var | Controls |
+|------|---------|---------|
+| `SHOW_FOR_YOU` | `NEXT_PUBLIC_SHOW_FOR_YOU` | "For You" / recommended tab on dashboard. |
+| `SHOW_HIGHLIGHT_CONNECTIONS` | `NEXT_PUBLIC_SHOW_HIGHLIGHT_CONNECTIONS` | Connections panel in reader. |
+| `SHOW_CRATES` | `NEXT_PUBLIC_SHOW_CRATES` | Crates/vinyl section in nav. |
+| `SHOW_EDIT_ARTICLE` | `NEXT_PUBLIC_SHOW_EDIT_ARTICLE` | Edit article button in reader. Defaults to `false`. |
+
+### Frontend utilities (`frontend/lib/`)
+
+| File | Key exports | Purpose |
+|------|------------|---------|
+| `bionicReading.ts` | `toBionic`, `addHeadingAnchors`, `stripDocumentWrappers`, `sanitizeContentHtml` | Reader UX. Bionic reading bolds the first ~50% of each word. `addHeadingAnchors` generates deduped IDs for TOC links. `stripDocumentWrappers` strips `<html>/<body>` from PDF-extracted content. `sanitizeContentHtml` removes ephemeral UI before saving. |
+| `blockParser.ts` | `parseHtmlToBlocks` | Converts HTML to `ContentBlock[]` for the block editor. Maps h1–h6 and p/ul/ol to block types. SSR guard included. |
+| `flags.ts` | Feature flag booleans | See table above. |
+
+---
+
+## 15. Security
+
+### Current protections
+
+- Password hashing: bcrypt via passlib.
+- JWT: signed with `SECRET_KEY`, expiry enforced.
+- CORS: origin list driven by environment variable.
+- Rate limiting: 20 POST /content per user per 60s.
+- Cross-user isolation: every query filters by `user_id = current_user.id`.
+
+### Known gaps / mitigations
+
+| Risk | Current state | Fix |
+|------|--------------|-----|
+| XSS | Extracted HTML rendered directly in reader. | Sanitize HTML (DOMPurify) or use sandboxed iframes. |
+| SSRF | Backend fetches user-provided URLs. | Validate URLs; block internal IPs (169.254.x.x, 10.x.x.x, etc.). |
+| Rate limit in-memory | Resets on restart; no cross-instance enforcement. | Move to Redis. |
+| localStorage token | XSS-accessible. | Migrate to httpOnly cookies + CSRF tokens. |
+
+---
+
+## 16. Error handling and reliability
+
+### Backend
+
+| Code | When |
+|------|------|
+| 400 | Bad request (duplicate email, invalid input). |
+| 401 | Missing or invalid JWT. |
+| 403 | Active check failed. |
+| 404 | Item not found or soft-deleted (or belongs to another user). |
+| 429 | Rate limit exceeded on POST /content. |
+
+### Background jobs
+
+- `max_retries=3` on extraction tasks.
+- Saves `processing_error` if extraction fails after retries.
+- `processing_status` surfaces to frontend — UI can show "processing" states.
+
+### Frontend
+
+- Optimistic updates for responsiveness; reverts on API failure.
+- Toast notifications for errors.
+- Polling `processing_status` until `'completed'` or `'failed'`.
+
+---
+
+## 17. Crates — Vinyl Record Collection
+
+**What it is:** Section of the app (`/crates`, feature-flagged by `SHOW_CRATES`)
+for managing a vinyl record collection. Users paste a Discogs URL; the system
+fetches metadata via the Discogs API in a background Celery task.
+
+### `vinyl_records` table
+
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | UUID PK | |
+| `user_id` | UUID FK → users | CASCADE delete. |
+| `discogs_url` | Text | Source URL. |
+| `discogs_release_id` | Integer | Parsed from URL for API call. |
+| `title` | Text | Album title. |
+| `artist` | Text | Primary artist. |
+| `label` | String(255) | Record label. |
+| `catalog_number` | String(255) | Label catalog number (e.g. `CAT-001`). |
+| `year` | Integer | Release year. |
+| `cover_url` | Text | Album art URL. |
+| `genres`, `styles` | `ARRAY(String)` | From Discogs. |
+| `tracklist` | JSONB | `[{position, title, duration}, ...]`. |
+| `videos` | JSONB | `[{title, uri, duration}, ...]` — Discogs + user-added YouTube links. |
+| `notes` | Text | Personal notes. |
+| `rating` | Integer | 1–5 star rating. |
+| `tags` | `ARRAY(String)` | User tags. |
+| `status` | String | `'collection'`, `'wantlist'`, `'library'`. Default `'collection'`. |
+| `processing_status` | String | `'pending'` → `'completed'`/`'failed'`. |
+| `deleted_at` | DateTime | Soft delete. |
+
+**Common mistake:** The old doc said `wantlist (bool)` — that field does not
+exist. Use `status='wantlist'` instead.
+
+### Frontend components
+
+| Component | Role |
+|-----------|------|
+| `CratesClient` | Main page: grid of records, search/sort/filter, Now Digging bar, ListeningMode toggle. |
+| `RecordDetail` | Gatefold panel: cover art left, metadata + tracklist + video links right. |
+| `ListeningMode` | Full-screen overlay. `z-[80]` covers RecordDetail (`z-50`). |
+| `VinylCard` | Individual record in the grid. |
+
+### Music playback
+
+- `PlayerContext` holds the queue (`QueueTrack[]`), `currentIndex`, play/pause, `YT.Player` ref.
+- `YouTubePlayer` — invisible div hosting YouTube IFrame API. Plays queue sequentially.
+- Queue persists to `localStorage['sedi-player']`.
+- Navbar mini-player: album art + play/pause on mobile, guarded by `mounted` to
+  avoid SSR hydration mismatch.
+
+### UX patterns
+
+- "Now digging" bar shows last-opened record; changes to "Now listening" when
+  music is actively playing.
+- `lastDug` → actual key is `"now-digging"` stored in `localStorage` for
+  cross-page-load persistence.
+
+---
+
+## 18. PDF Extraction
+
+Covered in §10.
+
+---
+
+## 19. Testing
+
+### Backend — pytest
+
+Location: `content-queue-backend/tests/`
+
+| File | Coverage |
+|------|----------|
+| `conftest.py` | Postgres test DB fixtures, test client, user + auth header fixtures. Uses `NullPool`, `TRUNCATE TABLE` for isolation. |
+| `test_auth_api.py` | Register, login, `/me`, duplicate email, wrong password, JWT tampering. |
+| `test_analytics_api.py` | Stats counts; regression for `not ContentItem.is_read` bug. |
+| `test_content_api.py` | Core content CRUD. |
+| `test_content_extended.py` | `_clean_extension_html` edge cases; extension path; cross-user isolation. |
+| `test_vinyl_api.py` | Full vinyl CRUD; soft delete; cross-user 404; Celery mocked. |
+| `test_rate_limiter.py` | Sliding window unit tests (no DB). |
+| `test_lists_api.py` | List CRUD; membership management; cross-user isolation. |
+
+Run: `cd content-queue-backend && poetry run pytest tests/`
+
+**Important patterns:**
+- All Celery tasks are mocked with `patch(...)` — no broker needed.
+- Cross-user isolation: always test that user A cannot act on user B's data.
+- Rate limiter tests call `rate_limiter.requests.clear()` before any POST /content test to avoid 429 from test ordering.
+
+### Frontend — Jest
+
+Location: `frontend/__tests__/`
+
+| File | Coverage |
+|------|----------|
+| `bionicReading.test.ts` | `toBionic`, `addHeadingAnchors` (deduplication), `stripDocumentWrappers`, `sanitizeContentHtml`. |
+
+Run: `cd frontend && npm test -- --watchAll=false`
+
+---
+
+## 20. Key design decisions
+
+| Decision | Choice | Reason |
+|----------|--------|--------|
+| Sync vs async extraction | Async (Celery) | URL fetching is slow and failable; API must stay responsive. |
+| JWT vs sessions | JWT | Stateless — any backend instance can verify. |
+| localStorage vs cookies | localStorage | Simpler for now; known XSS risk, documented above. |
+| pgvector vs vector DB | pgvector | Keeps everything in one DB; acceptable at current scale. |
+| Polling vs websockets | Polling | Simple to implement; websockets add operational complexity. |
+| Raw SQL for vector queries | `text(...)` | SQLAlchemy's `op("<=>")` doesn't carry pgvector type info. |
+| Tagging: free-first | pgvector sim first, LLM fallback | Minimizes OpenAI cost for users with growing tagged libraries. |
+| Soft delete everywhere | `deleted_at` column | Enables undo, audit, and safer queries. |
+| Feature flags | Env vars, default-on | Lets incomplete features be shipped to prod and toggled without redeployment. |
+
+---
+
+## 21. Documentation rule
+
+When making a commit that adds or changes a feature, update this file in the
+same commit:
+
+- New feature → add or update the relevant section.
+- Bug fix to a documented component → update any affected description.
+- New model column or API route → add to the appropriate table.
+
+The goal: ARCHITECTURE.md always reflects the current codebase so any new
+contributor or future AI session can get oriented quickly without reading
+every file.

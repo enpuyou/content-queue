@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api import auth, content, lists, search, analytics, highlights, vinyl
+from app.api import auth, content, lists, search, analytics, highlights, vinyl, test_pdf
 from app.middleware.rate_limit import RateLimitMiddleware
 import os
 
@@ -18,6 +18,8 @@ allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
+    # Allow browser extension origins (Chrome, Firefox, Safari)
+    allow_origin_regex=r"(chrome|moz)-extension://.*|safari-web-extension://.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -34,6 +36,7 @@ app.include_router(lists.router)
 app.include_router(search.router)
 app.include_router(analytics.router)
 app.include_router(vinyl.router)
+app.include_router(test_pdf.router)
 
 
 @app.get("/")

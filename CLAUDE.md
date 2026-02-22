@@ -98,6 +98,16 @@ Completed:
    - Fallback strategy: XML → plain text → error
    - Consider adding newspaper3k as alternative
 
+### Documentation Workflow
+
+**ARCHITECTURE.md must be updated in the same commit as any feature change:**
+- New feature or component → add/update the relevant section
+- Bug fix to a documented component → update the description if it changed
+- New file → mention it in the relevant section
+
+This keeps `ARCHITECTURE.md` current so any session or contributor can orient
+quickly without reading all the source code.
+
 ### Debugging Notes
 
 - Console errors are normal when throwing JavaScript errors (browser logs them)

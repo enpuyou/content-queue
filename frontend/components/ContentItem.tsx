@@ -64,11 +64,25 @@ export default function ContentItem({
   const [isEditingTags, setIsEditingTags] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
   const [tagInput, setTagInput] = useState("");
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Load available tags when editing starts
+  useEffect(() => {
+    if (isEditingTags) {
+      contentAPI
+        .getTags()
+        .then((tags: Array<{ tag: string; count: number }>) => {
+          setAvailableTags(tags.map((t) => t.tag));
+        })
+        .catch((err) => console.error("Failed to load tags:", err));
+    }
+  }, [isEditingTags]);
 
   /**
    * Handle status change with retro effect for archiving
@@ -324,23 +338,63 @@ export default function ContentItem({
               {/* Tag Input - only show when editing */}
               {isEditingTags && (
                 <div className="flex items-center gap-1">
-                  <input
-                    type="text"
-                    value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        handleAddTag();
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={tagInput}
+                      onChange={(e) => {
+                        setTagInput(e.target.value);
+                        setShowSuggestions(true);
+                      }}
+                      onFocus={() => setShowSuggestions(true)}
+                      onBlur={() =>
+                        setTimeout(() => setShowSuggestions(false), 200)
                       }
-                    }}
-                    placeholder="Add tag..."
-                    className="px-2 py-0.5 text-xs border-0 border-b border-[var(--color-border)] bg-transparent rounded-none focus:outline-none focus:!ring-0]"
-                    autoFocus
-                  />
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddTag();
+                          setShowSuggestions(false);
+                        }
+                      }}
+                      placeholder="Add tag..."
+                      className="px-2 py-0.5 text-xs border border-[var(--color-border)] bg-transparent focus:outline-none focus:!ring-0"
+                      autoFocus
+                    />
+                    {showSuggestions && tagInput.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-[var(--color-bg-primary)] border border-[var(--color-border)] shadow-sm z-10">
+                        {availableTags
+                          .filter(
+                            (tag) =>
+                              tag
+                                .toLowerCase()
+                                .includes(tagInput.toLowerCase()) &&
+                              !content.tags?.includes(tag),
+                          )
+                          .slice(0, 5)
+                          .map((tag) => (
+                            <button
+                              key={tag}
+                              onClick={() => {
+                                const newTags = [...(content.tags || []), tag];
+                                handleUpdateTags(newTags);
+                                setTagInput("");
+                                setShowSuggestions(false);
+                              }}
+                              className="w-full text-left px-2 py-1 text-xs text-[var(--color-text-muted)] hover:bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)] last:border-b-0"
+                            >
+                              {tag}
+                            </button>
+                          ))}
+                      </div>
+                    )}
+                  </div>
                   <button
-                    onClick={handleAddTag}
-                    className="text-xs px-2 py-0.5 bg-[var(--color-accent)] text-white rounded-none hover:bg-[var(--color-accent-hover)]"
+                    onClick={() => {
+                      handleAddTag();
+                      setShowSuggestions(false);
+                    }}
+                    className="text-xs px-2 py-0.5 border border-[var(--color-border)] text-[var(--color-text-muted)] hover:border-[var(--color-text-primary)] hover:text-[var(--color-text-primary)] transition-colors"
                   >
                     Add
                   </button>
@@ -348,6 +402,7 @@ export default function ContentItem({
                     onClick={() => {
                       setIsEditingTags(false);
                       setTagInput("");
+                      setShowSuggestions(false);
                     }}
                     className="text-xs px-2 py-0.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
                   >
@@ -362,23 +417,62 @@ export default function ContentItem({
           {(!content.tags || content.tags.length === 0) && isEditingTags && (
             <div className="mb-3 flex items-center gap-2 flex-wrap">
               <div className="flex items-center gap-1">
-                <input
-                  type="text"
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleAddTag();
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={tagInput}
+                    onChange={(e) => {
+                      setTagInput(e.target.value);
+                      setShowSuggestions(true);
+                    }}
+                    onFocus={() => setShowSuggestions(true)}
+                    onBlur={() =>
+                      setTimeout(() => setShowSuggestions(false), 200)
                     }
-                  }}
-                  placeholder="Add tag..."
-                  className="px-2 py-0.5 text-xs border-0 border-b border-[var(--color-border)] bg-transparent rounded-none focus:outline-none"
-                  autoFocus
-                />
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddTag();
+                        setShowSuggestions(false);
+                      }
+                    }}
+                    placeholder="Add tag..."
+                    className="px-2 py-0.5 text-xs border border-[var(--color-border)] bg-transparent focus:outline-none"
+                    autoFocus
+                  />
+                  {showSuggestions && tagInput.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-[var(--color-bg-primary)] border border-[var(--color-border)] shadow-sm z-10">
+                      {availableTags
+                        .filter(
+                          (tag) =>
+                            tag
+                              .toLowerCase()
+                              .includes(tagInput.toLowerCase()) &&
+                            !content.tags?.includes(tag),
+                        )
+                        .slice(0, 5)
+                        .map((tag) => (
+                          <button
+                            key={tag}
+                            onClick={() => {
+                              handleUpdateTags([tag]);
+                              setTagInput("");
+                              setShowSuggestions(false);
+                            }}
+                            className="w-full text-left px-2 py-1 text-xs text-[var(--color-text-muted)] hover:bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)] last:border-b-0"
+                          >
+                            {tag}
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                </div>
                 <button
-                  onClick={handleAddTag}
-                  className="text-xs px-2 py-0.5 bg-[var(--color-accent)] text-white rounded-none hover:bg-[var(--color-accent-hover)]"
+                  onClick={() => {
+                    handleAddTag();
+                    setShowSuggestions(false);
+                  }}
+                  className="text-xs px-2 py-0.5 border border-[var(--color-border)] text-[var(--color-text-muted)] hover:border-[var(--color-text-primary)] hover:text-[var(--color-text-primary)] transition-colors"
                 >
                   Add
                 </button>
@@ -386,6 +480,7 @@ export default function ContentItem({
                   onClick={() => {
                     setIsEditingTags(false);
                     setTagInput("");
+                    setShowSuggestions(false);
                   }}
                   className="text-xs px-2 py-0.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
                 >
@@ -466,21 +561,22 @@ export default function ContentItem({
                         className="fixed inset-0 z-10"
                         onClick={() => setShowListDropdown(false)}
                       />
-                      <div className="absolute right-0 top-full mt-2 w-56 bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded-none shadow-lg z-20 max-h-60 overflow-y-auto">
-                        <div className="py-1">
-                          {availableLists.map((list) => (
-                            <button
-                              key={list.id}
-                              onClick={() => {
-                                onAddToList(list.id);
-                                setShowListDropdown(false);
-                              }}
-                              className="w-full text-left px-4 py-2 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-accent)] transition-colors"
-                            >
-                              {list.name}
-                            </button>
-                          ))}
-                        </div>
+                      <div className="absolute right-0 top-full mt-1 w-48 bg-[var(--color-bg-primary)] border border-[var(--color-border)] z-20 max-h-52 overflow-y-auto">
+                        <p className="font-mono text-[9px] uppercase tracking-widest text-[var(--color-text-faint)] px-3 pt-2.5 pb-1.5 border-b border-[var(--color-border-subtle)]">
+                          Add to list
+                        </p>
+                        {availableLists.map((list) => (
+                          <button
+                            key={list.id}
+                            onClick={() => {
+                              onAddToList(list.id);
+                              setShowListDropdown(false);
+                            }}
+                            className="w-full text-left px-3 py-2 font-mono text-[11px] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-secondary)] transition-colors border-b border-[var(--color-border-subtle)] last:border-0"
+                          >
+                            {list.name}
+                          </button>
+                        ))}
                       </div>
                     </>
                   )}

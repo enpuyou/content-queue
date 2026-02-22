@@ -54,8 +54,8 @@ export default function ContentCard({
     if (isEditingTags) {
       contentAPI
         .getTags()
-        .then((tags: Array<{ name: string; count: number }>) => {
-          setAvailableTags(tags.map((t) => t.name));
+        .then((tags: Array<{ tag: string; count: number }>) => {
+          setAvailableTags(tags.map((t) => t.tag));
         })
         .catch((err) => {
           console.error("Failed to load tags:", err);
@@ -224,9 +224,11 @@ export default function ContentCard({
             <div className="flex items-center gap-2 mb-2">
               <RetroLoader
                 text={
-                  content.processing_status === "pending"
-                    ? "Finding your article"
-                    : "Preparing your article"
+                  content.content_type === "pdf"
+                    ? "Analyzing PDF layout..."
+                    : content.processing_status === "pending"
+                      ? "Finding your article"
+                      : "Preparing your article"
                 }
                 className="text-xs text-[var(--color-text-muted)] italic"
               />
@@ -516,7 +518,7 @@ export default function ContentCard({
                     handleAddTag();
                     setShowSuggestions(false);
                   }}
-                  className="text-xs px-2 py-1 bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)]"
+                  className="text-xs px-2 py-1 border border-[var(--color-border)] text-[var(--color-text-muted)] hover:border-[var(--color-text-primary)] hover:text-[var(--color-text-primary)] transition-colors"
                 >
                   Add
                 </button>

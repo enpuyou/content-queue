@@ -79,11 +79,11 @@ describe("InlineHighlight", () => {
   });
 
   it("shows connection indicator when facilitated and feature enabled", async () => {
-    (searchAPI.findHighlightConnections as jest.Mock).mockResolvedValue([
-      { id: "conn1" },
-    ]);
-
-    render(<InlineHighlight {...defaultProps}>Text</InlineHighlight>);
+    render(
+      <InlineHighlight {...defaultProps} hasConnections={true}>
+        Text
+      </InlineHighlight>,
+    );
 
     await waitFor(() => {
       expect(
@@ -94,12 +94,13 @@ describe("InlineHighlight", () => {
 
   it("calls onShowConnections when blue dot is clicked", async () => {
     const onShowConnections = jest.fn();
-    (searchAPI.findHighlightConnections as jest.Mock).mockResolvedValue([
-      { id: "conn1" },
-    ]);
 
     render(
-      <InlineHighlight {...defaultProps} onShowConnections={onShowConnections}>
+      <InlineHighlight
+        {...defaultProps}
+        hasConnections={true}
+        onShowConnections={onShowConnections}
+      >
         Text
       </InlineHighlight>,
     );

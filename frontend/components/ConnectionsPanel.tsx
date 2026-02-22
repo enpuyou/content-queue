@@ -29,22 +29,27 @@ interface ConnectionsPanelProps {
 
 export default function ConnectionsPanel({
   contentId,
-  isOpen: _isOpen,
+  isOpen,
   onClose: _onClose,
   onNavigateToArticle,
 }: ConnectionsPanelProps) {
   const [connections, setConnections] = useState<ArticleConnection[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasFetched, setHasFetched] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
+    // Only fetch the first time the panel opens
+    if (!isOpen || hasFetched) return;
+
     const fetchConnections = async () => {
       try {
         setLoading(true);
         setError(null);
         const data = await searchAPI.findArticleConnections(contentId);
         setConnections(data);
+        setHasFetched(true);
       } catch (err) {
         console.error("Failed to load connections:", err);
         setError(
@@ -56,7 +61,7 @@ export default function ConnectionsPanel({
     };
 
     fetchConnections();
-  }, [contentId]);
+  }, [contentId, isOpen, hasFetched]);
 
   const handleNavigateToArticle = (articleId: string, highlightId?: string) => {
     const url = `/content/${articleId}${highlightId ? `#${highlightId}` : ""}`;

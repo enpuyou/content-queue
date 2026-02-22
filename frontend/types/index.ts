@@ -21,6 +21,8 @@ export interface ContentItem {
   full_text: string | null;
   word_count: number | null;
   reading_time_minutes: number | null;
+  author?: string | null;
+  published_date?: string | null;
   is_read: boolean;
   is_archived: boolean;
   read_position?: number;

@@ -75,6 +75,7 @@ describe("ContentItem", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockedContentAPI.getTags.mockResolvedValue([]);
   });
 
   describe("Rendering - Basic Information", () => {
