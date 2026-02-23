@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api import auth, content, lists, search, analytics, highlights, vinyl, test_pdf
+from app.api import auth, content, lists, search, analytics, highlights, vinyl
 from app.middleware.rate_limit import RateLimitMiddleware
 import os
 
@@ -36,7 +36,13 @@ app.include_router(lists.router)
 app.include_router(search.router)
 app.include_router(analytics.router)
 app.include_router(vinyl.router)
-app.include_router(test_pdf.router)
+
+# Dev-only test routes (serves local PDFs from gitignored pdf/ directory)
+# Only mounted when DEBUG=true — never active in production
+if settings.DEBUG:
+    from app.api import test_pdf  # noqa: PLC0415
+
+    app.include_router(test_pdf.router)
 
 
 @app.get("/")
