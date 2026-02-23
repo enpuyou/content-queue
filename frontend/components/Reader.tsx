@@ -18,6 +18,9 @@ import HighlightRenderer from "./HighlightRenderer";
 import HighlightsPanel from "./HighlightsPanel";
 import ConnectionsPanel from "./ConnectionsPanel";
 import ThemeToggle from "./ThemeToggle";
+import BlockList, { BlockListRef } from "./editor/BlockList";
+import KeyboardShortcuts from "./KeyboardShortcuts";
+import { SHOW_EDIT_ARTICLE } from "@/lib/flags";
 
 interface ExtendedSelection {
   text: string;
@@ -76,6 +79,83 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
   );
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [showSummary, setShowSummary] = useState(!!content.summary);
+
+  // Edit Mode State
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [editTitle, setEditTitle] = useState(content.title || "");
+  const [editDescription, setEditDescription] = useState(
+    content.description || "",
+  );
+  const editorRef = useRef<BlockListRef>(null);
+
+  // Initialize edit state when content loads
+  useEffect(() => {
+    if (content) {
+      setEditTitle(content.title || "");
+      setEditDescription(content.description || "");
+    }
+  }, [content]);
+
+  // Save Changes Handler
+  const handleSaveChanges = async () => {
+    if (!editorRef.current) return;
+
+    setIsSaving(true);
+    try {
+      const newHtml = editorRef.current.getHtml();
+
+      const updated = await contentAPI.update(content.id, {
+        title: editTitle,
+        description: editDescription,
+        full_text: newHtml,
+      });
+
+      // Update parent state
+      onStatusChange({
+        full_text: updated.full_text || newHtml,
+        // We might want to pass title/desc here if onStatusChange supports it,
+        // but looking at interface it supports is_read, read_pos, is_archived, full_text.
+        // For now, full_text update is key.
+      });
+
+      setIsEditing(false);
+    } catch (err) {
+      console.error("Failed to save changes:", err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Scroll position ref for restoring state
+  const savedScrollPosition = useRef(0);
+
+  // Extraction Confidence State
+  const [extractionConfidence, setExtractionConfidence] = useState<{
+    score: number;
+    label: string;
+  } | null>(null);
+
+  // Parse extraction confidence and metadata from HTML content
+  useEffect(() => {
+    if (!content.full_text) return;
+
+    // Parse confidence score — attribute order varies after HTML serialization
+    const confidenceMatch =
+      content.full_text.match(
+        /meta name="extraction-confidence" content="(\d+)"/,
+      ) ||
+      content.full_text.match(
+        /meta content="(\d+)" name="extraction-confidence"/,
+      );
+    if (confidenceMatch && confidenceMatch[1]) {
+      const score = parseInt(confidenceMatch[1], 10);
+      let label = "low";
+      if (score >= 80) label = "high";
+      else if (score >= 60) label = "medium";
+      setExtractionConfidence({ score, label });
+    }
+  }, [content.full_text]);
 
   // TTS State (for future implementation)
   const { pause, resume, isPlaying } = useTTS();
@@ -150,6 +230,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
       }
     },
     t: () => (isPlaying ? pause() : resume()), // Simple toggle
+    "?": () => setShowShortcuts((v) => !v),
     // Ephemeral formatting for user readability - NOW PERSISTED
     b: async (e) => {
       e.preventDefault();
@@ -256,9 +337,15 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
   >([]);
   const [_loadingHighlights, _setLoadingHighlights] = useState(false);
 
+  // Connected highlight IDs — fetched once per article, not per highlight
+  const [connectedHighlightIds, setConnectedHighlightIds] = useState<
+    Set<string>
+  >(new Set());
+
   // Highlights panel visibility
   const [showHighlightsPanel, setShowHighlightsPanel] = useState(false);
   const [showConnectionsPanel, setShowConnectionsPanel] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
   const handleImageZoom = useCallback((src: string) => {
@@ -510,6 +597,7 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
 
     const allHeadings: Array<{ id: string; text: string; level: number }> = [];
 
+    const seenIds = new Map<string, number>();
     doc.querySelectorAll("h1, h2, h3, h4").forEach((heading) => {
       let id = heading.id;
       const text = heading.textContent || "";
@@ -522,37 +610,27 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
       }
 
       if (id && text) {
+        // Deduplicate: if this id was seen before, append -2, -3, etc.
+        const count = seenIds.get(id) ?? 0;
+        seenIds.set(id, count + 1);
+        const uniqueId = count === 0 ? id : `${id}-${count + 1}`;
+
         allHeadings.push({
-          id,
+          id: uniqueId,
           text,
           level: parseInt(heading.tagName.substring(1)),
         });
       }
     });
 
-    // Skip headers that match or are part of the article title
-    // This removes duplicate title headers from TOC
+    // Skip headings whose text is exactly the article title — avoids a repeated
+    // <h1> at the top of the article body appearing in the TOC.
     let headings = allHeadings;
     const titleNormalized = (content.title || "").toLowerCase().trim();
 
-    // Remove all headers that are substrings of or contain the title
     headings = allHeadings.filter((h) => {
       const headingNormalized = h.text.toLowerCase().trim();
-      // Skip if heading is in title or title is in heading (fuzzy match)
-      if (
-        titleNormalized &&
-        (titleNormalized.includes(headingNormalized) ||
-          headingNormalized.includes(titleNormalized) ||
-          // Also check individual words
-          titleNormalized
-            .split(/\s+/)
-            .some(
-              (word) => word.length > 4 && headingNormalized.includes(word),
-            ))
-      ) {
-        return false;
-      }
-      return true;
+      return !(titleNormalized && headingNormalized === titleNormalized);
     });
 
     // Renormalize to have at most 3 levels (H2, H3, H4 in display)
@@ -578,7 +656,6 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
       }
     }
 
-    console.log("Extracted TOC Headings structure:", headings);
     setTocHeadings(headings);
   }, [content.full_text, content.title]);
 
@@ -593,8 +670,28 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
       }
       if (content.id) {
         try {
-          const data = await highlightsAPI.getByContent(content.id);
-          setHighlights(data);
+          const [highlightData, connectionData] = await Promise.allSettled([
+            highlightsAPI.getByContent(content.id),
+            searchAPI.findArticleConnections(content.id),
+          ]);
+
+          if (highlightData.status === "fulfilled") {
+            setHighlights(highlightData.value);
+          } else {
+            console.error("Failed to fetch highlights:", highlightData.reason);
+          }
+
+          if (connectionData.status === "fulfilled") {
+            // Build a flat Set of all highlight IDs that appear in any connection pair
+            const ids = new Set<string>();
+            for (const articleConn of connectionData.value) {
+              for (const pair of articleConn.highlight_pairs) {
+                ids.add(pair.user_highlight_id);
+              }
+            }
+            setConnectedHighlightIds(ids);
+          }
+          // Connection failures are silent — no embeddings yet is expected
         } catch (error) {
           console.error("Failed to fetch highlights:", error);
         }
@@ -1089,6 +1186,8 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
         if (currentNode === node) {
           return totalOffset + offsetInNode;
         }
+        // Normalize text content length to match what we render (if needed)
+        // For now, textContent length is usually correct for raw text nodes
         totalOffset += (currentNode.textContent || "").length;
       }
       return -1;
@@ -1205,16 +1304,26 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
                 onShowConnections={(_highlightId) => {
                   setShowConnectionsPanel(true);
                 }}
+                connectedHighlightIds={connectedHighlightIds}
               />
             ) : (
               <div className="text-center py-12 flex flex-col items-center gap-4">
                 <SequentialRetroLoader
-                  messages={[
-                    "Connecting to source...",
-                    "Extracting content...",
-                    "Parsing article...",
-                    "Formatting for you...",
-                  ]}
+                  messages={
+                    content.content_type === "pdf"
+                      ? [
+                          "Scanning layout...",
+                          "Identifying columns...",
+                          " extracting figures...",
+                          "Reflowing text...",
+                        ]
+                      : [
+                          "Connecting to source...",
+                          "Extracting content...",
+                          "Parsing article...",
+                          "Formatting for you...",
+                        ]
+                  }
                   className="text-[var(--color-accent)] text-lg"
                   interval={2000}
                 />
@@ -1231,8 +1340,10 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
     );
   }, [
     content.full_text,
+    content.content_type,
     content.processing_status,
     highlights,
+    connectedHighlightIds,
     scrollToHighlight,
     focusMode,
     settings,
@@ -1273,24 +1384,18 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
       >
         <div className="max-w-2xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between gap-2">
-            {/* Back Button - shorter text on mobile, dynamic destination */}
-            <Link
-              href={
-                typeof window !== "undefined"
-                  ? sessionStorage.getItem("readerReturnPath") || "/dashboard"
-                  : "/dashboard"
-              }
-              scroll={false}
-              className="compact-touch text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-none border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:border-[var(--color-accent)] transition-colors whitespace-nowrap flex-shrink-0 flex items-center"
+            {/* Back Button */}
+            <button
               onClick={() => {
-                // Clear the return path after using it
-                if (typeof window !== "undefined") {
-                  sessionStorage.removeItem("readerReturnPath");
-                }
+                const returnPath =
+                  sessionStorage.getItem("readerReturnPath") || "/dashboard";
+                sessionStorage.removeItem("readerReturnPath");
+                router.push(returnPath);
               }}
+              className="compact-touch text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-none border border-[var(--color-border)] bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:border-[var(--color-accent)] transition-colors whitespace-nowrap flex-shrink-0 flex items-center"
             >
               ← Back
-            </Link>
+            </button>
 
             {/* Player moved to bottom left */}
 
@@ -1367,6 +1472,34 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
                 >
                   {showConnectionsPanel ? "Hide" : "Show"} Connections
                 </button>
+
+                {/* Edit Mode button - PDF Only, behind feature flag */}
+                {SHOW_EDIT_ARTICLE && content.content_type === "pdf" && (
+                  <button
+                    onClick={() => {
+                      if (isEditing) {
+                        handleSaveChanges();
+                      } else {
+                        // Capture scroll position before switching
+                        savedScrollPosition.current = window.scrollY;
+                        setIsEditing(true);
+                      }
+                    }}
+                    disabled={isSaving}
+                    className={`hidden sm:inline-block text-xs px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-none border transition-colors ${
+                      isEditing
+                        ? "bg-[var(--color-accent)] text-[var(--color-text-primary)] border-[var(--color-accent)]"
+                        : "bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-[var(--color-accent)]"
+                    }`}
+                    title="Toggle Edit Mode"
+                  >
+                    {isSaving
+                      ? "Saving..."
+                      : isEditing
+                        ? "Save Changes"
+                        : "Edit Article"}
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -1521,76 +1654,176 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
       {/* Article Content */}
       <article className="py-8 pt-28 pb-32 max-w-5xl mx-auto select-none">
         {/* Article Header */}
-        <header className="mb-12 max-w-2xl mx-auto px-5 sm:px-6 lg:px-8">
-          <h1 className="font-serif font-normal leading-tight mb-4 text-4xl text-[var(--color-text-primary)]">
-            {content.title || "Untitled Article"}
-          </h1>
+        <header className="mb-12 max-w-2xl mx-auto px-5 sm:px-6 lg:px-8 relative">
+          {isEditing ? (
+            <input
+              type="text"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              className="w-full font-serif font-normal leading-tight mb-4 text-4xl text-[var(--color-text-primary)] bg-transparent border-b border-[var(--color-border)] focus:outline-none focus:border-[var(--color-accent)]"
+              placeholder="Article Title"
+            />
+          ) : (
+            <h1 className="font-serif font-normal leading-tight mb-4 text-4xl text-[var(--color-text-primary)]">
+              {content.title || "Untitled Article"}
+            </h1>
+          )}
 
-          {/* Metadata */}
-          <div className="flex items-center gap-4 text-sm text-[var(--color-text-muted)] mb-4 tracking-wide">
-            {content.reading_time_minutes && (
-              <span>{content.reading_time_minutes} min read</span>
+          {/* Byline — two rows: article attribution / reader info */}
+          <div className="flex flex-col gap-1 mb-4 font-mono text-xs tracking-tight">
+            {/* Row 1: article attribution — author + published date */}
+            {(content.author || content.published_date) && (
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[var(--color-text-muted)]">
+                {content.author && (
+                  <span className="text-[var(--color-text-secondary)] truncate max-w-[20ch] sm:max-w-none">
+                    {content.author}
+                  </span>
+                )}
+                {content.author && content.published_date && (
+                  <span className="text-[var(--color-text-faint)]">·</span>
+                )}
+                {content.published_date && (
+                  <span>
+                    published{" "}
+                    {new Date(content.published_date).toLocaleDateString(
+                      undefined,
+                      {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      },
+                    )}
+                  </span>
+                )}
+              </div>
             )}
-            {content.reading_time_minutes && <span>·</span>}
-            <span>{new Date(content.created_at).toLocaleDateString()}</span>
+            {/* Row 2: reader info — added date · read time · confidence · domain */}
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[var(--color-text-faint)]">
+              <span>
+                added{" "}
+                {new Date(content.created_at).toLocaleDateString(undefined, {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                })}
+              </span>
+              {content.reading_time_minutes && (
+                <>
+                  <span>·</span>
+                  <span>{content.reading_time_minutes} min read</span>
+                </>
+              )}
+              {extractionConfidence && (
+                <>
+                  <span>·</span>
+                  <span className="relative group/conf inline-flex">
+                    <span
+                      className={`cursor-help px-1.5 py-0.5 font-bold border uppercase tracking-wider text-[10px] ${
+                        extractionConfidence.label === "high"
+                          ? "bg-green-100/50 text-green-800 border-green-300"
+                          : extractionConfidence.label === "medium"
+                            ? "bg-yellow-100/50 text-yellow-800 border-yellow-300"
+                            : "bg-red-100/50 text-red-800 border-red-300"
+                      }`}
+                    >
+                      {extractionConfidence.score}%
+                    </span>
+                    {/* Tooltip hidden on mobile (tap targets don't have hover) */}
+                    <span className="hidden sm:block pointer-events-none absolute bottom-full left-0 mb-2 w-64 bg-[var(--color-bg-primary)] border border-[var(--color-border)] px-3 py-2 text-[10px] font-mono text-[var(--color-text-secondary)] leading-relaxed shadow-md opacity-0 group-hover/conf:opacity-100 transition-opacity duration-150 z-50 normal-case tracking-normal font-normal">
+                      Extraction quality: how completely the article text was
+                      captured ({extractionConfidence.score}/100). High ≥ 80
+                      means full article; Low &lt; 50 means partial or fallback
+                      extraction.
+                    </span>
+                  </span>
+                </>
+              )}
+              <span>·</span>
+              <a
+                href={content.original_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`inline-flex items-center ${linkColorClasses} hover:opacity-70 transition-opacity truncate max-w-[24ch] sm:max-w-none`}
+              >
+                ↗{" "}
+                {(() => {
+                  try {
+                    return new URL(content.original_url).hostname.replace(
+                      /^www\./,
+                      "",
+                    );
+                  } catch {
+                    return content.original_url;
+                  }
+                })()}
+              </a>
+            </div>
           </div>
-
-          {/* Original URL */}
-          <a
-            href={content.original_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`${linkColorClasses} text-sm hover:opacity-70 transition-opacity inline-flex items-center gap-1 mb-6`}
-          >
-            View original
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-              />
-            </svg>
-          </a>
 
           {/* Thumbnail */}
           {content.thumbnail_url && (
-            <div className="mt-6">
+            <div className="mt-4 mb-6">
               <img
                 src={content.thumbnail_url}
                 alt=""
-                className="w-full opacity-90 hover:opacity-100 transition-opacity cursor-zoom-in"
+                className="w-full max-h-[500px] object-cover rounded-sm shadow-sm opacity-90 hover:opacity-100 transition-opacity cursor-zoom-in"
                 onClick={() => handleImageZoom(content.thumbnail_url!)}
               />
             </div>
           )}
         </header>
 
-        {/* Description/Lead paragraph - Aligned with content width */}
-        {content.description && (
-          <div className="w-full flex justify-center px-5 sm:px-6 lg:px-8 mb-8">
-            <div
-              className={`w-full
-              ${
-                settings.contentWidth === "narrow"
-                  ? "max-w-2xl"
-                  : settings.contentWidth === "wide"
-                    ? "max-w-3xl"
-                    : "max-w-[42rem]"
-              }
-            `}
-            >
-              <div className="font-serif border-l-4 border-[var(--color-border)] pl-4 text-[var(--color-text-secondary)] text-lg leading-relaxed italic">
-                {content.description}
+        {content.content_type === "pdf" ? (
+          isEditing ? (
+            <div className="mb-10 max-w-2xl mx-auto px-5 sm:px-6 lg:px-8">
+              <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] p-6 rounded-sm relative">
+                <span className="absolute top-0 left-6 -translate-y-1/2 bg-[var(--color-bg-secondary)] px-2 text-xs font-serif italic text-[var(--color-text-muted)] border border-[var(--color-border)] rounded-full">
+                  Abstract
+                </span>
+                <textarea
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="w-full text-[var(--color-text-secondary)] text-base font-serif leading-relaxed bg-transparent border-none resize-none focus:outline-none"
+                  rows={4}
+                  placeholder="Abstract or description..."
+                />
               </div>
             </div>
-          </div>
+          ) : (
+            content.description && (
+              <div className="mb-10 max-w-2xl mx-auto px-5 sm:px-6 lg:px-8">
+                <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] p-6 rounded-sm relative">
+                  <span className="absolute top-0 left-6 -translate-y-1/2 bg-[var(--color-bg-secondary)] px-2 text-xs font-serif italic text-[var(--color-text-muted)] border border-[var(--color-border)] rounded-full">
+                    Abstract
+                  </span>
+                  <p className="text-[var(--color-text-secondary)] text-base font-serif leading-relaxed">
+                    {content.description}
+                  </p>
+                </div>
+              </div>
+            )
+          )
+        ) : (
+          content.description && (
+            <div className="w-full flex justify-center px-5 sm:px-6 lg:px-8 mb-8">
+              <div
+                className={`w-full ${
+                  settings.contentWidth === "narrow"
+                    ? "max-w-2xl"
+                    : settings.contentWidth === "wide"
+                      ? "max-w-3xl"
+                      : "max-w-[42rem]"
+                }`}
+              >
+                <div className="font-serif border-l-4 border-[var(--color-border)] pl-4 text-[var(--color-text-secondary)] text-lg leading-relaxed">
+                  {content.description}
+                </div>
+              </div>
+            </div>
+          )
         )}
+
+        {/* Description/Lead paragraph - Aligned with content width */}
 
         {/* TLDR Summary Section - Aligned with content width */}
         <div className="w-full flex justify-center px-5 sm:px-6 lg:px-8 mb-12">
@@ -1714,7 +1947,19 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
             )}
           </div>
         </div>
-        {articleContent}
+        <div className="w-full flex justify-center px-5 sm:px-6 lg:px-8 mb-12">
+          {isEditing ? (
+            <div className="w-full max-w-2xl">
+              <BlockList
+                ref={editorRef}
+                initialHtml={content.full_text || ""}
+                initialScrollTop={savedScrollPosition.current}
+              />
+            </div>
+          ) : (
+            articleContent
+          )}
+        </div>
 
         {/* End of Article Actions - Quiet and Minimal */}
         {content.full_text && (
@@ -1732,6 +1977,8 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
               >
                 {content.is_archived ? "Unarchive" : "Archive"}
               </button>
+
+              {/* Edit Toggle (PDF Only) - MOVED TO HEADER */}
               <button
                 onClick={handleFindSimilar}
                 disabled={loadingSimilar}
@@ -1836,6 +2083,18 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
           onClose={() => setZoomedImage(null)}
         />
       )}
+
+      <KeyboardShortcuts
+        isOpen={showShortcuts}
+        onClose={() => setShowShortcuts(false)}
+        shortcuts={[
+          { key: "Esc", desc: "Back to queue" },
+          { key: "h", desc: "Toggle highlights panel" },
+          { key: "f", desc: "Focus mode" },
+          { key: "c", desc: "Connections panel (desktop)" },
+          { key: "?", desc: "Show this help" },
+        ]}
+      />
     </div>
   );
 }
@@ -1854,15 +2113,7 @@ function ImageZoomModal({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const imageRef = useRef<HTMLImageElement>(null);
 
-  // Lock body scroll
-  useEffect(() => {
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "unset";
-    };
-  }, []);
-
-  // Lock body scroll
+  // Lock body scroll while modal is open
   useEffect(() => {
     document.body.style.overflow = "hidden";
     return () => {

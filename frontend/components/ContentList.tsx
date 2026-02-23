@@ -84,9 +84,19 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
     Array<{ id: string; name: string }>
   >([]);
 
-  // Current filter selection
-  // read from URL query params or default to 'all'
+  // Current filter selection — read from URL query params or default to 'all'
   const filter = (searchParams.get("filter") as FilterType) || "all";
+
+  // Restore persisted filter on first load (if URL has no ?filter= param)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!searchParams.get("filter")) {
+      const saved = localStorage.getItem("contentListFilter");
+      if (saved && saved !== "all") {
+        router.replace(`/dashboard?filter=${saved}`);
+      }
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Pagination state - backend returns total count
   const [total, setTotal] = useState(0);
@@ -484,7 +494,10 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
                   currentFilter={filter}
                   currentTags={selectedTags}
                   availableTags={availableTags}
-                  onSelectFilter={() => setFilterOpen(false)}
+                  onSelectFilter={(f) => {
+                    localStorage.setItem("contentListFilter", f);
+                    setFilterOpen(false);
+                  }}
                   onToggleTag={(tag) => {
                     setSelectedTags((prev) => {
                       if (prev.includes(tag)) {

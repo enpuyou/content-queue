@@ -149,6 +149,8 @@ export const contentAPI = {
   update: async (
     id: string,
     data: {
+      title?: string;
+      description?: string;
       is_read?: boolean;
       is_archived?: boolean;
       read_position?: number;

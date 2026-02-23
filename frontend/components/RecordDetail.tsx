@@ -32,13 +32,18 @@ export default function RecordDetail({
     usePlayer();
   const [justQueued, setJustQueued] = useState<string | null>(null);
 
-  // Animate in/out
+  // Animate in/out + lock body scroll
   useEffect(() => {
     if (isOpen) {
+      document.body.style.overflow = "hidden";
       requestAnimationFrame(() => setVisible(true));
     } else {
+      document.body.style.overflow = "";
       setVisible(false);
     }
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [isOpen]);
 
   // Reset edit states when record changes
@@ -387,9 +392,9 @@ export default function RecordDetail({
             {/* Close button */}
             <button
               onClick={onClose}
-              className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center border border-[var(--color-border)] bg-[var(--color-bg-primary)] text-[var(--color-text-muted)] hover:border-[var(--color-text-primary)] hover:text-[var(--color-text-primary)] transition-colors text-base leading-none z-10"
+              className="absolute top-3 right-3 w-7 h-7 flex items-center justify-center border border-[var(--color-border)] bg-[var(--color-bg-primary)] text-[var(--color-text-muted)] hover:border-red-400 hover:text-red-400 transition-colors z-10"
             >
-              &times;
+              <span className="leading-none text-[16px] pb-0.5">&times;</span>
             </button>
 
             {/* Artist */}
@@ -482,15 +487,13 @@ export default function RecordDetail({
                     {tracks.map((track, i) => (
                       <div
                         key={i}
-                        className="flex items-center justify-between py-1 text-[13px] text-[var(--color-text-secondary)] border-b border-black/[0.04] last:border-b-0"
+                        className="flex items-baseline justify-between py-1.5 text-[13px] text-[var(--color-text-secondary)] border-b border-black/[0.04] last:border-b-0"
                       >
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <span className="font-mono text-[11px] text-[var(--color-text-faint)] w-7 flex-shrink-0 leading-none">
+                        <div className="flex items-baseline gap-1.5 min-w-0">
+                          <span className="font-mono text-[11px] text-[var(--color-text-faint)] w-7 flex-shrink-0">
                             {track.position}
                           </span>
-                          <span className="truncate leading-none">
-                            {track.title}
-                          </span>
+                          <span className="truncate">{track.title}</span>
                         </div>
                         {track.duration && (
                           <span className="font-mono text-[11px] text-[var(--color-text-faint)] flex-shrink-0 ml-2">
@@ -532,20 +535,22 @@ export default function RecordDetail({
                 return (
                   <div
                     key={video.uri}
-                    className="flex items-center gap-1.5 sm:gap-2 py-1 group/video"
+                    className="flex flex-nowrap items-center gap-1.5 sm:gap-2 py-0.5 sm:py-1 group/video"
                   >
-                    <a
-                      href={video.uri}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 min-w-0 font-mono text-[11px] sm:text-[12px] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] truncate no-underline transition-colors"
-                    >
-                      {video.title ||
-                        video.uri.replace(
-                          /https?:\/\/(www\.)?youtube\.com\/watch\?v=/,
-                          "",
-                        )}
-                    </a>
+                    <div className="flex-1 min-w-0 overflow-hidden">
+                      <a
+                        href={video.uri}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline font-mono text-[11px] sm:text-[12px] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] no-underline transition-colors"
+                      >
+                        {video.title ||
+                          video.uri.replace(
+                            /https?:\/\/(www\.)?youtube\.com\/watch\?v=/,
+                            "",
+                          )}
+                      </a>
+                    </div>
                     {vid && (
                       <>
                         <button

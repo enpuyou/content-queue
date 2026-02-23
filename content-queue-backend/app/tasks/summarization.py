@@ -4,6 +4,7 @@ from app.core.celery_app import celery_app
 from app.core.database import SessionLocal
 from app.models.content import ContentItem
 from app.core.config import settings
+from app.tasks.base import html_to_plain
 from uuid import UUID
 import logging
 from openai import OpenAI
@@ -54,9 +55,9 @@ def generate_summary(self, content_item_id: str):
 
         logger.info(f"Generating summary for {item.original_url}")
 
-        # Truncate text to avoid token limits (approx 10k words is plenty for context)
-        # gpt-4o-mini has 128k context but lets be reasonable
-        text_content = item.full_text
+        # Strip HTML tags — full_text is always HTML regardless of source.
+        # Truncate to 10k words (gpt-4o-mini has 128k context but this is plenty).
+        text_content = html_to_plain(item.full_text)
         words = text_content.split()
         if len(words) > 10000:
             text_content = " ".join(words[:10000])

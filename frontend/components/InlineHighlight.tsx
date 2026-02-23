@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { SHOW_HIGHLIGHT_CONNECTIONS } from "@/lib/flags";
-import { highlightsAPI, searchAPI } from "@/lib/api";
+import { highlightsAPI } from "@/lib/api";
 
 interface InlineHighlightProps {
   id: string;
@@ -21,6 +21,7 @@ interface InlineHighlightProps {
   isMobile?: boolean;
   onShowConnections?: (highlightId: string) => void;
   showIndicators?: boolean;
+  hasConnections?: boolean;
 }
 
 const colors = ["yellow", "green", "blue", "pink", "purple"];
@@ -42,13 +43,14 @@ export default function InlineHighlight({
   isMobile = false,
   onShowConnections,
   showIndicators = true,
+  hasConnections: hasConnectionsProp = false,
 }: InlineHighlightProps) {
   // Internal state for uncontrolled usage (fallback)
   const [internalIsOpen, setInternalIsOpen] = useState(false);
   const [internalNote, setInternalNote] = useState(initialNote || "");
   const [color, setColor] = useState(initialColor);
   const [isSaving, setIsSaving] = useState(false);
-  const [hasConnections, setHasConnections] = useState(false);
+  const hasConnections = hasConnectionsProp;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Derived state
@@ -89,20 +91,6 @@ export default function InlineHighlight({
     }
     setColor(initialColor);
   }, [initialNote, initialColor, isControlled]);
-
-  // Check for connections on mount
-  useEffect(() => {
-    const checkConnections = async () => {
-      try {
-        const connections = await searchAPI.findHighlightConnections(id, 1);
-        setHasConnections(connections.length > 0);
-      } catch {
-        setHasConnections(false);
-      }
-    };
-
-    checkConnections();
-  }, [id]);
 
   useEffect(() => {
     if (isOpen && textareaRef.current) {

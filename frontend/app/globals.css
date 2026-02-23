@@ -1434,8 +1434,8 @@ h4:hover .heading-anchor {
   font-size: 0.875rem !important;
   color: var(--color-text-muted) !important;
   font-style: italic !important;
-  text-align: center !important;
-  padding: 0 1em !important;
+  text-align: left !important;
+  padding: 0 !important;
 }
 
 /* Adaptive spacing - reduce gaps between related elements */
@@ -1678,4 +1678,27 @@ h4:hover .heading-anchor {
 .animate-reveal-fade {
   animation: reveal-fade 1s ease-out forwards;
   opacity: 0;
+}
+
+/* Heading Anchors */
+.heading-anchor {
+  text-decoration: none;
+  border-bottom: none !important;
+  float: left;
+  margin-left: -1.2em;
+  padding-right: 0.5em;
+  opacity: 0;
+  transition: opacity 0.2s;
+  color: var(--color-accent);
+}
+
+.heading-anchor::before {
+  content: "#";
+}
+
+h1:hover .heading-anchor,
+h2:hover .heading-anchor,
+h3:hover .heading-anchor,
+h4:hover .heading-anchor {
+  opacity: 1;
 }

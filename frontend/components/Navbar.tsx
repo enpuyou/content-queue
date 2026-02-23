@@ -135,8 +135,8 @@ export default function Navbar() {
 
           {/* Mobile: Mini Player, Theme Toggle and Menu Button */}
           <div className="flex md:hidden items-center gap-2">
-            {/* Mini player — album art + play/pause */}
-            {playerCurrent && (
+            {/* Mini player — album art + play/pause (mounted guard prevents hydration mismatch) */}
+            {mounted && playerCurrent && (
               <button
                 onClick={toggle}
                 className="compact-touch relative w-6 h-6 flex-shrink-0 overflow-hidden border border-[var(--color-border)] bg-[var(--color-bg-tertiary)]"

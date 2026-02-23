@@ -44,6 +44,7 @@ import parse, {
   attributesToProps,
 } from "html-react-parser";
 import InlineHighlight from "./InlineHighlight";
+import { stripDocumentWrappers } from "@/lib/bionicReading";
 
 const HighlightRenderer = ({
   html,
@@ -54,14 +55,20 @@ const HighlightRenderer = ({
   onUpdateHighlight,
   newlyCreatedHighlightId, // to trigger auto-open
   onShowConnections,
+  connectedHighlightIds = new Set(),
 }: HighlightRendererProps & {
   onDeleteHighlight?: (id: string) => void;
   onUpdateHighlight?: () => void;
   newlyCreatedHighlightId?: string | null;
   onShowConnections?: (highlightId: string) => void;
+  connectedHighlightIds?: Set<string>;
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [renderedHtml, setRenderedHtml] = useState<string>(html);
+  // Strip PDF document wrappers (DOCTYPE, html, head, body) to avoid React hydration errors
+  // No-op for regular articles (trafilatura doesn't include these wrappers)
+  const [renderedHtml, setRenderedHtml] = useState<string>(
+    stripDocumentWrappers(html),
+  );
   const { settings } = useReadingSettings();
   const [isMobile, setIsMobile] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -97,8 +104,14 @@ const HighlightRenderer = ({
     const activeHighlights = [...highlights];
     const parser = new DOMParser();
 
-    // IMPORTANT: Count character positions on the ORIGINAL html first
-    const originalDoc = parser.parseFromString(html, "text/html");
+    // Always parse from the stripped source html — same content as the initial renderedHtml
+    // state, but doesn't create a setState → re-run → setState loop.
+    // stripDocumentWrappers handles PDF wrappers (DOCTYPE/html/head/body) and is a no-op
+    // for normal articles, so offsets are consistent with what the reader renders.
+    const originalDoc = parser.parseFromString(
+      stripDocumentWrappers(html),
+      "text/html",
+    );
 
     const walker = document.createTreeWalker(
       originalDoc.body,
@@ -314,7 +327,7 @@ const HighlightRenderer = ({
           onUpdate={onUpdateHighlight}
           onHighlightClick={
             onHighlightClick
-              ? () =>
+              ? (_id, element) =>
                   onHighlightClick(
                     highlight || {
                       id,
@@ -323,10 +336,12 @@ const HighlightRenderer = ({
                       start_offset: 0,
                       end_offset: 0,
                     },
+                    element as HTMLElement,
                   )
               : undefined
           }
           onShowConnections={onShowConnections}
+          hasConnections={connectedHighlightIds.has(id)}
           isMobile={isMobile}
         >
           {domToReact(node.children as DOMNode[], { replace: transform })}

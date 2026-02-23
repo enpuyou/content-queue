@@ -37,4 +37,4 @@ celery_app.conf.update(
 # celery_app.autodiscover_tasks(['app.tasks'])
 
 # Import tasks here (explicit import)
-from app.tasks import extraction, summarization, cleanup, discogs, embedding
+from app.tasks import extraction, summarization, cleanup, discogs, embedding, tagging

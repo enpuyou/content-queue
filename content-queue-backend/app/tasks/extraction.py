@@ -1,452 +1,597 @@
-from app.core.celery_app import celery_app
-from app.models.content import ContentItem
-from app.tasks.embedding import generate_embedding
-from app.tasks.base import DatabaseTask
-from uuid import UUID
+import logging
+import re
 import requests
+import trafilatura
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
-import logging
-import trafilatura
+from app.core.celery_app import celery_app
+from app.tasks.base import DatabaseTask
+from app.models.content import ContentItem
+from app.tasks.embedding import generate_embedding
 
 logger = logging.getLogger(__name__)
 
 
-@celery_app.task(base=DatabaseTask, bind=True, max_retries=3)
-def extract_metadata(self, content_item_id: str):
-    """
-    Extract metadata from a URL.
+def _is_pdf_url(url: str) -> bool:
+    """Heuristic: URL path ends in .pdf or contains /pdf/."""
+    url_lower = url.lower().split("?")[0]
+    return url_lower.endswith(".pdf") or "/pdf/" in url_lower
 
-    - Fetches the URL
-    - Parses HTML to extract title, description, thumbnail
-    - Updates content item in database
+
+def _detect_content_type(url: str, response_headers: dict) -> str:
+    """Detect content type from response Content-Type header or URL."""
+    ct = response_headers.get("content-type", "").lower()
+    if "application/pdf" in ct:
+        return "pdf"
+    if _is_pdf_url(url):
+        return "pdf"
+    if "video" in ct:
+        return "video"
+    return "article"
+
+
+@celery_app.task(
+    bind=True,
+    base=DatabaseTask,
+    name="app.tasks.extraction.extract_metadata",
+)
+def extract_metadata(self, item_id: str):
     """
+    Background task: download URL, extract content, save HTML to DB.
+
+    For PDFs: uses YOLO layout detection pipeline (extract_with_yolo).
+    For articles: Phase 1 fetches OG metadata + thumbnail, then triggers
+                  extract_full_content for full HTML with images/links.
+    """
+    item = self.db.query(ContentItem).filter(ContentItem.id == item_id).first()
+    if not item:
+        logger.error(f"ContentItem {item_id} not found")
+        return
+
+    # Extension path: full text already provided — only fetch OG metadata if needed
+    if item.full_text and len(item.full_text.strip()) > 100:
+        # If the extension already sent all key metadata, skip the HTTP fetch entirely.
+        # This avoids 403 errors on paywalled/rate-limited sites (e.g. NYT, Nature).
+        has_metadata = bool(item.thumbnail_url and item.description)
+        if not has_metadata:
+            logger.info(
+                f"Extension-submitted item {item_id} — fetching OG metadata only, skipping extraction pipeline"
+            )
+            try:
+                request_headers = {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+                }
+                resp = requests.get(
+                    item.original_url, timeout=15, headers=request_headers
+                )
+                resp.raise_for_status()
+                soup = BeautifulSoup(resp.content, "html.parser")
+                metadata = _extract_page_metadata(soup, item.original_url)
+                # Only fill fields that aren't already set by the extension
+                if not item.title:
+                    item.title = metadata.get("title")
+                if not item.description:
+                    item.description = metadata.get("description")
+                if not item.thumbnail_url:
+                    item.thumbnail_url = metadata.get("thumbnail")
+                if not item.author:
+                    item.author = metadata.get("author")
+                if not item.published_date and metadata.get("published_date"):
+                    try:
+                        from dateutil import parser as dateparser
+
+                        item.published_date = dateparser.parse(
+                            metadata["published_date"]
+                        )
+                    except Exception:
+                        pass
+                item.content_type = _detect_content_type(
+                    item.original_url, dict(resp.headers)
+                )
+            except Exception as exc:
+                logger.warning(
+                    f"Could not fetch OG metadata for {item.original_url}: {exc}"
+                )
+        else:
+            logger.info(
+                f"Extension-submitted item {item_id} — metadata already present, skipping HTTP fetch"
+            )
+            item.content_type = _detect_content_type(item.original_url, {})
+        # Status stays "completed" as set by the API handler
+        self.db.commit()
+        return
+
+    url = item.original_url
+    logger.info(f"Extracting content for {url}")
+
     try:
-        # Get content item from database
-        item = (
-            self.db.query(ContentItem)
-            .filter(ContentItem.id == UUID(content_item_id))
-            .first()
-        )
-        if not item:
-            logger.error(f"Content item {content_item_id} not found")
-            return
-
-        # Update status to processing
         item.processing_status = "processing"
         self.db.commit()
 
-        logger.info(f"Extracting metadata for {item.original_url}")
-
-        # Fetch the URL
-        # Fetch the URL with improved headers
-        headers = {
+        request_headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
             "Accept-Language": "en-US,en;q=0.5",
             "Referer": "https://www.google.com/",
             "Connection": "keep-alive",
             "Upgrade-Insecure-Requests": "1",
-            # Removing Sec- headers as they can trigger bot detection if TLS fingerprint doesn't match
         }
-        response = requests.get(item.original_url, headers=headers, timeout=10)
-        response.raise_for_status()
+        resp = requests.get(url, timeout=30, headers=request_headers)
+        resp.raise_for_status()
 
-        # Parse HTML
-        soup = BeautifulSoup(response.content, "html.parser")
+        content_type = _detect_content_type(url, dict(resp.headers))
+        item.content_type = content_type
 
-        # Extract metadata
-        metadata = extract_page_metadata(soup, item.original_url)
-
-        # Update item metadata
-        item.title = metadata.get("title")
-        item.description = metadata.get("description")
-        item.thumbnail_url = metadata.get("thumbnail")
-        item.content_type = metadata.get("content_type", "article")
-
-        # logic: if article, we continue processing. if not, we are done.
-        if item.content_type == "article":
-            # Keep processing status
-            self.db.commit()
-            logger.info(
-                f"Successfully extracted metadata for {item.original_url}, proceeding to full text"
-            )
-            extract_full_content.delay(content_item_id)
-        else:
+        if content_type == "pdf":
+            _process_pdf(item, resp.content, url)
             item.processing_status = "completed"
-            item.processing_error = None
             self.db.commit()
-            logger.info(
-                f"Successfully extracted metadata for {item.original_url} (non-article)"
-            )
+            logger.info(f"PDF extraction complete for {url}")
+            generate_embedding.delay(str(item.id))
+        else:
+            # Phase 1: extract metadata + thumbnail from OG tags immediately
+            soup = BeautifulSoup(resp.content, "html.parser")
+            metadata = _extract_page_metadata(soup, url)
+            item.title = metadata.get("title")
+            item.description = metadata.get("description")
+            item.thumbnail_url = metadata.get("thumbnail")
+            item.author = metadata.get("author")
+            if metadata.get("published_date"):
+                try:
+                    from dateutil import parser as dateparser
 
-        return {
-            "content_item_id": content_item_id,
-            "title": item.title,
-            "status": "completed",
-        }
+                    item.published_date = dateparser.parse(metadata["published_date"])
+                except Exception:
+                    pass
+            # processing_status stays "processing" — full content not yet extracted
+            self.db.commit()
+            logger.info(f"Metadata extracted for {url}, queuing full content")
+            # Phase 2: extract full text + images as a separate task
+            extract_full_content.delay(item_id)
 
-    except requests.RequestException as e:
-        # Check for 403 Forbidden - do not retry as it's likely a permanent block
-        if isinstance(e, requests.HTTPError) and e.response.status_code == 403:
-            logger.error(f"Access forbidden (403) for {content_item_id}: {str(e)}")
+        return {"item_id": item_id, "status": "ok"}
+
+    except requests.HTTPError as exc:
+        status_code = exc.response.status_code if exc.response is not None else 0
+        # 403 = permanent block, don't retry
+        if status_code == 403:
+            logger.error(f"Access forbidden (403) for {url}")
             item.processing_status = "failed"
             item.processing_error = "Access forbidden (403) - Site blocks bots"
             self.db.commit()
             return
-
-        # Network error - retry other errors
-        logger.warning(f"Request failed for {content_item_id}: {str(e)}")
+        logger.error(f"HTTP {status_code} fetching {url}")
         item.processing_status = "failed"
-        item.processing_error = f"Request error: {str(e)}"
+        item.processing_error = f"HTTP {status_code}: {str(exc)}"
+        self.db.commit()
+        raise self.retry(exc=exc, countdown=60 * (2**self.request.retries))
+    except requests.Timeout:
+        logger.error(f"Timeout fetching {url}")
+        item.processing_status = "failed"
+        item.processing_error = "Request timed out"
+        self.db.commit()
+        raise self.retry(
+            exc=Exception("Timeout"), countdown=60 * (2**self.request.retries)
+        )
+    except Exception as exc:
+        logger.error(f"Extraction failed for {url}: {exc}", exc_info=True)
+        item.processing_status = "failed"
+        item.processing_error = str(exc)
         self.db.commit()
 
-        # Retry with exponential backoff
-        raise self.retry(exc=e, countdown=60 * (2**self.request.retries))
 
-    except Exception as e:
-        # Other error - mark as failed
-        logger.error(f"Failed to extract metadata for {content_item_id}: {str(e)}")
-        item.processing_status = "failed"
-        item.processing_error = str(e)
-        self.db.commit()
-        return {"content_item_id": content_item_id, "status": "failed", "error": str(e)}
-
-
-def clean_html_tree(soup: BeautifulSoup):
+@celery_app.task(bind=True, base=DatabaseTask, max_retries=2)
+def extract_full_content(self, item_id: str):
     """
-    Clean the HTML tree before passing to Trafilatura.
-    Removes noise, comments, and fixes structure that might confuse specific extractors.
+    Phase 2: download URL again and extract full article HTML with images and links.
+    Uses trafilatura XML → xml_to_html pipeline with image context matching.
+    Triggers embedding generation on success.
     """
-    if not soup:
+    item = self.db.query(ContentItem).filter(ContentItem.id == item_id).first()
+    if not item:
+        logger.error(f"ContentItem {item_id} not found")
         return
 
-    # 1. Remove Comments
-    comment_selectors = [
-        "#comments",
-        ".comments-area",
-        "div[class*='comments-area']",
-        ".comment-list",
-        "[data-test-id='comment-list']",
-        ".comments-section",
-        "div[id^='comments']",
-    ]
-    for selector in comment_selectors:
-        for match in soup.select(selector):
-            match.decompose()
+    # Skip extraction if pre-extracted HTML is already present (e.g. from browser extension)
+    if item.full_text and len(item.full_text.strip()) > 100:
+        logger.info(
+            f"Skipping extraction for {item_id} — pre-extracted HTML already present"
+        )
+        generate_embedding.delay(item_id)
+        return
 
-    # 2. Remove Specific Noise Phrases (Sidebars, CTAs)
-    noise_phrases = [
-        "Reading Progress",
-        "On This Page",
-        "Schedule a Mock Interview",
-        "Mark as read",
-        "Your account is free and you can post anonymously",
-    ]
+    if not item.title:
+        item.title = _extract_domain_from_url(item.original_url)
 
-    for phrase in noise_phrases:
-        # Find identifying strings
-        matches = list(soup.find_all(string=lambda t: t and phrase in t))
-        for text_node in matches:
-            if not text_node.parent:
-                continue  # Already removed
-
-            # Walk up to find the container to remove
-            curr = text_node.parent
-            depth = 0
-            while curr and depth < 5:
-                if curr.name in ["body", "html", "main", "article"]:
-                    break
-
-                # If we hit a block level container, remove it
-                if curr.name in ["div", "section", "aside", "nav"]:
-                    # Safely remove
-                    curr.decompose()
-                    break
-
-                curr = curr.parent
-                depth += 1
-
-    # 3. Convert Material UI Typography to <p>
-    # Trafilatura handles <p> tags better than <div> for link-heavy content
-    for div in soup.select("div.MuiTypography-body1"):
-        div.name = "p"
-
-
-@celery_app.task(base=DatabaseTask, bind=True, max_retries=2)
-def extract_full_content(self, content_item_id: str):
-    """
-    Extract full article text from a URL with HTML formatting.
-
-    - Uses trafilatura to extract HTML with formatting preserved
-    - Calculates word count and reading time
-    - Includes timeout and error handling
-    - Updates content item in database
-    """
-    # TODO: Update content extraction to return HTML instead of plain text
-    # - Use newspaper3k's .article_html or trafilatura's output_format='html'
-    # - This will preserve formatting, links, and structure
-    # - Frontend currently uses formatTextToHtml() as a workaround
+    logger.info(f"Extracting full content for {item.original_url}")
 
     try:
-        # Get content item from database
-        item = (
-            self.db.query(ContentItem)
-            .filter(ContentItem.id == UUID(content_item_id))
-            .first()
-        )
-        if not item:
-            logger.error(f"Content item {content_item_id} not found")
-            return
-
-        # Set fallback title if metadata extraction failed
-        if not item.title:
-            item.title = extract_domain_from_url(item.original_url)
-
-        logger.info(f"Extracting full content for {item.original_url}")
-
-        # Fetch the URL (again, but cached by browser/CDN usually)
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        request_headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.5",
+            "Referer": "https://www.google.com/",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1",
         }
+        resp = requests.get(item.original_url, timeout=30, headers=request_headers)
+        resp.raise_for_status()
+    except requests.Timeout:
+        logger.warning(f"Timeout fetching full content for {item.original_url}")
+        item.processing_error = "Request timed out"
+        item.processing_status = "completed"  # Graceful: metadata already saved
+        self.db.commit()
+        return
+    except requests.RequestException as exc:
+        logger.warning(f"Request failed for full content {item.original_url}: {exc}")
+        item.processing_error = f"Request error: {str(exc)[:200]}"
+        item.processing_status = "completed"  # Graceful: metadata already saved
+        self.db.commit()
+        return
 
-        try:
-            response = requests.get(item.original_url, headers=headers, timeout=30)
-            response.raise_for_status()
-        except requests.Timeout:
-            logger.warning(f"Timeout fetching {item.original_url}")
-            item.processing_error = "Request timed out"
-            self.db.commit()
-            return {"content_item_id": content_item_id, "status": "timeout"}
-        except requests.RequestException as e:
-            logger.warning(f"Request failed for {content_item_id}: {str(e)}")
-            item.processing_error = f"Request error: {str(e)[:200]}"
-            # Graceful degradation: mark as completed so user can see metadata at least
-            item.processing_status = "completed"
-            self.db.commit()
-            return {
-                "content_item_id": content_item_id,
-                "status": "failed",
-                "error": str(e),
-            }
+    downloaded = resp.content
 
-        # Extract article HTML using trafilatura (preserves formatting)
-        downloaded = response.content
+    # Try trafilatura XML extraction (preserves structure, images, links)
+    xml_content = trafilatura.extract(
+        downloaded,
+        include_comments=False,
+        include_tables=True,
+        include_images=True,
+        include_links=True,
+        output_format="xml",
+        no_fallback=False,
+    )
 
-        # PRE-PROCESSING: Clean HTML tree
-        # Parse with BS to remove noise before extraction
-        try:
-            # Trafilatura handles bytes/string. BS handles bytes best.
-            soup = BeautifulSoup(downloaded, "html.parser")
-            clean_html_tree(soup)
-            cleaned_html = str(soup)
-            downloaded = cleaned_html  # Use cleaned HTML for extraction
-        except Exception as e:
-            logger.warning(f"Error during HTML pre-cleaning: {e}")
-            # If cleaning fails, proceed with original content
+    html_text = None
+    if xml_content:
+        logger.debug(f"XML extracted ({len(xml_content)} chars), converting to HTML")
+        html_text = xml_to_html(xml_content, original_html=downloaded)
 
-        # First try: Extract as HTML with formatting
-        xml_content = trafilatura.extract(
-            downloaded,
-            include_comments=False,
-            include_tables=True,
-            include_images=True,
-            include_links=True,
-            output_format="xml",  # XML preserves structure better than plain HTML
-            no_fallback=False,
+    # Fallback: plain text → paragraphs
+    if not html_text or len(html_text.strip()) < 100:
+        logger.info(
+            f"XML insufficient, falling back to plain text for {item.original_url}"
         )
+        plain_text = trafilatura.extract(
+            downloaded, include_comments=False, no_fallback=False
+        )
+        if plain_text:
+            html_text = _text_to_html_paragraphs(plain_text)
 
-        # Convert XML to clean HTML, passing original HTML to preserve header hierarchy
-        if xml_content:
-            logger.debug(f"Extracted XML, length: {len(xml_content)}")
-            html_text = xml_to_html(xml_content, original_html=downloaded)
-            logger.debug(
-                f"Converted to HTML, length: {len(html_text) if html_text else 0}"
-            )
+    if html_text and len(html_text.strip()) > 100:
+        item.full_text = html_text
+        plain = BeautifulSoup(html_text, "html.parser").get_text()
+        words = plain.split()
+        item.word_count = len(words)
+        item.reading_time_minutes = max(1, round(len(words) / 200))
+        item.processing_error = None
+        item.processing_status = "completed"
+        self.db.commit()
+        logger.info(
+            f"Full content extracted ({item.word_count} words) for {item.original_url}"
+        )
+        generate_embedding.delay(item_id)
+    else:
+        logger.warning(f"No substantial text extracted from {item.original_url}")
+        item.processing_error = "Could not extract article text"
+        item.processing_status = "completed"
+        self.db.commit()
+
+
+def _process_pdf(item: ContentItem, pdf_bytes: bytes, url: str):
+    """Extract PDF content and populate item fields. Does not store pdf_bytes."""
+    from app.tasks.extraction_implementations import extract_with_yolo
+    import fitz
+
+    html = extract_with_yolo(pdf_bytes, url)
+    if not html:
+        raise ValueError("PDF extraction returned empty result")
+
+    # Extract title from the first heading in the rendered HTML — this is the
+    # actual displayed title as extracted from the document body, which is more
+    # reliable than the font-size heuristic used during prescan.
+    # Remove it from full_text so the reader doesn't show it twice.
+    html_soup = BeautifulSoup(html, "html.parser")
+    html_title = None
+    for tag in ("h1", "h2"):
+        heading = html_soup.find(tag)
+        if heading:
+            text = heading.get_text(strip=True)
+            if len(text) > 5:
+                html_title = text
+                heading.decompose()
+                html = str(html_soup)
+                break
+
+    injected_abstract = None
+    # BeautifulSoup may reorder attributes — match either order
+    desc_match = re.search(
+        r'<meta name="extraction-description" content="([^"]+)">', html
+    ) or re.search(r'<meta content="([^"]+)" name="extraction-description"', html)
+    if desc_match:
+        injected_abstract = desc_match.group(1).replace("&quot;", '"')
+
+    try:
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        meta = doc.metadata
+        doc.close()
+
+        # Title priority: heading from extracted HTML > PDF metadata > URL fallback
+        if html_title:
+            item.title = html_title
         else:
-            html_text = None
+            item.title = (meta.get("title") or "").strip() or _title_from_url(url)
 
-        # If XML extraction produced nothing or very little, try plain text
-        if not html_text or len(html_text.strip()) < 100:
-            logger.info(
-                f"XML extraction insufficient, falling back to plain text for {item.original_url}"
-            )
-            plain_text = trafilatura.extract(
-                downloaded, include_comments=False, no_fallback=False
-            )
-            if plain_text:
-                # Convert plain text to HTML paragraphs
-                logger.debug(f"Plain text extracted: {len(plain_text)} chars")
-                html_text = text_to_html_paragraphs(plain_text)
+        if injected_abstract:
+            item.description = injected_abstract
 
+        author = (meta.get("author") or "").strip()
+        item.author = author or None
+    except Exception:
+        item.title = html_title or _title_from_url(url)
+        if injected_abstract:
+            item.description = injected_abstract
+
+    # Strip author bylines and abstract from HTML body — both are shown in the
+    # Reader header, so displaying them again in the body duplicates them.
+    body_soup = BeautifulSoup(html, "html.parser")
+
+    # Collect direct children of the first .page div in order — this is where
+    # the title, author lines, abstract heading, and abstract paragraph all live.
+    page_div = body_soup.find("div", class_="page")
+    page_blocks = list(page_div.children) if page_div else []
+    page_blocks = [b for b in page_blocks if hasattr(b, "name") and b.name]
+
+    # ── Author removal ────────────────────────────────────────────────────────
+    # The title <h1> was already stripped above. Walk the remaining front-matter
+    # blocks: remove short <p> tags (author names, affiliations, junk) and short
+    # junk headings (e.g. arXiv IDs) until we hit the "abstract" heading/paragraph
+    # or a long paragraph (>= 300 chars) that isn't an inline abstract.
+    for block in page_blocks:
+        tag = block.name
+        text = block.get_text(strip=True)
+        # Hit a standalone "Abstract" heading — done with author area
+        if text.lower() == "abstract":
+            break
+        # Long paragraph — could be abstract (inline "ABSTRACT:" label) or body; stop either way
+        if tag == "p" and len(text) >= 300:
+            break
+        # Short paragraph = author/affiliation/junk line, remove
+        if tag == "p" and len(text) < 300:
+            block.decompose()
+        # Short heading that isn't a section (e.g. arXiv IDs injected as h1)
+        if tag in ("h1", "h2", "h3") and len(text) < 60 and text.lower() != "abstract":
+            block.decompose()
+
+    # ── Abstract detection & removal ──────────────────────────────────────────
+    # Two formats seen in the wild:
+    #   A) Separate heading: <h1>ABSTRACT</h1> followed by <p>text...</p>
+    #   B) Inline label:     <p>ABSTRACT: text...</p>  (no separate heading)
+    # In both cases: extract text as description (if not set), remove from body.
+
+    abstract_paragraph = None  # the <p> to remove
+
+    # Format A: standalone heading
+    abstract_heading = next(
+        (
+            h
+            for h in body_soup.find_all(["h1", "h2", "h3", "h4"])
+            if h.get_text(strip=True).lower() == "abstract"
+        ),
+        None,
+    )
+    if abstract_heading:
+        # Walk siblings after the heading, skip junk headings, collect first real <p>
+        for sibling in abstract_heading.find_next_siblings():
+            if not hasattr(sibling, "name") or not sibling.name:
+                continue
+            stext = sibling.get_text(strip=True)
+            # Hit a numbered section heading — stop
+            if sibling.name in ("h1", "h2", "h3", "h4") and re.match(r"^\d", stext):
+                break
+            # Short junk heading (e.g. arXiv ID) — remove and keep looking
+            if sibling.name in ("h1", "h2", "h3") and len(stext) < 60:
+                sibling.decompose()
+                continue
+            if sibling.name == "p" and len(stext) > 50:
+                abstract_paragraph = sibling
+                break
+        abstract_heading.decompose()
+
+    # Format B: inline "ABSTRACT:" label inside a <p> (no separate heading)
+    if not abstract_paragraph:
+        for p in body_soup.find_all("p"):
+            ptext = p.get_text(strip=True)
+            if (
+                re.match(r"^abstract\s*[:\-]?\s*\S", ptext, re.IGNORECASE)
+                and len(ptext) > 100
+            ):
+                abstract_paragraph = p
+                break
+
+    if abstract_paragraph:
+        raw = abstract_paragraph.get_text(strip=True)
+        # Strip inline "ABSTRACT:" label from stored description
+        desc_text = re.sub(
+            r"^abstract\s*[:\-]?\s*", "", raw, flags=re.IGNORECASE
+        ).strip()
+        if not item.description:
+            item.description = desc_text
+        abstract_paragraph.decompose()
+
+    # ── Thumbnail from first figure image ─────────────────────────────────────
+    # PDFs have no og:image. Use the first figure image as thumbnail and remove
+    # it from the body (the reader shows the thumbnail separately in the header).
+    if not item.thumbnail_url:
+        first_figure = body_soup.find("div", class_="figure-block")
+        if first_figure:
+            first_img = first_figure.find("img")
+            if first_img and first_img.get("src", "").startswith("data:"):
+                item.thumbnail_url = first_img["src"]
+                first_figure.decompose()
+
+    item.full_text = str(body_soup)
+
+    text_only = re.sub(r"<[^>]+>", " ", item.full_text)
+    words = len(text_only.split())
+    item.word_count = words
+    item.reading_time_minutes = max(1, words // 200)
+
+
+def _extract_page_metadata(soup: BeautifulSoup, url: str) -> dict:
+    """
+    Extract metadata from HTML using Open Graph tags with intelligent fallbacks.
+    Priority: og: tags > twitter: tags > standard meta > fallback
+    """
+    metadata = {}
+
+    # Title
+    og_title = soup.find("meta", property="og:title")
+    twitter_title = soup.find("meta", attrs={"name": "twitter:title"})
+    title_tag = soup.find("title")
+    if og_title and og_title.get("content"):
+        metadata["title"] = og_title["content"]
+    elif twitter_title and twitter_title.get("content"):
+        metadata["title"] = twitter_title["content"]
+    elif title_tag and title_tag.string:
+        metadata["title"] = title_tag.string.strip()
+    else:
+        metadata["title"] = _title_from_url(url)
+
+    # Description
+    og_desc = soup.find("meta", property="og:description")
+    twitter_desc = soup.find("meta", attrs={"name": "twitter:description"})
+    meta_desc = soup.find("meta", attrs={"name": "description"})
+    if og_desc and og_desc.get("content"):
+        metadata["description"] = og_desc["content"]
+    elif twitter_desc and twitter_desc.get("content"):
+        metadata["description"] = twitter_desc["content"]
+    elif meta_desc and meta_desc.get("content"):
+        metadata["description"] = meta_desc["content"]
+
+    # Thumbnail
+    og_image = soup.find("meta", property="og:image")
+    twitter_image = soup.find("meta", attrs={"name": "twitter:image"})
+    if og_image and og_image.get("content"):
+        metadata["thumbnail"] = og_image["content"]
+    elif twitter_image and twitter_image.get("content"):
+        metadata["thumbnail"] = twitter_image["content"]
+
+    # Author — collect all article:author tags (handles multiple authors)
+    author_metas = soup.find_all("meta", property="article:author")
+    if not author_metas:
+        author_metas = soup.find_all("meta", attrs={"name": "author"})
+    author_names = []
+    for m in author_metas:
+        val = (m.get("content") or "").strip()
+        if not val:
+            continue
+        # Skip if the value looks like a URL (profile page link, not a name)
         if (
-            html_text and len(html_text.strip()) > 100
-        ):  # Only save if we got substantial text
-            item.full_text = html_text
+            val.startswith("http://")
+            or val.startswith("https://")
+            or val.startswith("/")
+        ):
+            continue
+        author_names.append(val)
+    # Also try JSON-LD for structured author data
+    if not author_names:
+        import json as _json
 
-            # Calculate word count (strip HTML tags for accurate count)
-            from bs4 import BeautifulSoup as BS
+        for script in soup.find_all("script", type="application/ld+json"):
+            try:
+                data = _json.loads(script.string or "")
+                # Handle both single object and list
+                items = data if isinstance(data, list) else [data]
+                for obj in items:
+                    author_field = obj.get("author") or obj.get("creator")
+                    if not author_field:
+                        continue
+                    if isinstance(author_field, str) and author_field:
+                        author_names.append(author_field)
+                    elif isinstance(author_field, dict):
+                        name = author_field.get("name", "")
+                        if name:
+                            author_names.append(name)
+                    elif isinstance(author_field, list):
+                        for a in author_field:
+                            name = a.get("name", "") if isinstance(a, dict) else str(a)
+                            if name:
+                                author_names.append(name)
+                if author_names:
+                    break
+            except Exception:
+                pass
+    if author_names:
+        metadata["author"] = ", ".join(
+            dict.fromkeys(author_names)
+        )  # deduplicate, preserve order
 
-            plain_text = BS(html_text, "html.parser").get_text()
-            words = plain_text.split()
-            item.word_count = len(words)
+    # Published date
+    pub_meta = (
+        soup.find("meta", property="article:published_time")
+        or soup.find("meta", property="datePublished")
+        or soup.find("meta", attrs={"name": "datePublished"})
+        or soup.find("meta", attrs={"name": "article:published_time"})
+    )
+    if pub_meta and pub_meta.get("content"):
+        metadata["published_date"] = pub_meta["content"].strip()
 
-            # Calculate reading time (average 200 words per minute)
-            item.reading_time_minutes = max(1, round(len(words) / 200))
-
-            # Clear any previous errors but keep status as processing
-            item.processing_error = None
-
-            self.db.commit()
-            logger.info(
-                f"Successfully extracted {item.word_count} words from {item.original_url}"
-            )
-
-            # Trigger embedding generation
-            # (Tagging will be triggered by the embedding task to ensure sequence)
-            generate_embedding.delay(content_item_id)
-
-            return {
-                "content_item_id": content_item_id,
-                "word_count": item.word_count,
-                "reading_time": item.reading_time_minutes,
-                "status": "processing_embedding",
-            }
-        else:
-            logger.warning(f"No substantial text extracted from {item.original_url}")
-            item.processing_error = "Could not extract article text"
-            self.db.commit()
-            return {
-                "content_item_id": content_item_id,
-                "status": "no_text",
-                "message": "Could not extract article text",
-            }
-
-    except Exception as e:
-        logger.warning(
-            f"Failed to extract full content for {content_item_id}: {str(e)}"
-        )
-        # Graceful degradation: keep the item, mark error
-        if item:
-            item.processing_error = f"Extraction error: {str(e)[:200]}"
-            item.processing_status = "completed"
-            self.db.commit()
-        # Don't retry errors for full content extraction (metadata already succeeded)
-        return {"content_item_id": content_item_id, "status": "failed", "error": str(e)}
+    return metadata
 
 
 def xml_to_html(xml_content: str, original_html: bytes = None) -> str:
     """
-    Convert trafilatura XML output to clean HTML, preserving original header hierarchy.
+    Convert trafilatura XML output to clean HTML, preserving original header hierarchy
+    and re-inserting images matched by surrounding text context.
 
     EXTRACTION PRINCIPLES:
     1. IGNORE: Navigation, headers, footers, sidebars - anything NOT in main content
-    2. PRESERVE: All main content including:
-       - Full paragraphs with inline links, emphasis, and formatting
-       - Images with captions
-       - Lists (ordered and unordered)
-       - Code blocks and quotes
-    3. FILTER DUPLICATES:
-       - Skip page title if it appears as a header in content
-       - Skip meta description if it appears as first paragraph
-    4. NORMALIZE HEADERS:
-       - Remove title-matching headers
-       - Map remaining headers to H2-H4 range (max 3 levels)
-       - Preserve relative hierarchy
-    5. SKIP NAVIGATION:
-       - Filter keywords: search, menu, sign in, login, get premium, subscribe, toggle, ⌘
-       - Skip very short headers (<3 chars)
-       - Skip headers before first substantial paragraph (100+ chars)
+    2. PRESERVE: All main content including paragraphs, images, lists, quotes
+    3. FILTER DUPLICATES: Skip page title/meta description appearing in content
+    4. NORMALIZE HEADERS: Map to H2-H4 range, remove title-matching headers
+    5. SKIP NAVIGATION: Filter nav keywords, skip headers before first substantial paragraph
     """
     from bs4 import BeautifulSoup as BS
 
     try:
         soup = BS(xml_content, "xml")
-
-        # Find the main content node
         main = soup.find("main") or soup
 
-        # Extract original header hierarchy and images from source HTML if available
+        # --- Extract original header hierarchy and image context from source HTML ---
         original_header_map = {}
         original_images = []
-        if original_html:
-            try:
-                original_soup = BS(original_html, "html.parser")
-
-                # Extract headers
-                for h in original_soup.find_all(["h1", "h2", "h3", "h4", "h5", "h6"]):
-                    text = h.get_text(strip=True).lower()
-                    level = int(h.name[1])  # Extract number from h1, h2, etc.
-                    # Store normalized text -> original level mapping
-                    # Use first occurrence if duplicates exist
-                    if text and len(text) > 3 and text not in original_header_map:
-                        original_header_map[text] = level
-
-                logger.debug(
-                    f"Extracted {len(original_header_map)} headers and {len(original_images)} images from original HTML"
-                )
-            except Exception as e:
-                logger.warning(f"Could not extract original header hierarchy: {e}")
-
-        # Convert XML tags to HTML
-        html_parts = []
-
-        # Determine which hierarchy source to use
-        use_original_hierarchy = len(original_header_map) > 0
-
-        if use_original_hierarchy:
-            # Calculate normalization offset from original headers
-            all_levels = list(original_header_map.values())
-            min_level = min(all_levels) if all_levels else 2
-            offset = min_level - 2  # Shift so smallest becomes H2
-            logger.info(
-                f"Using original HTML hierarchy: {len(original_header_map)} headers, min_level={min_level}, offset={offset}"
-            )
-        else:
-            # Fallback: Analyze XML rend attributes
-            header_levels = []
-            for h in main.find_all("head"):
-                rend = h.get("rend", "")
-                if rend.startswith("h") and rend[1:].isdigit():
-                    header_levels.append(int(rend[1:]))
-
-            offset = 0
-            if header_levels:
-                min_level = min(header_levels)
-                offset = min_level - 2
-                logger.info(
-                    f"Using XML rend hierarchy: {len(header_levels)} headers, min_level={min_level}, offset={offset}"
-                )
-            else:
-                logger.warning("No header hierarchy found in XML, defaulting all to H2")
-
-        # Get page title and description to filter out duplicates
         page_title = None
         page_title_words = set()
         page_description = None
+
         if original_html:
             try:
-                title_soup = BS(original_html, "html.parser")
+                orig = BS(original_html, "html.parser")
 
-                # Get title
-                title_tag = title_soup.find("title")
+                # Headers
+                for h in orig.find_all(["h1", "h2", "h3", "h4", "h5", "h6"]):
+                    text = h.get_text(strip=True).lower()
+                    level = int(h.name[1])
+                    if text and len(text) > 3 and text not in original_header_map:
+                        original_header_map[text] = level
+
+                # Page title / description for duplicate filtering
+                title_tag = orig.find("title")
                 if title_tag:
                     page_title = title_tag.get_text(strip=True).lower()
-                    # Extract significant words from title (>4 chars)
                     page_title_words = {w for w in page_title.split() if len(w) > 4}
 
-                # Get description (og:description or meta description)
-                desc_tag = title_soup.find(
-                    "meta", property="og:description"
-                ) or title_soup.find("meta", attrs={"name": "description"})
+                desc_tag = orig.find("meta", property="og:description") or orig.find(
+                    "meta", attrs={"name": "description"}
+                )
                 if desc_tag and desc_tag.get("content"):
                     page_description = desc_tag["content"].strip().lower()
 
-                # Extract context for images to re-insert them if missing
-                # We do this AFTER title extraction so we can use title_soup
+                # Images with surrounding context — deduplicated by base URL
                 seen_base_urls = set()
-                for img in title_soup.find_all("img"):
-                    # 1. Get the best available source (CDN/Lazy-loading aware)
+                for img in orig.find_all("img"):
+                    # CDN/lazy-loading aware: prefer data-src variants
                     src = (
                         img.get("data-src")
                         or img.get("data-original-src")
@@ -458,22 +603,22 @@ def xml_to_html(xml_content: str, original_html: bytes = None) -> str:
                     if not src:
                         continue
 
-                    # 2. Normalize URL (strip, ensure absolute if needed - though mostly they are)
                     src = src.strip()
                     if src.startswith("//"):
-                        # Handle protocol-relative URLs
                         src = f"https:{src}"
 
-                    # 3. De-duplicate by Base URL (ignore query parameters which often vary for same image)
+                    # Deduplicate by base URL (strip query params/fragments)
                     base_url = src.split("?")[0].split("#")[0].strip()
                     if base_url in seen_base_urls:
                         continue
                     seen_base_urls.add(base_url)
 
-                    # Skip icons/logos
+                    # Skip tiny icons
                     width = img.get("width", "")
-                    if width and width.isdigit() and int(width) < 50:
+                    if width and str(width).isdigit() and int(width) < 50:
                         continue
+
+                    # Skip icons/logos/social/video thumbnails/placeholders
                     if src and any(
                         x in src.lower()
                         for x in [
@@ -498,7 +643,6 @@ def xml_to_html(xml_content: str, original_html: bytes = None) -> str:
                         continue
 
                     # Get surrounding text context
-                    # 1. Try to find previous substantial text block
                     prev_context = ""
                     curr = img
                     search_steps = 0
@@ -507,30 +651,28 @@ def xml_to_html(xml_content: str, original_html: bytes = None) -> str:
                         if prev:
                             text = prev.get_text(strip=True)
                             if len(text) > 50:
-                                prev_context = text[-100:]  # Last 100 chars
+                                prev_context = text[-100:]
                                 break
                             curr = prev
                         else:
                             curr = curr.parent
                             search_steps += 1
 
-                    # 2. Try to find next substantial text block
                     next_context = ""
                     curr = img
                     search_steps = 0
                     while curr and search_steps < 5:
-                        next_node = curr.find_next_sibling()
-                        if next_node:
-                            text = next_node.get_text(strip=True)
+                        nxt = curr.find_next_sibling()
+                        if nxt:
+                            text = nxt.get_text(strip=True)
                             if len(text) > 50:
-                                next_context = text[:100]  # First 100 chars
+                                next_context = text[:100]
                                 break
-                            curr = next_node
+                            curr = nxt
                         else:
                             curr = curr.parent
                             search_steps += 1
 
-                    # Get caption
                     caption = ""
                     parent = img.parent
                     if parent and parent.name == "figure":
@@ -549,12 +691,27 @@ def xml_to_html(xml_content: str, original_html: bytes = None) -> str:
                                 "inserted": False,
                             }
                         )
-
             except Exception as e:
-                logger.warning(f"Error analyzing original HTML: {e}")
-                pass
+                logger.warning(f"Could not analyse original HTML: {e}")
 
-        # First pass: collect headers and filter title duplicates
+        # --- Determine header level offset ---
+        use_original_hierarchy = len(original_header_map) > 0
+
+        # --- First pass: collect and filter headers ---
+        nav_keywords = [
+            "search",
+            "menu",
+            "sign in",
+            "log in",
+            "login",
+            "get premium",
+            "subscribe",
+            "navigation",
+            "skip to",
+            "toggle",
+            "⌘",
+        ]
+
         headers_to_process = []
         for elem in main.find_all(recursive=False):
             text = elem.get_text(strip=True)
@@ -564,89 +721,52 @@ def xml_to_html(xml_content: str, original_html: bytes = None) -> str:
             is_header = False
             text_lower = text.lower()
 
-            # Check if this element should be treated as a header
             if elem.name == "head":
                 is_header = True
             elif elem.name == "p" and use_original_hierarchy:
-                # If we have the original hierarchy, allow paragraphs that match known headers
                 if text_lower in original_header_map:
                     is_header = True
 
             if not is_header:
                 continue
 
-            # Skip navigation keywords
-            nav_keywords = [
-                "search",
-                "menu",
-                "sign in",
-                "log in",
-                "login",
-                "get premium",
-                "subscribe",
-                "navigation",
-                "skip to",
-                "toggle",
-                "⌘",
-            ]
-            if any(keyword in text_lower for keyword in nav_keywords):
+            if any(kw in text_lower for kw in nav_keywords):
                 continue
 
-            # Skip if this header matches the page title
             if page_title and (
                 text_lower in page_title
                 or page_title in text_lower
-                or
-                # Check if header contains significant title words
-                any(word in text_lower for word in page_title_words)
+                or any(w in text_lower for w in page_title_words)
             ):
-                logger.debug(f"Skipping title-matching header: '{text[:40]}...'")
                 continue
 
-            # Get level
-            normalized_text = text_lower
-
-            if use_original_hierarchy and normalized_text in original_header_map:
-                raw_level = original_header_map[normalized_text]
+            if use_original_hierarchy and text_lower in original_header_map:
+                raw_level = original_header_map[text_lower]
             else:
-                # Fallback for explicit <head> tags
                 rend = elem.get("rend", "h2")
-                raw_level = 2
-                if rend.startswith("h") and rend[1:].isdigit():
-                    raw_level = int(rend[1:])
+                raw_level = (
+                    int(rend[1:])
+                    if (rend.startswith("h") and rend[1:].isdigit())
+                    else 2
+                )
 
             headers_to_process.append((elem, text, raw_level))
 
-        # Renormalize header levels after filtering
-        # Find min level and map to H2-H4 range
+        # Renormalise header levels to H2–H4
+        header_level_map = {}
         if headers_to_process:
-            min_header_level = min(h[2] for h in headers_to_process)
-            max_header_level = max(h[2] for h in headers_to_process)
-            level_range = max_header_level - min_header_level + 1
-
-            # Adjust offset to start at H2
-            new_offset = min_header_level - 2
-
-            # If more than 3 levels, collapse
-            if level_range > 3:
-                logger.info(f"Collapsing {level_range} header levels to 3")
-                header_level_map = {}
-                for _, _, raw_level in headers_to_process:
-                    if raw_level not in header_level_map:
-                        # Map to 2, 3, or 4
-                        new_level = 2 + min(2, len(header_level_map))
-                        header_level_map[raw_level] = new_level
+            min_h = min(h[2] for h in headers_to_process)
+            max_h = max(h[2] for h in headers_to_process)
+            if (max_h - min_h + 1) > 3:
+                for _, _, raw in headers_to_process:
+                    if raw not in header_level_map:
+                        header_level_map[raw] = 2 + min(2, len(header_level_map))
             else:
-                # Simple offset mapping
-                header_level_map = {
-                    raw_level: raw_level - new_offset
-                    for raw_level in range(min_header_level, max_header_level + 1)
-                }
+                new_offset = min_h - 2
+                for raw in range(min_h, max_h + 1):
+                    header_level_map[raw] = raw - new_offset
 
-        # Second pass: output content with normalized headers AND re-insert images
-        header_index = 0
-
-        # Helper to formatting image HTML
+        # --- Helper functions ---
         def format_image_html(img_data):
             caption_html = ""
             if img_data.get("caption"):
@@ -655,253 +775,255 @@ def xml_to_html(xml_content: str, original_html: bytes = None) -> str:
                     f'color:var(--color-text-muted); margin-top:0.5em; font-style:italic;">'
                     f"{img_data['caption']}</figcaption>"
                 )
-
             return (
                 f'<figure style="margin:1.5em 0; text-align:center;">'
                 f'<img src="{img_data["src"]}" alt="{img_data.get("alt", "")}" '
                 f'style="max-width:100%; height:auto; border-radius:4px;"/>'
-                f"{caption_html}"
-                f"</figure>"
+                f"{caption_html}</figure>"
             )
 
-        for elem in main.find_all(recursive=False):
-            # CHECK FOR IMAGES BEFORE ELEMENT (based on prev_context matches)
-            # This is tricky because we process element by element.
-            # Best place is typically AFTER a paragraph that matches prev_context
-            pass
+        def process_inline_elements(element):
+            result = []
+            for child in element.children:
+                if isinstance(child, str):
+                    # Preserve all text including spaces between inline elements.
+                    # Only skip completely empty strings (not whitespace-only).
+                    if child:
+                        result.append(str(child))
+                elif child.name == "ref":
+                    result.append(
+                        f'<a href="{child.get("target","#")}">{child.get_text(strip=False)}</a>'
+                    )
+                elif child.name == "hi":
+                    rend = child.get("rend", "")
+                    hi_text = child.get_text(strip=False)
+                    if rend in ["#b", "b"]:
+                        result.append(f"<strong>{hi_text}</strong>")
+                    elif rend in ["#i", "i"]:
+                        result.append(f"<em>{hi_text}</em>")
+                    else:
+                        result.append(hi_text)
+                else:
+                    result.extend(process_inline_elements(child))
+            return result
 
-            # PRIORITY HEADER CHECK
-            header_match_data = None
+        # --- Second pass: output HTML ---
+        html_parts = []
+        header_index = 0
+
+        BLOCK_TAGS = {"p", "head", "list", "quote", "graphic", "table", "figure"}
+
+        def render_inline_node(node) -> str:
+            """Render a bare-text NavigableString, <ref>, or <hi> as inline HTML."""
+            from bs4 import NavigableString
+
+            if isinstance(node, NavigableString):
+                return str(node)
+            if not hasattr(node, "name"):
+                return ""
+            if node.name == "ref":
+                return f'<a href="{node.get("target","#")}">{node.get_text(strip=False)}</a>'
+            if node.name == "hi":
+                rend = node.get("rend", "")
+                t = node.get_text(strip=False)
+                if rend in ["#b", "b"]:
+                    return f"<strong>{t}</strong>"
+                if rend in ["#i", "i"]:
+                    return f"<em>{t}</em>"
+                return t
+            return ""
+
+        # Iterate main.children (includes NavigableStrings) so we don't miss bare text
+        # between <ref> siblings that trafilatura emits outside <p> tags.
+        children = list(main.children)
+        i = 0
+        while i < len(children):
+            node = children[i]
+            from bs4 import NavigableString, Tag
+
+            # Skip pure-whitespace text nodes at the top level
+            if isinstance(node, NavigableString):
+                i += 1
+                continue
+
+            if not isinstance(node, Tag):
+                i += 1
+                continue
+
+            elem = node
+
+            # Priority: check if this element is a pre-approved header
             if header_index < len(headers_to_process):
                 stored_elem, stored_text, raw_level = headers_to_process[header_index]
                 if stored_elem == elem:
-                    header_match_data = (stored_elem, stored_text, raw_level)
-
-            if header_match_data:
-                stored_elem, stored_text, raw_level = header_match_data
-
-                # Use the pre-computed normalized level
-                new_level = header_level_map.get(raw_level, 2)
-                # Clamp to H2-H4
-                new_level = max(2, min(4, new_level))
-
-                # Check for images before header (using next_context match on header text)
-                for img in original_images:
-                    if not img["inserted"] and img["next_context"]:
-                        clean_next = img["next_context"].replace("\n", " ").strip()[:50]
-                        clean_header = stored_text.replace("\n", " ").strip()
-
-                        if len(clean_next) > 10 and clean_next in clean_header:
-                            html_parts.append(format_image_html(img))
-                            img["inserted"] = True
-
-                html_parts.append(f"<h{new_level}>{stored_text}</h{new_level}>")
-                header_index += 1
-                continue
-
-            if elem.name == "p":
-                # Preserve inline elements (links, emphasis) within paragraphs
-                # Recursively process all inline elements
-                def process_inline_elements(element):
-                    """Recursively process inline elements to preserve structure"""
-                    result = []
-                    for child in element.children:
-                        if isinstance(child, str):
-                            # Plain text - preserve spacing
-                            text = str(child)
-                            if text.strip():
-                                result.append(text)
-                        elif child.name == "ref":
-                            # Link (trafilatura uses <ref> for links)
-                            link_text = child.get_text(
-                                strip=False
-                            )  # Preserve internal spacing
-                            link_href = child.get("target", "#")
-                            result.append(f'<a href="{link_href}">{link_text}</a>')
-                        elif child.name == "hi":
-                            # Highlighted/emphasized text - may contain nested elements
-                            hi_text = child.get_text(strip=False)
-                            rend = child.get("rend", "")
-                            if rend in ["#b", "b"]:
-                                result.append(f"<strong>{hi_text}</strong>")
-                            elif rend in ["#i", "i"]:
-                                result.append(f"<em>{hi_text}</em>")
-                            else:
-                                result.append(hi_text)
-                        else:
-                            # Recursively handle nested elements
-                            result.extend(process_inline_elements(child))
-                    return result
-
-                p_html_parts = process_inline_elements(elem)
-                paragraph_html = "".join(p_html_parts).strip()
-                paragraph_text_pure = elem.get_text(strip=True)
-
-                if paragraph_html:
-                    # Skip short credit links (e.g., "CNN", "Social Media")
-                    clean_p_text = paragraph_text_pure.strip().lower()
-
-                    # More aggressive check for single links like "CNN"
-                    is_short_link = False
-                    if len(clean_p_text) < 15:
-                        # Extract first link href if exists
-                        p_soup = BS(f"<p>{paragraph_html}</p>", "html.parser")
-                        a_tag = p_soup.find("a")
-                        if a_tag:
-                            href = a_tag.get("href", "").lower()
-                            # If it's a short link to a homepage or credit-like
-                            if (
-                                any(
-                                    x in clean_p_text
-                                    for x in ["cnn", "social", "media", "follow"]
-                                )
-                                or href.endswith(".com")
-                                or href.endswith(".com/")
-                            ):
-                                is_short_link = True
-
-                    if is_short_link or (
-                        len(clean_p_text) < 20
-                        and any(
-                            x in clean_p_text
-                            for x in [
-                                "cnn",
-                                "social media",
-                                "instagram",
-                                "twitter",
-                                "facebook",
-                                "photo:",
-                                "credit:",
-                                "image source",
-                            ]
-                        )
-                    ):
-                        logger.debug(
-                            f"Skipping credit-only paragraph: '{paragraph_html}'"
-                        )
-                        continue
-
-                    # Skip if this paragraph matches the meta description
-                    if page_description:
-                        para_text = (
-                            BS(f"<p>{paragraph_html}</p>", "html.parser")
-                            .get_text()
-                            .lower()
-                        )
-                        if (
-                            para_text == page_description
-                            or page_description in para_text
-                        ):
-                            logger.debug(
-                                f"Skipping description paragraph: '{paragraph_html[:40]}...'"
-                            )
-
-                            continue
-
-                    # CHECK FOR IMAGES matched by NEXT context (should be inserted BEFORE this paragraph)
+                    new_level = max(2, min(4, header_level_map.get(raw_level, 2)))
+                    # Insert images whose next_context matches this header
                     for img in original_images:
                         if not img["inserted"] and img["next_context"]:
-                            # Fuzzy match: check if first 50 chars of context match start of paragraph
                             clean_next = (
                                 img["next_context"].replace("\n", " ").strip()[:50]
                             )
-                            clean_para = paragraph_text_pure.replace("\n", " ").strip()
-
-                            if len(clean_next) > 20 and clean_next in clean_para:
+                            if (
+                                len(clean_next) > 10
+                                and clean_next in stored_text.replace("\n", " ").strip()
+                            ):
                                 html_parts.append(format_image_html(img))
                                 img["inserted"] = True
-                                logger.info(
-                                    f"Re-inserted image (before match) {img['src'][:30]}..."
-                                )
+                    html_parts.append(f"<h{new_level}>{stored_text}</h{new_level}>")
+                    header_index += 1
+                    i += 1
+                    continue
 
-                    html_parts.append(f"<p>{paragraph_html}</p>")
+            if elem.name == "p":
+                # Don't strip yet — trailing spaces before inline siblings matter
+                p_html = "".join(process_inline_elements(elem))
 
-                    # CHECK FOR IMAGES matched by PREV context (should be inserted AFTER this paragraph)
-                    for img in original_images:
-                        if not img["inserted"] and img["prev_context"]:
-                            # Fuzzy match: check if last 50 chars of context match end of paragraph
-                            clean_prev = (
-                                img["prev_context"].replace("\n", " ").strip()[-50:]
+                # Absorb any immediately following inline siblings:
+                # bare text (NavigableString), <ref>, <hi> — until the next block tag.
+                # Trafilatura often emits these as top-level siblings of <p> rather
+                # than as children inside it, causing text loss.
+                j = i + 1
+                while j < len(children):
+                    sib = children[j]
+                    sib_name = getattr(sib, "name", None)
+                    if sib_name in BLOCK_TAGS:
+                        break
+                    inline = render_inline_node(sib)
+                    p_html += inline
+                    j += 1
+                i = j  # advance past all consumed siblings
+
+                # Strip only outer whitespace now that all inline content is assembled
+                p_html = p_html.strip()
+                # Ensure space before/after <a> when trafilatura omits it
+                p_html = re.sub(r"([^\s>])(<a\s)", r"\1 \2", p_html)
+                p_html = re.sub(r"(</a>)([^\s<.,;:!?])", r"\1 \2", p_html)
+                # p_text used for image context matching — strip HTML tags
+                from bs4 import BeautifulSoup as _BS
+
+                p_text = _BS(f"<p>{p_html}</p>", "html.parser").get_text()
+                if not p_html:
+                    continue
+
+                # Skip short credit/attribution paragraphs
+                clean_p_text = p_text.strip().lower()
+                if len(clean_p_text) < 20 and any(
+                    x in clean_p_text
+                    for x in [
+                        "cnn",
+                        "social media",
+                        "instagram",
+                        "twitter",
+                        "facebook",
+                        "photo:",
+                        "credit:",
+                        "image source",
+                    ]
+                ):
+                    continue
+
+                # Skip if matches meta description
+                if page_description:
+                    para_text = BS(f"<p>{p_html}</p>", "html.parser").get_text().lower()
+                    if page_description in para_text or para_text == page_description:
+                        continue
+
+                # Insert images whose next_context matches start of this paragraph
+                for img in original_images:
+                    if not img["inserted"] and img["next_context"]:
+                        clean_next = img["next_context"].replace("\n", " ").strip()[:50]
+                        if (
+                            len(clean_next) > 20
+                            and clean_next in p_text.replace("\n", " ").strip()
+                        ):
+                            html_parts.append(format_image_html(img))
+                            img["inserted"] = True
+                            logger.info(
+                                f"Re-inserted image (before match) {img['src'][:30]}..."
                             )
-                            clean_para = paragraph_text_pure.replace("\n", " ").strip()
 
-                            if len(clean_prev) > 20 and clean_prev in clean_para:
-                                html_parts.append(format_image_html(img))
-                                img["inserted"] = True
-                                logger.info(
-                                    f"Re-inserted image (after match) {img['src'][:30]}..."
-                                )
+                html_parts.append(f"<p>{p_html}</p>")
+
+                # Insert images whose prev_context matches end of this paragraph
+                for img in original_images:
+                    if not img["inserted"] and img["prev_context"]:
+                        clean_prev = (
+                            img["prev_context"].replace("\n", " ").strip()[-50:]
+                        )
+                        if (
+                            len(clean_prev) > 20
+                            and clean_prev in p_text.replace("\n", " ").strip()
+                        ):
+                            html_parts.append(format_image_html(img))
+                            img["inserted"] = True
+                            logger.info(
+                                f"Re-inserted image (after match) {img['src'][:30]}..."
+                            )
 
             elif elem.name == "list":
                 items = elem.find_all("item")
                 if items:
-                    list_type = elem.get("type", "")
-                    list_rend = elem.get("rend", "")
                     is_ordered = (
-                        list_type == "ordered" or "ordered" in list_rend.lower()
+                        elem.get("type", "") == "ordered"
+                        or "ordered" in elem.get("rend", "").lower()
                     )
-                    list_tag = "ol" if is_ordered else "ul"
-                    html_parts.append(f"<{list_tag}>")
+                    tag = "ol" if is_ordered else "ul"
+                    html_parts.append(f"<{tag}>")
                     for item in items:
                         text = item.get_text(strip=True)
                         if text:
                             html_parts.append(f"<li>{text}</li>")
-                    html_parts.append(f"</{list_tag}>")
+                    html_parts.append(f"</{tag}>")
+                i += 1
 
             elif elem.name == "quote":
                 text = elem.get_text(strip=True)
                 if text:
                     html_parts.append(f"<blockquote>{text}</blockquote>")
+                i += 1
 
             elif elem.name == "graphic":
-                # Existing successful trafilatura extraction
                 src = elem.get("src")
-                alt = elem.get("alt", "")
-
                 if src:
-                    # Mark as inserted if we found it in original_images to avoid dupe
-                    # Use base URL for matching to handle variants
+                    # Use base URL matching to avoid duplicating context-matched images
                     src_base = src.split("?")[0].split("#")[0].strip()
                     img_already_inserted = False
-
                     for img in original_images:
                         target_base = img["src"].split("?")[0].split("#")[0].strip()
                         if target_base == src_base:
                             if img["inserted"]:
                                 img_already_inserted = True
-                            img["inserted"] = True  # Mark as inserted either way now
+                            img["inserted"] = True
 
                     if not img_already_inserted:
+                        alt = elem.get("alt", "")
                         caption = ""
-                        next_elem = elem.find_next_sibling()
+                        nxt = elem.find_next_sibling()
                         if (
-                            next_elem
-                            and next_elem.name in ["p", "hi"]
-                            and len(next_elem.get_text(strip=True)) < 200
+                            nxt
+                            and nxt.name in ["p", "hi"]
+                            and len(nxt.get_text(strip=True)) < 200
                         ):
-                            caption_text = next_elem.get_text(strip=True)
-                            if caption_text:
-                                caption = caption_text
-
+                            caption = nxt.get_text(strip=True)
                         html_parts.append(
                             format_image_html(
                                 {"src": src, "alt": alt, "caption": caption}
                             )
                         )
+                i += 1
+
+            else:
+                i += 1
 
         if html_parts:
-            # POST-PROCESSING: De-duplicate sequential identical images
+            # Post-process: remove sequential duplicate images
             final_parts = []
             seen_last_img_base = None
-
             for part in html_parts:
                 if '<img src="' in part:
-                    # Extract src using simple string find/split
                     try:
-                        temp = part.split('<img src="')[1]
-                        current_src = temp.split('"')[0]
+                        current_src = part.split('<img src="')[1].split('"')[0]
                         current_base = current_src.split("?")[0].split("#")[0].strip()
-
                         if current_base == seen_last_img_base:
                             logger.info(
                                 f"Filtered sequential duplicate image: {current_base}"
@@ -911,103 +1033,57 @@ def xml_to_html(xml_content: str, original_html: bytes = None) -> str:
                     except Exception:
                         pass
                 else:
-                    # If it's a substantial paragraph, reset the seen_last_img_base
-                    # This allows the same image to appear in different sections if needed
+                    # Reset after a substantial paragraph so same image can appear in new section
                     if part.startswith("<p>") and len(part) > 100:
                         seen_last_img_base = None
-
                 final_parts.append(part)
-
             return "\n".join(final_parts)
         else:
-            logger.warning("No structured elements found in XML, converting all text")
-            text = soup.get_text(strip=False)
-            return text_to_html_paragraphs(text)
+            return _text_to_html_paragraphs(soup.get_text(strip=False))
 
     except Exception as e:
-        logger.warning(f"XML to HTML conversion failed: {str(e)}")
-        # Fallback: try to extract any text and convert to paragraphs
+        logger.warning(f"xml_to_html failed: {e}")
         try:
-            soup = BS(xml_content, "xml")
-            text = soup.get_text(strip=False)
+            from bs4 import BeautifulSoup as BS
+
+            text = BS(xml_content, "xml").get_text(strip=False)
             if text:
-                return text_to_html_paragraphs(text)
-        except Exception as e:
-            logger.warning("Failed to extract full text")
+                return _text_to_html_paragraphs(text)
+        except Exception:
             pass
-        return text_to_html_paragraphs(xml_content)
+        return _text_to_html_paragraphs(xml_content)
 
 
-def text_to_html_paragraphs(text: str) -> str:
-    """Convert plain text to HTML with paragraph breaks"""
+def _text_to_html_paragraphs(text: str) -> str:
+    """Convert plain text to HTML with paragraph breaks."""
     paragraphs = text.split("\n\n")
-    html_parts = []
-
-    for para in paragraphs:
-        para = para.strip()
-        if para:
-            # Replace single line breaks with <br>
-            para = para.replace("\n", "<br>")
-            html_parts.append(f"<p>{para}</p>")
-
-    return "\n".join(html_parts)
+    return "\n".join(
+        f"<p>{para.strip().replace(chr(10), '<br>')}</p>"
+        for para in paragraphs
+        if para.strip()
+    )
 
 
-def extract_domain_from_url(url: str) -> str:
-    """Extract domain name for fallback title"""
+def _extract_domain_from_url(url: str) -> str:
     domain = urlparse(url).netloc
     return domain.replace("www.", "").capitalize()
 
 
-def extract_page_metadata(soup: BeautifulSoup, url: str) -> dict:
-    """
-    Extract metadata from HTML using Open Graph tags and fallbacks.
-    """
-    metadata = {}
+def _title_from_url(url: str) -> str:
+    """Derive a readable title from URL stem as fallback."""
+    from pathlib import Path
 
-    # Title
-    # Priority: og:title > twitter:title > <title> tag
-    og_title = soup.find("meta", property="og:title")
-    twitter_title = soup.find("meta", attrs={"name": "twitter:title"})
-    title_tag = soup.find("title")
+    path = url.split("?")[0].rstrip("/")
+    name = Path(path).stem
+    return name.replace("-", " ").replace("_", " ").title() or url
 
-    if og_title and og_title.get("content"):
-        metadata["title"] = og_title["content"]
-    elif twitter_title and twitter_title.get("content"):
-        metadata["title"] = twitter_title["content"]
-    elif title_tag and title_tag.string:
-        metadata["title"] = title_tag.string.strip()
-    else:
-        metadata["title"] = url  # Fallback to URL
 
-    # Description
-    og_desc = soup.find("meta", property="og:description")
-    twitter_desc = soup.find("meta", attrs={"name": "twitter:description"})
-    meta_desc = soup.find("meta", attrs={"name": "description"})
+# Keep these for any direct (non-Celery) callers
+def extract_pdf_content(pdf_bytes: bytes, url: str = "") -> str:
+    from app.tasks.extraction_implementations import extract_with_yolo
 
-    if og_desc and og_desc.get("content"):
-        metadata["description"] = og_desc["content"]
-    elif twitter_desc and twitter_desc.get("content"):
-        metadata["description"] = twitter_desc["content"]
-    elif meta_desc and meta_desc.get("content"):
-        metadata["description"] = meta_desc["content"]
+    return extract_with_yolo(pdf_bytes, url)
 
-    # Thumbnail/Image
-    og_image = soup.find("meta", property="og:image")
-    twitter_image = soup.find("meta", attrs={"name": "twitter:image"})
 
-    if og_image and og_image.get("content"):
-        metadata["thumbnail"] = og_image["content"]
-    elif twitter_image and twitter_image.get("content"):
-        metadata["thumbnail"] = twitter_image["content"]
-
-    # Content type (basic detection)
-    domain = urlparse(url).netloc.lower()
-    if "youtube.com" in domain or "youtu.be" in domain:
-        metadata["content_type"] = "video"
-    elif url.endswith(".pdf"):
-        metadata["content_type"] = "pdf"
-    else:
-        metadata["content_type"] = "article"
-
-    return metadata
+def extract_pdf_metadata(pdf_bytes: bytes, url: str) -> dict:
+    return {"content_type": "pdf", "title": "PDF Document"}

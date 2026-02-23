@@ -2,12 +2,18 @@
 
 import { useEffect } from "react";
 
+interface ShortcutEntry {
+  key: string;
+  desc: string;
+}
+
 interface KeyboardShortcutsProps {
   isOpen: boolean;
   onClose: () => void;
+  shortcuts?: ShortcutEntry[];
 }
 
-const shortcuts = [
+const defaultShortcuts: ShortcutEntry[] = [
   { key: "/", desc: "Focus search" },
   { key: "Esc", desc: "Close overlay / clear search" },
   { key: "1", desc: "Sort by recently added" },
@@ -21,6 +27,7 @@ const shortcuts = [
 export default function KeyboardShortcuts({
   isOpen,
   onClose,
+  shortcuts = defaultShortcuts,
 }: KeyboardShortcutsProps) {
   useEffect(() => {
     if (!isOpen) return;

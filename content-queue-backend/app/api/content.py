@@ -1,3 +1,4 @@
+import re
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from sqlalchemy.orm import Session
 from uuid import UUID
@@ -16,6 +17,48 @@ from app.schemas.content import (
 )
 from app.tasks.extraction import extract_metadata
 from app.tasks.summarization import generate_summary
+
+
+def _clean_extension_html(
+    html: str,
+    title: str | None,
+    description: str | None,
+    thumbnail: str | None,
+) -> str:
+    """
+    Strip metadata elements from Readability-extracted HTML that are displayed
+    separately in the reader (title header, description block, thumbnail image).
+    Mirrors the dedup logic in extraction.py's xml_to_html().
+    """
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(html, "html.parser")
+
+    # Remove <h1> matching the title — reader shows title in its own header
+    if title:
+        title_lower = title.strip().lower()
+        for h1 in soup.find_all("h1"):
+            if h1.get_text(strip=True).lower() == title_lower:
+                h1.decompose()
+
+    # Remove <p> matching the description — reader shows description block separately
+    if description:
+        desc_lower = description.strip().lower()
+        for p in soup.find_all("p"):
+            if p.get_text(strip=True).lower() == desc_lower:
+                p.decompose()
+
+    # Remove <img> matching the thumbnail filename — reader shows thumbnail above content.
+    # Compare by filename so CDN path/query-string differences don't matter.
+    if thumbnail:
+        og_file = thumbnail.split("?")[0].split("/")[-1]
+        if og_file:
+            for img in soup.find_all("img"):
+                src = (img.get("src") or img.get("data-src") or "").split("?")[0]
+                if src.split("/")[-1] == og_file:
+                    (img.find_parent("figure") or img).decompose()
+
+    return str(soup)
 
 
 def compute_reading_status(
@@ -122,8 +165,48 @@ async def create_content_item(
                 db.execute(stmt)
         db.commit()
 
-    # Trigger background job for metadata extraction
-    extract_metadata.delay(str(new_item.id))
+    # Extension path: pre-extracted HTML provided — skip fetch/trafilatura pipeline
+    if item_data.pre_extracted_html:
+        html = _clean_extension_html(
+            item_data.pre_extracted_html,
+            title=item_data.pre_extracted_title,
+            description=item_data.pre_extracted_description,
+            thumbnail=item_data.pre_extracted_thumbnail,
+        )
+        new_item.full_text = html
+        if item_data.pre_extracted_title:
+            new_item.title = item_data.pre_extracted_title
+        if item_data.pre_extracted_author:
+            new_item.author = item_data.pre_extracted_author
+        if item_data.pre_extracted_description:
+            new_item.description = item_data.pre_extracted_description
+        if item_data.pre_extracted_thumbnail:
+            new_item.thumbnail_url = item_data.pre_extracted_thumbnail
+        if item_data.pre_extracted_published_date:
+            try:
+                from dateutil import parser as dateparser
+
+                new_item.published_date = dateparser.parse(
+                    item_data.pre_extracted_published_date
+                )
+            except Exception:
+                pass
+        new_item.processing_status = "completed"
+        new_item.submitted_via = "extension"
+        # Compute word count from stripped HTML
+        word_count = len(re.sub(r"<[^>]+>", " ", html).split())
+        new_item.word_count = word_count
+        new_item.reading_time_minutes = max(1, round(word_count / 200))
+        db.commit()
+        # Fetch any remaining metadata (e.g. thumbnail if extension didn't send one)
+        # and generate embedding async
+        extract_metadata.delay(str(new_item.id))
+        from app.tasks.embedding import generate_embedding
+
+        generate_embedding.delay(str(new_item.id))
+    else:
+        # Normal path: trigger full extraction pipeline
+        extract_metadata.delay(str(new_item.id))
 
     return new_item
 
@@ -419,6 +502,12 @@ async def update_content_item(
         )
 
     # Update fields
+    if update_data.title is not None:
+        item.title = update_data.title
+
+    if update_data.description is not None:
+        item.description = update_data.description
+
     if update_data.is_read is not None:
         item.is_read = update_data.is_read
         if update_data.is_read:

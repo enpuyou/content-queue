@@ -1,8 +1,19 @@
 """Base task classes used across all Celery tasks."""
 
+import re
 from celery import Task
 from sqlalchemy.orm import Session
 from app.core.database import SessionLocal
+
+
+def html_to_plain(html: str) -> str:
+    """
+    Strip HTML tags and collapse whitespace, returning plain text.
+    Used by embedding and tagging tasks so they operate on actual content
+    rather than HTML markup — applies to all paths (trafilatura, extension, PDF).
+    """
+    text = re.sub(r"<[^>]+>", " ", html)
+    return re.sub(r"\s+", " ", text).strip()
 
 
 class DatabaseTask(Task):

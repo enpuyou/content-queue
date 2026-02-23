@@ -33,23 +33,37 @@ export function addHeadingAnchors(html: string): string {
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, "text/html");
 
+  // Track seen slugs to deduplicate — must match the logic in Reader.tsx TOC extraction
+  const seenIds = new Map<string, number>();
+
   doc.querySelectorAll("h1, h2, h3, h4").forEach((heading) => {
-    // Generate ID from heading text
-    const id =
-      heading.textContent
-        ?.toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "") || "";
+    const text = heading.textContent || "";
 
-    if (!id) return; // Skip if no text content
+    // Preserve existing id if present (matches TOC extractor behaviour).
+    // Only generate a slug if there's no id already.
+    let id = heading.id;
+    if (!id && text) {
+      id =
+        text
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, "") || "";
+    }
 
-    heading.id = id;
+    if (!id) return; // Skip if no id and no text content
+
+    // Deduplicate: first occurrence keeps id, subsequent get -2, -3, ...
+    const count = seenIds.get(id) ?? 0;
+    seenIds.set(id, count + 1);
+    const uniqueId = count === 0 ? id : `${id}-${count + 1}`;
+
+    heading.id = uniqueId;
 
     // Create anchor link
     const anchor = doc.createElement("a");
-    anchor.href = `#${id}`;
+    anchor.href = `#${uniqueId}`;
     anchor.className = "heading-anchor";
-    anchor.textContent = "#";
+    anchor.textContent = ""; // Use CSS ::before for content to avoid affecting text offsets
     anchor.setAttribute("aria-label", `Link to ${heading.textContent}`);
 
     // Prepend anchor to heading
@@ -57,6 +71,45 @@ export function addHeadingAnchors(html: string): string {
   });
 
   return doc.body.innerHTML;
+}
+
+/**
+ * Strip full document HTML wrappers (<!DOCTYPE>, <html>, <head>, <body> tags).
+ * PDF extraction includes these for standalone HTML files, but they cause
+ * React hydration errors when rendered inside Next.js components.
+ *
+ * Converts:
+ *   <!DOCTYPE html><html><head>...</head><body><p>Content</p></body></html>
+ * To:
+ *   <p>Content</p>
+ */
+export function stripDocumentWrappers(html: string): string {
+  // Remove DOCTYPE
+  let content = html.replace(/<!DOCTYPE[^>]*>/i, "");
+
+  // Parse and extract body content
+  if (typeof document !== "undefined") {
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(content, "text/html");
+      return doc.body.innerHTML;
+    } catch (e) {
+      // If parsing fails, try regex fallback
+      console.warn("DOMParser failed, using regex fallback:", e);
+    }
+  }
+
+  // Regex fallback: extract content between <body> tags
+  const bodyMatch = content.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+  if (bodyMatch) {
+    return bodyMatch[1];
+  }
+
+  // If no body tag, remove <html>, <head> tags but keep content
+  content = content.replace(/<\/?html[^>]*>/gi, "");
+  content = content.replace(/<head[^>]*>[\s\S]*?<\/head>/gi, "");
+
+  return content;
 }
 
 /**

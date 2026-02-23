@@ -9,6 +9,13 @@ class ContentItemCreate(BaseModel):
 
     url: str  # The URL to save
     list_ids: list[UUID] | None = None  # Optional: add to specific lists
+    # Extension fields: pre-extracted content from the browser (bypasses fetch/trafilatura pipeline)
+    pre_extracted_html: Optional[str] = None
+    pre_extracted_title: Optional[str] = None
+    pre_extracted_author: Optional[str] = None
+    pre_extracted_description: Optional[str] = None
+    pre_extracted_thumbnail: Optional[str] = None
+    pre_extracted_published_date: Optional[str] = None
 
 
 class ContentItemResponse(BaseModel):
@@ -33,6 +40,9 @@ class ContentItemResponse(BaseModel):
 
     # Reading progress
     read_position: Optional[float] = 0.0
+
+    author: str | None = None
+    published_date: datetime | None = None
 
     is_read: bool
     is_archived: bool

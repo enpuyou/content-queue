@@ -7,7 +7,7 @@ interface FilterDropdownContentProps {
   currentFilter: FilterType;
   currentTags: string[];
   availableTags: Array<{ tag: string; count: number }>;
-  onSelectFilter: () => void;
+  onSelectFilter: (filter: FilterType) => void;
   onToggleTag: (tag: string) => void;
   onClearTags: () => void;
 }
@@ -74,7 +74,7 @@ export function FilterDropdownContent({
                     ? "/dashboard"
                     : `/dashboard?filter=${filterType}`
                 }
-                onClick={onSelectFilter}
+                onClick={() => onSelectFilter(filterType)}
                 className={`group flex items-center justify-between px-4 py-2 text-xs font-mono transition-colors no-underline ${
                   currentFilter === filterType
                     ? "text-[var(--color-accent)]"

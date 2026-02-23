@@ -18,6 +18,8 @@ allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
+    # Allow browser extension origins (Chrome, Firefox, Safari)
+    allow_origin_regex=r"(chrome|moz)-extension://.*|safari-web-extension://.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -34,6 +36,13 @@ app.include_router(lists.router)
 app.include_router(search.router)
 app.include_router(analytics.router)
 app.include_router(vinyl.router)
+
+# Dev-only test routes (serves local PDFs from gitignored pdf/ directory)
+# Only mounted when DEBUG=true — never active in production
+if settings.DEBUG:
+    from app.api import test_pdf  # noqa: PLC0415
+
+    app.include_router(test_pdf.router)
 
 
 @app.get("/")

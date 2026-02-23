@@ -1,10 +1,11 @@
 from celery import Task
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, func
+from sqlalchemy import func
 from app.core.celery_app import celery_app
 from app.core.database import SessionLocal
 from app.models.content import ContentItem
 from app.core.config import settings
+from app.tasks.base import html_to_plain
 from uuid import UUID
 import logging
 from openai import OpenAI
@@ -54,10 +55,35 @@ def generate_tags(self, content_item_id: str):
             logger.warning(f"No embedding for {content_item_id}")
             return {"content_item_id": content_item_id, "status": "no_embedding"}
 
+        # Guard: validate embedding is a flat 1-D sequence (pgvector requirement).
+        # SQLAlchemy/pgvector may return a numpy array — check ndim if available,
+        # otherwise fall back to checking the first element type.
+        emb = item.embedding
+        try:
+            import numpy as np
+
+            if isinstance(emb, np.ndarray):
+                if emb.ndim != 1:
+                    logger.warning(
+                        f"Malformed embedding for {content_item_id} — skipping similarity pass"
+                    )
+                    emb = None
+            elif not isinstance(emb, (list, tuple)) or (
+                len(emb) > 0 and isinstance(emb[0], (list, tuple))
+            ):
+                logger.warning(
+                    f"Malformed embedding for {content_item_id} — skipping similarity pass"
+                )
+                emb = None
+        except Exception:
+            emb = None
+
         logger.info(f"Generating tags for {item.original_url}")
 
         # PASS 1: Embedding-based similarity (free)
-        suggested_tags = find_similar_tags_by_embedding(self.db, item)
+        suggested_tags = (
+            find_similar_tags_by_embedding(self.db, item) if emb is not None else []
+        )
 
         if suggested_tags and should_accept_tags(suggested_tags):
             item.auto_tags = suggested_tags
@@ -124,23 +150,56 @@ def generate_tags(self, content_item_id: str):
 def find_similar_tags_by_embedding(db: Session, item: ContentItem) -> list:
     """
     Find similar articles already tagged, suggest their tags.
-    Uses pgvector similarity search.
+    Uses pgvector cosine distance — only considers articles within a tight
+    similarity threshold to avoid cross-contaminating unrelated content.
     """
-    # Find 3 most similar articles with tags
-    similar_items = (
-        db.query(ContentItem)
-        .filter(
-            and_(
-                ContentItem.user_id == item.user_id,
-                ContentItem.id != item.id,
-                ContentItem.tags.isnot(None),
-                ContentItem.embedding.isnot(None),
-            )
+    # Cosine distance threshold: 0.25 means cosine similarity >= 0.75.
+    # L2 distance (<->) is used by pgvector's default index; for cosine
+    # we use <=> (cosine distance operator).
+    SIMILARITY_THRESHOLD = 0.25  # cosine distance; lower = more similar
+
+    # op("<=>")(value) doesn't carry type info so pgvector can't bind the param.
+    # Use raw SQL with CAST(:emb AS vector) which works reliably.
+    try:
+        import numpy as np
+
+        emb_list = (
+            item.embedding.tolist()
+            if isinstance(item.embedding, np.ndarray)
+            else list(item.embedding)
         )
-        .order_by(ContentItem.embedding.op("<->")(item.embedding))
-        .limit(3)
-        .all()
-    )
+        emb_str = str(emb_list)  # "[0.1, 0.2, ...]" — PostgreSQL vector literal format
+    except Exception:
+        return []
+
+    from sqlalchemy import text as sa_text
+
+    rows = db.execute(
+        sa_text(
+            """
+            SELECT id FROM content_items
+            WHERE user_id = :user_id
+              AND id != :item_id
+              AND tags IS NOT NULL
+              AND embedding IS NOT NULL
+              AND embedding <=> CAST(:emb AS vector) < :threshold
+            ORDER BY embedding <=> CAST(:emb AS vector)
+            LIMIT 3
+        """
+        ),
+        {
+            "user_id": str(item.user_id),
+            "item_id": str(item.id),
+            "emb": emb_str,
+            "threshold": SIMILARITY_THRESHOLD,
+        },
+    ).fetchall()
+
+    if not rows:
+        return []
+
+    ids = [r[0] for r in rows]
+    similar_items = db.query(ContentItem).filter(ContentItem.id.in_(ids)).all()
 
     if not similar_items:
         return []
@@ -152,14 +211,14 @@ def find_similar_tags_by_embedding(db: Session, item: ContentItem) -> list:
             for tag in similar_item.tags:
                 tag_counts[tag] = tag_counts.get(tag, 0) + 1
 
-    # Return most frequent tags (max 3-5)
+    # Return tags that appeared in more than one similar article (higher confidence)
     sorted_tags = sorted(tag_counts.items(), key=lambda x: x[1], reverse=True)
-    return [tag for tag, _ in sorted_tags[:5]]
+    return [tag for tag, count in sorted_tags[:5] if count >= 2]
 
 
 def should_accept_tags(tags: list) -> bool:
-    """Heuristic: accept tags if we found good matches"""
-    return len(tags) >= 2  # Accept if we found 2+ tags
+    """Accept embedding-suggested tags only if we found confident matches."""
+    return len(tags) >= 2
 
 
 def get_user_tag_vocabulary(db: Session, user_id: UUID) -> list:
@@ -179,11 +238,11 @@ def generate_tags_with_llm(
     """Call OpenAI (gpt-4o-mini) to generate tags."""
     client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
-    # Prepare context from article
+    # Prepare context from article — strip HTML tags first (full_text is always HTML)
     text_parts = [title, description]
     if full_text:
-        # Use first 500 words only
-        words = full_text.split()[:500]
+        plain = html_to_plain(full_text)
+        words = plain.split()[:800]
         text_parts.append(" ".join(words))
 
     article_context = "\n\n".join(t for t in text_parts if t)
