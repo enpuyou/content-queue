@@ -1773,7 +1773,8 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
           )}
         </header>
 
-        {content.content_type === "pdf" ? (
+        {content.content_type === "pdf" ||
+        content.content_vertical === "academic" ? (
           isEditing ? (
             <div className="mb-10 max-w-2xl mx-auto px-5 sm:px-6 lg:px-8">
               <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] p-6 rounded-sm relative">
@@ -1790,14 +1791,14 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
               </div>
             </div>
           ) : (
-            content.description && (
+            (content.vertical_metadata?.abstract || content.description) && (
               <div className="mb-10 max-w-2xl mx-auto px-5 sm:px-6 lg:px-8">
                 <div className="bg-[var(--color-bg-secondary)] border border-[var(--color-border)] p-6 rounded-sm relative">
                   <span className="absolute top-0 left-6 -translate-y-1/2 bg-[var(--color-bg-secondary)] px-2 text-xs font-serif italic text-[var(--color-text-muted)] border border-[var(--color-border)] rounded-full">
                     Abstract
                   </span>
                   <p className="text-[var(--color-text-secondary)] text-base font-serif leading-relaxed">
-                    {content.description}
+                    {content.vertical_metadata?.abstract || content.description}
                   </p>
                 </div>
               </div>

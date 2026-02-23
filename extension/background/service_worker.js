@@ -5,7 +5,7 @@
  * Uses chrome.storage.local exclusively (not localStorage, which is unavailable in MV3).
  */
 
-const DEFAULT_API_BASE = 'http://localhost:8000';
+const DEFAULT_API_BASE = 'https://content-queue-fast-api-production.up.railway.app';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
