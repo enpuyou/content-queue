@@ -50,6 +50,20 @@ dependencies = [
 [tool.poetry]
 package-mode = false
 
+# torch and torchvision are sourced from the official PyTorch CPU-only wheel
+# index (explicit priority = only these two packages fetch from this source).
+# This avoids CUDA-only wheels from PyPI that have incompatible ABI tags on
+# standard Linux deploy environments.
+[[tool.poetry.source]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+priority = "explicit"
+
+[tool.poetry.dependencies]
+python = ">=3.11,<4.0"
+torch = {version = "==2.5.1", source = "pytorch-cpu"}
+torchvision = {version = "==0.20.1", source = "pytorch-cpu"}
+
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
