@@ -1,16 +1,10 @@
 /**
  * content.js — sed.i extraction logic
  *
- * Runs in two modes:
+ * Runs on demand when the user clicks the extension popup, injected via chrome.scripting
+ * using the activeTab permission.
  *
- * 1. AUTO (content script, injected at document_idle for all pages):
- *    Extracts eagerly in the background and caches result in chrome.storage.session.
- *    The popup reads from this cache for an instant save flow.
- *
- * 2. ON-DEMAND (via chrome.scripting.executeScript fallback):
- *    Returns the extraction promise directly so executeScript can await it.
- *
- * Readability.js is injected before this file in both modes.
+ * Readability.js is injected before this file.
  *
  * Wrapped in an async IIFE so `const` declarations don't pollute the page's
  * global scope — which would cause re-declaration errors if injected more than once.
@@ -386,29 +380,7 @@ async function extractAndInlineContent() {
   };
 }
 
-// ─── Mode detection ────────────────────────────────────────────────────────────
-//
-// When running as a persistent content script (auto mode), store result in
-// chrome.storage.session so the popup can read it instantly.
-//
-// When invoked via executeScript (fallback mode), the IIFE must return the
-// promise so executeScript can await the result.
-
-// Always extract, store to session cache, AND return the promise.
-// This works correctly in both contexts (MV3 content script and executeScript
-// both have chrome.storage.session, so mode detection is unreliable):
-//   - Content script (eager): result is cached, popup reads from cache
-//   - executeScript fallback: result[0].result is populated AND cached
-const resultPromise = extractAndInlineContent();
-resultPromise.then((result) => {
-  if (!result?.error) {
-    try {
-      chrome.storage.session.set({
-        [`sedi_${location.href}`]: { result, ts: Date.now() },
-      });
-    } catch {}
-  }
-});
-return resultPromise;
+// Return the promise so executeScript can await the result.
+return extractAndInlineContent();
 
 })();
