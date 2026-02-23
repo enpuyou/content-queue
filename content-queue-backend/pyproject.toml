@@ -36,12 +36,13 @@ dependencies = [
     "tiktoken (>=0.12.0,<0.13.0)",
     "pymupdf4llm (>=0.2.9,<0.3.0)",
     "markdown (>=3.10.2,<4.0.0)",
-    "opencv-python (>=4.8.0,<5.0.0)",
+    "opencv-python-headless (>=4.8.0,<5.0.0)",
     "pillow (>=10.0.0,<11.0.0)",
     "pymupdf-layout (==1.27.1)",
     "onnxruntime (==1.23.2)",
-    "numpy (>=1.21.6,<2.0.0)",
-    "torch (==2.2.2)",
+    "numpy (>=2.0.0,<3.0.0)",
+    "torch (==2.6.0)",
+    "torchvision (==0.21.0)",
     "ultralytics (>=8.0.0,<9.0.0)",
     "huggingface-hub (>=0.20.0,<1.0.0)",
 ]
@@ -49,6 +50,19 @@ dependencies = [
 [tool.poetry]
 package-mode = false
 
+# torch and torchvision are sourced from the official PyTorch CPU-only wheel
+# index (explicit priority = only these two packages fetch from this source).
+# This avoids CUDA-only wheels from PyPI that have incompatible ABI tags on
+# standard Linux deploy environments.
+[[tool.poetry.source]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+priority = "explicit"
+
+[tool.poetry.dependencies]
+python = ">=3.11,<4.0"
+torch = {version = "==2.6.0", source = "pytorch-cpu"}
+torchvision = {version = "==0.21.0", source = "pytorch-cpu"}
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
