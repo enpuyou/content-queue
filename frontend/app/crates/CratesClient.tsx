@@ -376,38 +376,48 @@ export default function CratesClient() {
             </div>
           </div>
 
-          {/* Now Digging bar — mobile only (sm:hidden); desktop uses the Listen button in the sort bar */}
-          {lastDug && !selectedRecord && (
-            <button
-              onClick={() =>
-                playerCurrent ? setListenMode(true) : setSelectedRecord(lastDug)
-              }
-              className="w-full flex items-center gap-3 mb-4 py-1.5 px-2 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] hover:border-[var(--color-accent)] transition-colors cursor-pointer text-left"
-            >
-              {/* Show the playing track's art when playing, otherwise the last dug record */}
-              {(playerCurrent?.cover_url || lastDug.cover_url) && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={playerCurrent?.cover_url ?? lastDug.cover_url!}
-                  alt=""
-                  className="w-8 h-8 object-cover border border-[var(--color-border)] flex-shrink-0"
-                />
-              )}
-              <div className="flex-1 min-w-0">
-                <span className="font-mono text-[9px] uppercase tracking-widest text-[var(--color-text-faint)]">
-                  {playerCurrent && playerIsPlaying
-                    ? "Now listening"
-                    : "Now digging"}
-                </span>
-                <p className="text-[11px] text-[var(--color-text-primary)] truncate leading-none">
-                  {playerCurrent?.artist ?? lastDug.artist} —{" "}
-                  <span className="font-serif italic">
-                    {playerCurrent?.title ?? lastDug.title}
-                  </span>
-                </p>
-              </div>
-            </button>
-          )}
+          {/* Now Digging / Now Listening bar */}
+          {(lastDug || playerCurrent) &&
+            !selectedRecord &&
+            (() => {
+              // Only show the playing track when music is *actively* playing.
+              // When paused (or nothing queued), fall back to lastDug.
+              const activeTrack =
+                playerIsPlaying && playerCurrent ? playerCurrent : null;
+              const coverUrl = activeTrack?.cover_url ?? lastDug?.cover_url;
+              const artist = activeTrack?.artist ?? lastDug?.artist;
+              const title = activeTrack?.title ?? lastDug?.title;
+              const label = activeTrack ? "Now listening" : "Now digging";
+
+              return (
+                <button
+                  onClick={() =>
+                    activeTrack
+                      ? setListenMode(true)
+                      : lastDug && setSelectedRecord(lastDug)
+                  }
+                  className="w-full flex items-center gap-3 mb-4 py-1.5 px-2 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] hover:border-[var(--color-accent)] transition-colors cursor-pointer text-left"
+                >
+                  {coverUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={coverUrl}
+                      alt=""
+                      className="w-8 h-8 object-cover border border-[var(--color-border)] flex-shrink-0"
+                    />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <span className="font-mono text-[9px] uppercase tracking-widest text-[var(--color-text-faint)]">
+                      {label}
+                    </span>
+                    <p className="text-[11px] text-[var(--color-text-primary)] truncate leading-none">
+                      {artist} —{" "}
+                      <span className="font-serif italic">{title}</span>
+                    </p>
+                  </div>
+                </button>
+              );
+            })()}
 
           {/* Grid */}
           {loading ? (
