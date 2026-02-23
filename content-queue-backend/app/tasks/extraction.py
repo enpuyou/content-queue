@@ -68,23 +68,31 @@ def extract_metadata(self, item_id: str):
                 soup = BeautifulSoup(resp.content, "html.parser")
                 metadata = _extract_page_metadata(soup, item.original_url)
                 # Only fill fields that aren't already set by the extension
-                if not item.title:
-                    item.title = metadata.get("title")
-                if not item.description:
-                    item.description = metadata.get("description")
-                if not item.thumbnail_url:
-                    item.thumbnail_url = metadata.get("thumbnail")
-                if not item.author:
-                    item.author = metadata.get("author")
-                if not item.published_date and metadata.get("published_date"):
-                    try:
-                        from dateutil import parser as dateparser
+                if metadata:
+                    if metadata.get("title") and (
+                        not item.title or "youtu" not in item.original_url
+                    ):
+                        item.title = metadata["title"]
+                    if metadata.get("description") and not item.description:
+                        item.description = metadata["description"]
+                    if metadata.get("thumbnail_url") and not item.thumbnail_url:
+                        item.thumbnail_url = metadata["thumbnail_url"]
+                    if metadata.get("author") and not item.author:
+                        item.author = metadata["author"]
+                    if metadata.get("published_date") and not item.published_date:
+                        try:
+                            from datetime import datetime
 
-                        item.published_date = dateparser.parse(
-                            metadata["published_date"]
-                        )
-                    except Exception:
-                        pass
+                            item.published_date = datetime.fromisoformat(
+                                metadata["published_date"].replace("Z", "+00:00")
+                            )
+                        except ValueError:
+                            pass
+                    if metadata.get("content_vertical"):
+                        item.content_vertical = metadata["content_vertical"]
+                    if metadata.get("vertical_metadata"):
+                        item.vertical_metadata = metadata["vertical_metadata"]
+
                 item.content_type = _detect_content_type(
                     item.original_url, dict(resp.headers)
                 )
@@ -143,6 +151,8 @@ def extract_metadata(self, item_id: str):
                     item.published_date = dateparser.parse(metadata["published_date"])
                 except Exception:
                     pass
+            item.content_vertical = metadata.get("content_vertical")
+            item.vertical_metadata = metadata.get("vertical_metadata")
             # processing_status stays "processing" — full content not yet extracted
             self.db.commit()
             logger.info(f"Metadata extracted for {url}, queuing full content")
@@ -437,6 +447,13 @@ def _process_pdf(item: ContentItem, pdf_bytes: bytes, url: str):
     item.word_count = words
     item.reading_time_minutes = max(1, words // 200)
 
+    # Build structured metadata response for content_vertical and vertical_metadata
+    item.content_vertical = "academic"
+    item.vertical_metadata = {
+        "source": "pdf",
+        "is_academic": True,
+    }
+
 
 def _extract_page_metadata(soup: BeautifulSoup, url: str) -> dict:
     """
@@ -536,6 +553,66 @@ def _extract_page_metadata(soup: BeautifulSoup, url: str) -> dict:
     )
     if pub_meta and pub_meta.get("content"):
         metadata["published_date"] = pub_meta["content"].strip()
+
+    # Academic paper detection
+    content_vertical = "general"
+    vertical_metadata = {}
+
+    # 1. URL checks
+    domain = _extract_domain_from_url(url).lower()
+    academic_domains = [
+        "arxiv.org",
+        "nature.com",
+        "sciencedirect.com",
+        "springer.com",
+        "wiley.com",
+        "tandfonline.com",
+        "ieeexplore.ieee.org",
+        "dl.acm.org",
+        "academic.oup.com",
+        "journals.sagepub.com",
+        "pnas.org",
+        "sciencemag.org",
+        "cell.com",
+        "jstor.org",
+        "plos.org",
+        "ncbi.nlm.nih.gov/pmc",
+        "semanticscholar.org",
+        "biorxiv.org",
+        "medrxiv.org",
+        "ssrn.com",
+    ]
+    if any(d in domain for d in academic_domains) or ".edu" in domain:
+        content_vertical = "academic"
+        vertical_metadata["is_academic"] = True
+
+    # 2. Meta tag checks (Highwire Press tags, PRISM tags, Dublin Core tags commonly used by academic publishers)
+    if content_vertical != "academic":
+        academic_meta_tags = [
+            soup.find("meta", attrs={"name": "citation_title"}),
+            soup.find("meta", attrs={"name": "citation_author"}),
+            soup.find("meta", attrs={"name": "citation_journal_title"}),
+            soup.find("meta", attrs={"name": "prism.publicationName"}),
+            soup.find("meta", attrs={"name": "dc.Type", "content": "research-article"}),
+            soup.find("meta", attrs={"name": "DC.type", "content": "Article"}),
+        ]
+        if any(tag is not None for tag in academic_meta_tags):
+            content_vertical = "academic"
+            vertical_metadata["is_academic"] = True
+
+            # Optionally pull DOI or specific academic tags into vertical_metadata here
+            doi_tag = soup.find("meta", attrs={"name": "citation_doi"}) or soup.find(
+                "meta", attrs={"name": "prism.doi"}
+            )
+            if doi_tag and doi_tag.get("content"):
+                vertical_metadata["doi"] = doi_tag["content"].strip()
+
+            journal_tag = soup.find("meta", attrs={"name": "citation_journal_title"})
+            if journal_tag and journal_tag.get("content"):
+                vertical_metadata["journal"] = journal_tag["content"].strip()
+
+    metadata["content_vertical"] = content_vertical
+    metadata["vertical_metadata"] = vertical_metadata
 
     return metadata
 

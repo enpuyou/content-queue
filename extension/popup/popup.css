@@ -1,4 +1,4 @@
-/* sed.i extension popup — matches app aesthetic (light theme hardcoded) */
+/* sed.i extension popup — follows system color theme */
 
 :root {
   --bg: #fffef7;
@@ -9,6 +9,19 @@
   --accent-hover: #2d35a0;
   --border: #d8d7ce;
   --red: #c0392b;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1a1a18;
+    --bg-secondary: #242420;
+    --text: #e8e7dc;
+    --text-muted: #8a8a7e;
+    --accent: #6b75e8;
+    --accent-hover: #818ae8;
+    --border: #38382e;
+    --red: #e05c4b;
+  }
 }
 
 * {
@@ -29,8 +42,15 @@ body {
 
 /* ─── Views ─────────────────────────────────────────── */
 
-.view { display: flex; flex-direction: column; gap: 12px; }
-.hidden { display: none !important; }
+.view {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hidden {
+  display: none !important;
+}
 
 /* ─── Logo ───────────────────────────────────────────── */
 
@@ -90,7 +110,9 @@ body {
   transition: color 0.15s;
 }
 
-.icon-btn:hover { color: var(--text); }
+.icon-btn:hover {
+  color: var(--text);
+}
 
 /* ─── Form fields ────────────────────────────────────── */
 
@@ -131,8 +153,13 @@ input[type="text"] {
   margin-bottom: 2px;
 }
 
-input:focus { border-bottom-color: var(--accent); }
-input::placeholder { color: var(--text-muted); }
+input:focus {
+  border-bottom-color: var(--accent);
+}
+
+input::placeholder {
+  color: var(--text-muted);
+}
 
 /* ─── Buttons ────────────────────────────────────────── */
 
@@ -184,7 +211,9 @@ input::placeholder { color: var(--text-muted); }
   margin-top: 2px;
 }
 
-.btn-secondary:hover { border-color: var(--accent); }
+.btn-secondary:hover {
+  border-color: var(--accent);
+}
 
 /* ─── Page info ──────────────────────────────────────── */
 
@@ -269,11 +298,20 @@ input::placeholder { color: var(--text-muted); }
 }
 
 @keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0;
+  }
 }
 
-.blink { animation: blink 1s step-end infinite; }
+.blink {
+  animation: blink 1s step-end infinite;
+}
 
 /* ─── Result view ────────────────────────────────────── */
 
@@ -306,7 +344,9 @@ input::placeholder { color: var(--text-muted); }
   transition: border-color 0.15s;
 }
 
-#result-actions a:hover { border-bottom-color: var(--accent); }
+#result-actions a:hover {
+  border-bottom-color: var(--accent);
+}
 
 /* ─── Preview view ───────────────────────────────────── */
 
@@ -331,9 +371,20 @@ input::placeholder { color: var(--text-muted); }
   letter-spacing: 0.04em;
 }
 
-.signal.ok { border-color: #2e7d52; color: #2e7d52; }
-.signal.warn { border-color: #b45309; color: #b45309; }
-.signal.bad { border-color: var(--red); color: var(--red); }
+.signal.ok {
+  border-color: #2e7d52;
+  color: #2e7d52;
+}
+
+.signal.warn {
+  border-color: #b45309;
+  color: #b45309;
+}
+
+.signal.bad {
+  border-color: var(--red);
+  color: var(--red);
+}
 
 .preview-snippet {
   font-size: 11px;

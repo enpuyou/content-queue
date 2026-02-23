@@ -15,14 +15,18 @@ export interface ContentItem {
   description: string | null;
   summary?: string | null;
   thumbnail_url: string | null;
-  content_type: string | null;
   tags: string[] | null;
   auto_tags?: string[] | null;
   full_text: string | null;
   word_count: number | null;
   reading_time_minutes: number | null;
-  author?: string | null;
-  published_date?: string | null;
+  is_academic?: boolean;
+  content_type: "article" | "video" | "pdf" | "tweet" | "unknown";
+  content_vertical: "general" | "academic" | "recipe" | "repository" | string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  vertical_metadata?: Record<string, any>;
+  author: string | null;
+  published_date: string | null;
   is_read: boolean;
   is_archived: boolean;
   read_position?: number;

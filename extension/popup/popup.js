@@ -11,6 +11,8 @@
  */
 
 const DEFAULT_API_BASE = 'https://content-queue-fast-api-production.up.railway.app';
+// The frontend app URL (separate from the API — hosted on Vercel)
+const DEFAULT_FRONTEND_BASE = 'https://read-sedi.vercel.app';
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
@@ -102,22 +104,11 @@ async function setupReadyView() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const titleEl = document.getElementById('page-title');
   if (tab?.title) titleEl.textContent = tab.title;
-
-  // Populate API base in settings drawer
-  const { apiBase } = await msg('getApiBase');
-  document.getElementById('input-api-base').value = apiBase || DEFAULT_API_BASE;
 }
 
 // Settings toggle
 document.getElementById('btn-settings-toggle').addEventListener('click', () => {
   document.getElementById('settings-drawer').classList.toggle('hidden');
-});
-
-// Save settings
-document.getElementById('btn-save-settings').addEventListener('click', async () => {
-  const apiBase = document.getElementById('input-api-base').value.trim() || DEFAULT_API_BASE;
-  await msg('setApiBase', { apiBase });
-  document.getElementById('settings-drawer').classList.add('hidden');
 });
 
 // Close button — just closes the popup window
@@ -128,8 +119,6 @@ document.getElementById('btn-close').addEventListener('click', () => {
 // Logout (moved into settings drawer)
 document.getElementById('btn-logout').addEventListener('click', async () => {
   await msg('clearToken');
-  const { apiBase } = await msg('getApiBase');
-  document.getElementById('input-api-base-login').value = apiBase || DEFAULT_API_BASE;
   show('view-login');
 });
 
@@ -281,13 +270,11 @@ function showResult(success, pageTitle) {
     link.href = '#';
     link.textContent = 'Open sed.i →';
     link.addEventListener('click', (e) => {
-      e.preventDefault();
-      msg('getApiBase').then(({ apiBase }) => {
-        // Open the frontend dashboard (assume same host, port 3000 for dev)
-        const base = (apiBase || DEFAULT_API_BASE).replace(':8000', ':3000').replace(/\/$/, '');
-        chrome.tabs.create({ url: `${base}/dashboard` });
+        e.preventDefault();
+        // Open the frontend dashboard
+        const frontendBase = DEFAULT_FRONTEND_BASE.replace(/\/$/, '');
+        chrome.tabs.create({ url: `${frontendBase}/dashboard` });
       });
-    });
     actionsEl.appendChild(link);
   }
 }

@@ -1,4 +1,9 @@
 # Python
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Extension builds
+sedi-extension-*.zip
 __pycache__/
 *.py[cod]
 *$py.class

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Any
 from pydantic import BaseModel, computed_field, ConfigDict
 from datetime import datetime
 from uuid import UUID
@@ -96,6 +96,13 @@ class ContentItemUpdate(BaseModel):
     title: str | None = None
     description: str | None = None
     thumbnail_url: str | None = None
+    content_type: str | None = "unknown"
+    author: str | None = None
+    content_vertical: str | None = "general"
+    vertical_metadata: dict[str, Any] | None = None
+
+    # Interactions
+
     is_read: bool | None = None
     is_archived: bool | None = None
     read_position: float | None = None
