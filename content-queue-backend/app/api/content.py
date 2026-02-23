@@ -502,6 +502,12 @@ async def update_content_item(
         )
 
     # Update fields
+    if update_data.title is not None:
+        item.title = update_data.title
+
+    if update_data.description is not None:
+        item.description = update_data.description
+
     if update_data.is_read is not None:
         item.is_read = update_data.is_read
         if update_data.is_read:

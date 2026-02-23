@@ -327,7 +327,7 @@ const HighlightRenderer = ({
           onUpdate={onUpdateHighlight}
           onHighlightClick={
             onHighlightClick
-              ? (_id: string, element: Element) =>
+              ? (_id, element) =>
                   onHighlightClick(
                     highlight || {
                       id,
