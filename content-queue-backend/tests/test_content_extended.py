@@ -119,7 +119,10 @@ def test_extension_path_creates_completed_content(client, auth_headers):
     creates a content item with processing_status='completed'.
     """
     _reset_rate_limiter()
-    with patch("app.tasks.extraction.extract_metadata.delay") as mock_delay:
+    with (
+        patch("app.tasks.extraction.extract_metadata.delay") as mock_delay,
+        patch("app.tasks.embedding.generate_embedding.delay"),
+    ):
         response = client.post(
             "/content",
             json={
@@ -135,8 +138,8 @@ def test_extension_path_creates_completed_content(client, auth_headers):
     data = response.json()
     assert data["processing_status"] == "completed"
     assert data["title"] == "My Article"
-    # Celery IS triggered even for extension path — it fills in remaining
-    # metadata (thumbnail if missing) and generates the embedding.
+    # Both tasks are triggered for the extension path:
+    # extract_metadata fills missing fields; generate_embedding creates the vector.
     mock_delay.assert_called_once()
 
 
@@ -145,7 +148,10 @@ def test_extension_path_stores_cleaned_html(client, auth_headers):
     pre_extracted_html with title H1 matching the title gets cleaned
     (title H1 is stripped to avoid duplication in reader).
     """
-    with patch("app.tasks.extraction.extract_metadata.delay"):
+    with (
+        patch("app.tasks.extraction.extract_metadata.delay"),
+        patch("app.tasks.embedding.generate_embedding.delay"),
+    ):
         _reset_rate_limiter()
         response = client.post(
             "/content",
