@@ -148,27 +148,14 @@ document.getElementById('btn-save').addEventListener('click', async () => {
       return;
     }
 
-    // Try session cache first (populated eagerly by the content script on page load)
-    const STALE_MS = 5 * 60 * 1000;
-    const cacheKey = `sedi_${url}`;
+    // We now rely solely on activeTab permission to inject on demand.
+    // This avoids the need for broad host_permissions in the manifest.
     let extracted = null;
-
-    try {
-      const cached = await chrome.storage.session.get(cacheKey);
-      const entry = cached[cacheKey];
-      if (entry && Date.now() - entry.ts < STALE_MS) {
-        extracted = entry.result;
-      }
-    } catch {}
-
-    if (!extracted) {
-      // Fallback: inject and extract on demand
-      const results = await chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        files: ['lib/Readability.js', 'content/content.js'],
-      });
-      extracted = results?.[0]?.result;
-    }
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ['lib/Readability.js', 'content/content.js'],
+    });
+    extracted = results?.[0]?.result;
 
     if (!extracted || extracted.error) {
       throw new Error(extracted?.error || 'Content extraction failed.');
