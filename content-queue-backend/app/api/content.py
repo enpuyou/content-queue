@@ -522,6 +522,9 @@ async def update_content_item(
     if update_data.is_archived is not None:
         item.is_archived = update_data.is_archived
 
+    if update_data.is_public is not None:
+        item.is_public = update_data.is_public
+
     if update_data.read_position is not None:
         item.read_position = update_data.read_position
         # Auto-mark as read if scrolled to near the end
@@ -536,6 +539,12 @@ async def update_content_item(
 
     if update_data.full_text is not None:
         item.full_text = update_data.full_text
+
+    if update_data.author is not None:
+        item.author = update_data.author
+
+    if update_data.published_date is not None:
+        item.published_date = update_data.published_date
 
     db.commit()
     db.refresh(item)

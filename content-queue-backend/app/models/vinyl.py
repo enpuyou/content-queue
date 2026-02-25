@@ -1,4 +1,13 @@
-from sqlalchemy import Column, String, DateTime, Integer, Text, ForeignKey, ARRAY
+from sqlalchemy import (
+    Column,
+    String,
+    DateTime,
+    Integer,
+    Text,
+    ForeignKey,
+    ARRAY,
+    Boolean,
+)
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -44,6 +53,7 @@ class VinylRecord(Base):
     status = Column(
         String(50), default="collection", index=True
     )  # collection, wantlist, library
+    is_public = Column(Boolean, default=False, index=True)
 
     # Processing
     processing_status = Column(String(50), default="pending", index=True)

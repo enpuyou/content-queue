@@ -11,9 +11,13 @@ class User(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(String(255), unique=True, nullable=False, index=True)
+    username = Column(String(50), unique=True, index=True, nullable=True)
     hashed_password = Column(String(255), nullable=False)
     full_name = Column(String(255))
     is_active = Column(Boolean, default=True)
+    is_public = Column(Boolean, default=False, index=True)
+    is_queue_public = Column(Boolean, default=False)
+    is_crates_public = Column(Boolean, default=False)
     reading_patterns = Column(
         JSONB, default=dict
     )  # Tracks: avg_reading_time, preferred_times, tag_preferences

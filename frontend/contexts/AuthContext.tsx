@@ -16,10 +16,12 @@ interface AuthContextType {
   register: (
     email: string,
     password: string,
-    fullName?: string,
+    fullName: string | undefined,
+    username: string,
   ) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
+  mutate: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -57,9 +59,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (
     email: string,
     password: string,
-    fullName?: string,
+    fullName: string | undefined,
+    username: string,
   ) => {
-    await authAPI.register(fullName || email, email, password);
+    await authAPI.register(fullName || email, email, password, username);
     // Auto-login after registration
     await login(email, password);
   };
@@ -69,8 +72,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const mutate = async () => {
+    await fetchUser();
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, isLoading }}>
+    <AuthContext.Provider
+      value={{ user, login, register, logout, isLoading, mutate }}
+    >
       {children}
     </AuthContext.Provider>
   );

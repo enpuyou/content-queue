@@ -690,28 +690,9 @@ button:focus-visible {
 
 /* Tablet optimizations */
 @media (min-width: 641px) and (max-width: 1024px) {
-  main {
-    padding: 1.5rem;
-  }
-
   /* Slightly smaller gap on tablet */
   .gap-8 {
     gap: 1.5rem;
-  }
-}
-
-/* Large screens - optimize for reading */
-@media (min-width: 1025px) {
-  /* Maximum width for optimal reading */
-  main:not(.max-w-none),
-  .max-w-2xl {
-    max-width: 48rem;
-    /* ~768px */
-  }
-
-  /* Comfortable padding on large screens */
-  main {
-    padding: 2rem;
   }
 }
 

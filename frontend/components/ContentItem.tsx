@@ -8,6 +8,7 @@ import { ContentItem as ContentItemType } from "@/types";
 import StatusIndicator from "./StatusIndicator";
 import MobileActionsMenu from "./MobileActionsMenu";
 import RetroLoader from "./RetroLoader";
+import { useAuth } from "@/contexts/AuthContext";
 import { contentAPI } from "@/lib/api";
 
 /**
@@ -23,7 +24,7 @@ interface ContentItemProps {
   content: ContentItemType;
   onStatusChange: (
     id: string,
-    updates: { is_read?: boolean; is_archived?: boolean },
+    updates: { is_read?: boolean; is_archived?: boolean; is_public?: boolean },
   ) => void;
   onDelete: (id: string) => void;
   // Called when content is updated (e.g., tags change)
@@ -39,6 +40,10 @@ interface ContentItemProps {
   isSelected?: boolean;
   id?: string;
   isRemoving?: boolean;
+  // Read-only mode: hide all action buttons (for public profile view)
+  readOnly?: boolean;
+  // Override navigation target (e.g. /[username]/content/[id] for public profile)
+  navigateTo?: string;
 }
 
 export default function ContentItem({
@@ -53,7 +58,10 @@ export default function ContentItem({
   isSelected,
   id,
   isRemoving = false,
+  readOnly = false,
+  navigateTo,
 }: ContentItemProps) {
+  const { user } = useAuth();
   /**
    * Hydration fix: Only render relative dates on the client side
    * Server and client would calculate different "now" times, causing mismatch
@@ -89,7 +97,7 @@ export default function ContentItem({
    */
   const handleStatusChange = (
     e: React.MouseEvent | null,
-    updates: { is_read?: boolean; is_archived?: boolean },
+    updates: { is_read?: boolean; is_archived?: boolean; is_public?: boolean },
   ) => {
     if (e) e.stopPropagation();
 
@@ -177,6 +185,10 @@ export default function ContentItem({
       return;
     }
     // Save scroll position and return path before navigating
+    if (navigateTo) {
+      router.push(navigateTo);
+      return;
+    }
     sessionStorage.setItem("contentListScrollPos", window.scrollY.toString());
     if (returnPath) {
       sessionStorage.setItem("readerReturnPath", returnPath);
@@ -265,18 +277,43 @@ export default function ContentItem({
                   <span>{content.reading_time_minutes} min read</span>
                 </>
               )}
+              {user?.is_public && content.is_public && (
+                <>
+                  <span>·</span>
+                  <span
+                    className="inline-flex items-center gap-1 text-[var(--color-accent)]"
+                    title="Publicly visible on your profile"
+                  >
+                    <svg
+                      className="w-3 h-3"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    Public
+                  </span>
+                </>
+              )}
             </div>
           )}
 
           {/* Title - clickable, links to reader view */}
           <Link
-            href={`/content/${content.id}`}
+            href={navigateTo || `/content/${content.id}`}
             className="block mb-2"
             onClick={() => {
-              sessionStorage.setItem(
-                "contentListScrollPos",
-                window.scrollY.toString(),
-              );
+              if (!navigateTo)
+                sessionStorage.setItem(
+                  "contentListScrollPos",
+                  window.scrollY.toString(),
+                );
             }}
           >
             <h3 className="font-serif text-2xl font-normal text-[var(--color-text-primary)] group-hover:text-[var(--color-accent)] transition-colors leading-tight">
@@ -491,139 +528,141 @@ export default function ContentItem({
           )}
 
           {/* Action buttons - Desktop: appear on hover, Mobile: three-dot menu */}
-          <div className="flex items-center gap-2">
-            {/* Mobile: Three-dot menu (always visible on small screens) */}
-            <div className="sm:hidden">
-              <MobileActionsMenu
-                onRead={() =>
-                  onStatusChange(content.id, { is_read: !content.is_read })
-                }
-                onArchive={() =>
-                  handleStatusChange(null, {
-                    is_archived: !content.is_archived,
-                  })
-                }
-                onAddTag={() => setIsEditingTags(true)}
-                onDelete={() => setConfirmDelete(true)}
-                onAddToList={
-                  availableLists && availableLists.length > 0 && onAddToList
-                    ? (listId) => onAddToList(listId)
-                    : undefined
-                }
-                onRemoveFromList={onRemoveFromList}
-                isRead={content.is_read}
-                isArchived={content.is_archived}
-                availableLists={availableLists}
-              />
-            </div>
+          {!readOnly && (
+            <div className="flex items-center gap-2">
+              {/* Mobile: Three-dot menu (always visible on small screens) */}
+              <div className="sm:hidden">
+                <MobileActionsMenu
+                  onRead={() =>
+                    onStatusChange(content.id, { is_read: !content.is_read })
+                  }
+                  onArchive={() =>
+                    handleStatusChange(null, {
+                      is_archived: !content.is_archived,
+                    })
+                  }
+                  onAddTag={() => setIsEditingTags(true)}
+                  onDelete={() => setConfirmDelete(true)}
+                  onAddToList={
+                    availableLists && availableLists.length > 0 && onAddToList
+                      ? (listId) => onAddToList(listId)
+                      : undefined
+                  }
+                  onRemoveFromList={onRemoveFromList}
+                  isRead={content.is_read}
+                  isArchived={content.is_archived}
+                  availableLists={availableLists}
+                />
+              </div>
 
-            {/* Desktop: Hover actions (hidden on mobile) */}
-            <div className="hidden sm:flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity flex-wrap">
-              {/* Mark as read/unread */}
-              <button
-                onClick={(e) =>
-                  handleStatusChange(e, { is_read: !content.is_read })
-                }
-                className="text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"
-                title={content.is_read ? "Mark as unread" : "Mark as read"}
-              >
-                {content.is_read ? "Unread" : "Read"}
-              </button>
+              {/* Desktop: Hover actions (hidden on mobile) */}
+              <div className="hidden sm:flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity flex-wrap">
+                {/* Mark as read/unread */}
+                <button
+                  onClick={(e) =>
+                    handleStatusChange(e, { is_read: !content.is_read })
+                  }
+                  className="text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"
+                  title={content.is_read ? "Mark as unread" : "Mark as read"}
+                >
+                  {content.is_read ? "Unread" : "Read"}
+                </button>
 
-              {/* Archive/Unarchive */}
-              <button
-                onClick={(e) =>
-                  handleStatusChange(e, {
-                    is_archived: !content.is_archived,
-                  })
-                }
-                className="text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"
-                title={content.is_archived ? "Unarchive" : "Archive"}
-              >
-                {content.is_archived ? "Unarchive" : "Archive"}
-              </button>
+                {/* Archive/Unarchive */}
+                <button
+                  onClick={(e) =>
+                    handleStatusChange(e, {
+                      is_archived: !content.is_archived,
+                    })
+                  }
+                  className="text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"
+                  title={content.is_archived ? "Unarchive" : "Archive"}
+                >
+                  {content.is_archived ? "Unarchive" : "Archive"}
+                </button>
 
-              {/* Add to list - with dropdown */}
-              {availableLists && availableLists.length > 0 && onAddToList && (
-                <div className="relative">
+                {/* Add to list - with dropdown */}
+                {availableLists && availableLists.length > 0 && onAddToList && (
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowListDropdown(!showListDropdown)}
+                      className="text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"
+                      title="Add to list"
+                    >
+                      + List
+                    </button>
+
+                    {/* List dropdown */}
+                    {showListDropdown && (
+                      <>
+                        <div
+                          className="fixed inset-0 z-10"
+                          onClick={() => setShowListDropdown(false)}
+                        />
+                        <div className="absolute right-0 top-full mt-1 w-48 bg-[var(--color-bg-primary)] border border-[var(--color-border)] z-20 max-h-52 overflow-y-auto">
+                          <p className="font-mono text-[9px] uppercase tracking-widest text-[var(--color-text-faint)] px-3 pt-2.5 pb-1.5 border-b border-[var(--color-border-subtle)]">
+                            Add to list
+                          </p>
+                          {availableLists.map((list) => (
+                            <button
+                              key={list.id}
+                              onClick={() => {
+                                onAddToList(list.id);
+                                setShowListDropdown(false);
+                              }}
+                              className="w-full text-left px-3 py-2 font-mono text-[11px] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-secondary)] transition-colors border-b border-[var(--color-border-subtle)] last:border-0"
+                            >
+                              {list.name}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* Add Tag button */}
+                <button
+                  onClick={() => setIsEditingTags(true)}
+                  className="text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"
+                  title="Add tag"
+                >
+                  + Tag
+                </button>
+
+                {/* Remove from list (replaces Delete button in list context) */}
+                {onRemoveFromList ? (
                   <button
-                    onClick={() => setShowListDropdown(!showListDropdown)}
-                    className="text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"
-                    title="Add to list"
+                    onClick={onRemoveFromList}
+                    className="text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-rose-500 dark:text-red-400 border border-[var(--color-border)] hover:bg-rose-50 dark:hover:bg-red-900/20 transition-colors"
+                    title="Remove from list"
                   >
-                    + List
+                    Remove
                   </button>
-
-                  {/* List dropdown */}
-                  {showListDropdown && (
-                    <>
-                      <div
-                        className="fixed inset-0 z-10"
-                        onClick={() => setShowListDropdown(false)}
-                      />
-                      <div className="absolute right-0 top-full mt-1 w-48 bg-[var(--color-bg-primary)] border border-[var(--color-border)] z-20 max-h-52 overflow-y-auto">
-                        <p className="font-mono text-[9px] uppercase tracking-widest text-[var(--color-text-faint)] px-3 pt-2.5 pb-1.5 border-b border-[var(--color-border-subtle)]">
-                          Add to list
-                        </p>
-                        {availableLists.map((list) => (
-                          <button
-                            key={list.id}
-                            onClick={() => {
-                              onAddToList(list.id);
-                              setShowListDropdown(false);
-                            }}
-                            className="w-full text-left px-3 py-2 font-mono text-[11px] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-secondary)] transition-colors border-b border-[var(--color-border-subtle)] last:border-0"
-                          >
-                            {list.name}
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-
-              {/* Add Tag button */}
-              <button
-                onClick={() => setIsEditingTags(true)}
-                className="text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"
-                title="Add tag"
-              >
-                + Tag
-              </button>
-
-              {/* Remove from list (replaces Delete button in list context) */}
-              {onRemoveFromList ? (
-                <button
-                  onClick={onRemoveFromList}
-                  className="text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-rose-500 dark:text-red-400 border border-[var(--color-border)] hover:bg-rose-50 dark:hover:bg-red-900/20 transition-colors"
-                  title="Remove from list"
-                >
-                  Remove
-                </button>
-              ) : (
-                /* Delete button — inline confirm (only show if not in list context) */
-                <button
-                  onClick={() => {
-                    if (!confirmDelete) {
-                      setConfirmDelete(true);
-                      return;
-                    }
-                    setConfirmDelete(false);
-                    onDelete(content.id);
-                  }}
-                  className={`text-xs px-2 py-1 rounded-none border transition-colors ${
-                    confirmDelete
-                      ? "border-red-400 text-red-500 dark:text-red-400"
-                      : "bg-[var(--color-bg-secondary)] text-rose-500 dark:text-red-400 border-[var(--color-border)] hover:bg-rose-50 dark:hover:bg-red-900/20"
-                  }`}
-                  title="Delete article"
-                >
-                  {confirmDelete ? "Confirm?" : "Delete"}
-                </button>
-              )}
+                ) : (
+                  /* Delete button — inline confirm (only show if not in list context) */
+                  <button
+                    onClick={() => {
+                      if (!confirmDelete) {
+                        setConfirmDelete(true);
+                        return;
+                      }
+                      setConfirmDelete(false);
+                      onDelete(content.id);
+                    }}
+                    className={`text-xs px-2 py-1 rounded-none border transition-colors ${
+                      confirmDelete
+                        ? "border-red-400 text-red-500 dark:text-red-400"
+                        : "bg-[var(--color-bg-secondary)] text-rose-500 dark:text-red-400 border-[var(--color-border)] hover:bg-rose-50 dark:hover:bg-red-900/20"
+                    }`}
+                    title="Delete article"
+                  >
+                    {confirmDelete ? "Confirm?" : "Delete"}
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Right side: Thumbnail (if available) - right-aligned, smaller */}

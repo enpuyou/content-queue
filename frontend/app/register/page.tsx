@@ -11,6 +11,7 @@ import NowPlaying from "@/components/NowPlaying";
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("");
   const [fullName, setFullName] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -22,7 +23,7 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      await authAPI.register(fullName, email, password);
+      await authAPI.register(fullName, email, password, username);
       router.push("/login?registered=true");
     } catch (err: unknown) {
       const error = err as {
@@ -90,6 +91,16 @@ export default function RegisterPage() {
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             placeholder="Name"
+            className="block w-full px-3 py-2 text-sm font-mono border-b border-[var(--color-border)] bg-transparent focus:outline-none focus:border-[var(--color-accent)] placeholder:text-[var(--color-text-faint)] text-[var(--color-text-primary)] transition-colors"
+          />
+
+          <input
+            id="username"
+            type="text"
+            required
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="Username"
             className="block w-full px-3 py-2 text-sm font-mono border-b border-[var(--color-border)] bg-transparent focus:outline-none focus:border-[var(--color-accent)] placeholder:text-[var(--color-text-faint)] text-[var(--color-text-primary)] transition-colors"
           />
 

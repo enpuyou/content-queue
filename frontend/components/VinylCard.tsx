@@ -89,11 +89,11 @@ export default function VinylCard({
 
       {/* Caption below — hidden in compact mode */}
       {!compact && (
-        <div className="mt-0.5 px-0.5 leading-none">
-          <p className="font-sans text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] truncate">
+        <div className="mt-0.5 px-0.5 leading-none relative group">
+          <p className="font-sans text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] truncate pr-6">
             {record.artist || "Unknown Artist"}
           </p>
-          <p className="font-serif text-[13px] text-[var(--color-text-primary)] truncate leading-[1.1]">
+          <p className="font-serif text-[13px] text-[var(--color-text-primary)] truncate leading-[1.1] pr-6">
             {record.title || "Untitled"}
           </p>
         </div>
