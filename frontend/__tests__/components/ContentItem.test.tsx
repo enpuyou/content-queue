@@ -46,6 +46,14 @@ jest.mock("next/navigation", () => ({
 jest.mock("../../lib/api");
 const mockedContentAPI = contentAPI as jest.Mocked<typeof contentAPI>;
 
+// Mock AuthContext
+jest.mock("../../contexts/AuthContext", () => ({
+  useAuth: () => ({
+    user: { id: "test-user-123", username: "testuser", is_public: true },
+    isAuthenticated: true,
+  }),
+}));
+
 describe("ContentItem", () => {
   const mockOnStatusChange = jest.fn();
   const mockOnDelete = jest.fn();
@@ -61,6 +69,10 @@ describe("ContentItem", () => {
     original_url: "https://example.com/article",
     title: "Test Article Title",
     description: "This is a test article description",
+    content_vertical: "technology",
+    author: "Test Author",
+    published_date: "2024-01-01T00:00:00Z",
+    is_public: false,
 
     is_read: false,
     is_archived: false,

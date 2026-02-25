@@ -12,6 +12,7 @@ A full-stack reading queue application with AI-powered semantic search. Save art
 - **Smart Content Saving**: Automatically extract metadata, thumbnails, and full text from URLs
 - **Reading Queue Management**: Mark articles as read, archive, and track reading progress
 - **Custom Lists**: Organize content into custom collections
+- **Responsive Views**: Seamlessly toggle between comprehensive card views and ultra-dense index grid views based on device or preference
 - **Semantic Search**: Find similar articles using AI-powered embeddings (OpenAI)
 - **Rich Metadata**: Automatic extraction of title, description, reading time, word count
 - **Responsive Design**: Works on desktop, tablet, and mobile

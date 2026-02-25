@@ -12,8 +12,10 @@ const sections = [
   { id: "reading", title: "Reading" },
   { id: "crates", title: "Crates" },
   { id: "lists", title: "Lists" },
+  { id: "extension", title: "Chrome Extension" },
   { id: "search", title: "Search" },
   { id: "ai", title: "AI-Facilitated Features" },
+  { id: "public-profiles", title: "Public Profiles" },
   { id: "shortcuts", title: "Keyboard Shortcuts" },
 ];
 
@@ -299,9 +301,65 @@ export default function GuideClient() {
             </div>
           </section>
 
-          {/* 05 Search */}
+          {/* 05 Chrome Extension */}
           <section>
-            <SectionHeader num={5} id="search" title="Search" />
+            <SectionHeader num={5} id="extension" title="Chrome Extension" />
+            <div className="mt-6 space-y-1 border-t border-[var(--color-border-subtle)] pt-4">
+              <Feature label="Installation">
+                The official extension is currently under review by the Chrome
+                Web Store, but you can install it manually in the meantime!
+                Download the <Kbd>extension</Kbd> folder from the repository,
+                compress it into a zip file using the{" "}
+                <a
+                  href="https://github.com/enpuyou/content-queue/blob/main/build-extension.sh"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[var(--color-accent)] hover:underline"
+                >
+                  build-extension.sh
+                </a>{" "}
+                script, and upload the zip directly to Chrome via the{" "}
+                <Kbd>chrome://extensions</Kbd> developer mode page.
+              </Feature>
+              <Feature label="Capability">
+                Once installed, the extension allows you to save any article you
+                are currently reading to your sed.i queue with a single click
+                without leaving the page.
+              </Feature>
+            </div>
+          </section>
+
+          {/* 05 Chrome Extension */}
+          <section>
+            <SectionHeader num={5} id="extension" title="Chrome Extension" />
+            <div className="mt-6 space-y-1 border-t border-[var(--color-border-subtle)] pt-4">
+              <Feature label="Installation">
+                The official extension is currently under review by the Chrome
+                Web Store, but you can install it manually in the meantime!
+                Download the <Kbd>extension</Kbd> folder from the repository,
+                compress it into a zip file using the{" "}
+                <a
+                  href="https://github.com/enpuyou/content-queue/blob/main/build-extension.sh"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[var(--color-accent)] hover:underline"
+                >
+                  build-extension.sh
+                </a>{" "}
+                script, and upload the zip directly to Chrome via the{" "}
+                <Kbd>chrome://extensions</Kbd> developer mode page.
+              </Feature>
+              <Feature label="Capability">
+                Once installed, the extension allows you to save any article you
+                are currently reading to your sed.i queue with a single click
+                without leaving the page.
+              </Feature>
+            </div>
+          </section>
+
+          {/* 06 Search */}
+          <section>
+            <SectionHeader num={6} id="search" title="Search" />
             <div className="mt-6 space-y-1 border-t border-[var(--color-border-subtle)] pt-4">
               <Feature label="Semantic search">
                 Search uses AI embeddings to find articles by meaning, not just
@@ -315,9 +373,9 @@ export default function GuideClient() {
             </div>
           </section>
 
-          {/* 06 AI Features */}
+          {/* 07 AI Features */}
           <section>
-            <SectionHeader num={6} id="ai" title="AI-Facilitated Features" />
+            <SectionHeader num={7} id="ai" title="AI-Facilitated Features" />
             <div className="mt-6 space-y-1 border-t border-[var(--color-border-subtle)] pt-4">
               <Feature label="Auto-tagging">
                 Articles are automatically tagged with relevant topics using AI
@@ -339,9 +397,28 @@ export default function GuideClient() {
             </div>
           </section>
 
-          {/* 07 Keyboard Shortcuts */}
+          {/* 08 Public Profiles */}
           <section>
-            <SectionHeader num={7} id="shortcuts" title="Keyboard Shortcuts" />
+            <SectionHeader
+              num={8}
+              id="public-profiles"
+              title="Public Profiles"
+            />
+            <div className="mt-6 space-y-1 border-t border-[var(--color-border-subtle)] pt-4">
+              <Feature label="Claim Username">
+                Go to your Profile Settings to claim a unique username and
+                toggle your profile visibility.
+              </Feature>
+              <Feature label="Share Content">
+                Toggle individual articles and vinyl records to "Public" so
+                others can discover them on your profile page.
+              </Feature>
+            </div>
+          </section>
+
+          {/* 09 Keyboard Shortcuts */}
+          <section>
+            <SectionHeader num={9} id="shortcuts" title="Keyboard Shortcuts" />
             <div className="mt-6 border-t border-[var(--color-border-subtle)] pt-4">
               {/* Reader */}
               <h3 className="font-mono text-[10px] uppercase tracking-widest text-[var(--color-text-faint)] mb-3">

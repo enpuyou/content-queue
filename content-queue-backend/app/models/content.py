@@ -68,6 +68,7 @@ class ContentItem(Base):
     # User interaction
     is_read = Column(Boolean, default=False, index=True)
     is_archived = Column(Boolean, default=False, index=True)
+    is_public = Column(Boolean, default=False, index=True)
     read_at = Column(DateTime(timezone=True))
     deleted_at = Column(DateTime(timezone=True), index=True)  # Soft delete
 

@@ -23,7 +23,11 @@ def test_register_success(client):
     ):
         response = client.post(
             "/auth/register",
-            json={"email": "newuser@example.com", "password": "securepass123"},
+            json={
+                "email": "newuser@example.com",
+                "username": "newuser",
+                "password": "securepass123",
+            },
         )
 
     assert response.status_code == 201
@@ -46,7 +50,11 @@ def test_register_creates_onboarding_content(client, db_session):
     ):
         response = client.post(
             "/auth/register",
-            json={"email": "onboard@example.com", "password": "securepass123"},
+            json={
+                "email": "onboard@example.com",
+                "username": "onboarder",
+                "password": "securepass123",
+            },
         )
     assert response.status_code == 201
     user_id = response.json()["id"]
@@ -80,11 +88,19 @@ def test_register_duplicate_email_returns_400(client):
     ):
         client.post(
             "/auth/register",
-            json={"email": "dup@example.com", "password": "pass1"},
+            json={
+                "email": "dup@example.com",
+                "username": "dupuser",
+                "password": "pass1",
+            },
         )
         response = client.post(
             "/auth/register",
-            json={"email": "dup@example.com", "password": "pass2"},
+            json={
+                "email": "dup@example.com",
+                "username": "dupuser2",
+                "password": "pass2",
+            },
         )
 
     assert response.status_code == 400
@@ -104,7 +120,11 @@ def test_login_success_returns_token(client):
     ):
         client.post(
             "/auth/register",
-            json={"email": "login@example.com", "password": "mypassword"},
+            json={
+                "email": "login@example.com",
+                "username": "loginuser",
+                "password": "mypassword",
+            },
         )
 
     response = client.post(
@@ -125,7 +145,11 @@ def test_login_wrong_password_returns_401(client):
     ):
         client.post(
             "/auth/register",
-            json={"email": "wrongpw@example.com", "password": "realpassword"},
+            json={
+                "email": "wrongpw@example.com",
+                "username": "wrongpw",
+                "password": "realpassword",
+            },
         )
 
     response = client.post(

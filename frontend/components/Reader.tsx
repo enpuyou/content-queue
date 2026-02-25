@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ContentItem } from "@/types";
 import { searchAPI, highlightsAPI, contentAPI } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useReadingSettings } from "@/contexts/ReadingSettingsContext";
 import { sanitizeContentHtml } from "@/lib/bionicReading";
@@ -39,10 +40,14 @@ interface ReaderProps {
     is_archived?: boolean;
     read_position?: number;
     full_text?: string;
+    is_public?: boolean;
   }) => void;
 }
 
 export default function Reader({ content, onStatusChange }: ReaderProps) {
+  // Get user for public profile check
+  const { user } = useAuth();
+
   // Use global theme context (no local theme state needed)
   useTheme();
 
@@ -87,15 +92,55 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
   const [editDescription, setEditDescription] = useState(
     content.description || "",
   );
+  const [editAuthor, setEditAuthor] = useState(content.author || "");
+  const [editPublishedDate, setEditPublishedDate] = useState(
+    content.published_date
+      ? new Date(content.published_date).toISOString().split("T")[0]
+      : "",
+  );
+  const [metadataSaved, setMetadataSaved] = useState(false);
+  const [isEditingMeta, setIsEditingMeta] = useState(false);
   const editorRef = useRef<BlockListRef>(null);
+
+  const [optimisticMeta, setOptimisticMeta] = useState<{
+    title?: string | null;
+    author?: string | null;
+    published_date?: string | null;
+  } | null>(null);
+
+  const displayTitle =
+    optimisticMeta?.title !== undefined ? optimisticMeta.title : content.title;
+  const displayAuthor =
+    optimisticMeta?.author !== undefined
+      ? optimisticMeta.author
+      : content.author;
+  const displayPublishedDate =
+    optimisticMeta?.published_date !== undefined
+      ? optimisticMeta.published_date
+      : content.published_date;
+
+  const estimatedReadingTime = useMemo(() => {
+    if (content.reading_time_minutes) return content.reading_time_minutes;
+    if (!content.full_text) return null;
+    const words = content.full_text
+      .replace(/<[^>]*>?/gm, "")
+      .split(/\s+/).length;
+    return Math.max(1, Math.ceil(words / 200));
+  }, [content.reading_time_minutes, content.full_text]);
 
   // Initialize edit state when content loads
   useEffect(() => {
     if (content) {
-      setEditTitle(content.title || "");
+      setEditTitle(displayTitle || "");
       setEditDescription(content.description || "");
+      setEditAuthor(displayAuthor || "");
+      setEditPublishedDate(
+        displayPublishedDate
+          ? new Date(displayPublishedDate).toISOString().split("T")[0]
+          : "",
+      );
     }
-  }, [content]);
+  }, [content, displayTitle, displayAuthor, displayPublishedDate]);
 
   // Save Changes Handler
   const handleSaveChanges = async () => {
@@ -122,6 +167,29 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
       setIsEditing(false);
     } catch (err) {
       console.error("Failed to save changes:", err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Save metadata (title, author, published_date) without entering full edit mode
+  const handleSaveMetadata = async () => {
+    setIsSaving(true);
+    try {
+      await contentAPI.update(content.id, {
+        title: editTitle || undefined,
+        author: editAuthor || undefined,
+        published_date: editPublishedDate || null,
+      });
+      setOptimisticMeta({
+        title: editTitle || null,
+        author: editAuthor || null,
+        published_date: editPublishedDate || null,
+      });
+      setMetadataSaved(true);
+      setTimeout(() => setMetadataSaved(false), 2500);
+    } catch (err) {
+      console.error("Failed to save metadata:", err);
     } finally {
       setIsSaving(false);
     }
@@ -1652,53 +1720,148 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
       )}
 
       {/* Article Content */}
-      <article className="py-8 pt-28 pb-32 max-w-5xl mx-auto select-none">
+      <article className="py-8 pt-28 pb-32 max-w-5xl mx-auto select-none overflow-x-hidden w-full">
         {/* Article Header */}
         <header className="mb-12 max-w-2xl mx-auto px-5 sm:px-6 lg:px-8 relative">
-          {isEditing ? (
-            <input
-              type="text"
-              value={editTitle}
-              onChange={(e) => setEditTitle(e.target.value)}
-              className="w-full font-serif font-normal leading-tight mb-4 text-4xl text-[var(--color-text-primary)] bg-transparent border-b border-[var(--color-border)] focus:outline-none focus:border-[var(--color-accent)]"
-              placeholder="Article Title"
-            />
-          ) : (
-            <h1 className="font-serif font-normal leading-tight mb-4 text-4xl text-[var(--color-text-primary)]">
-              {content.title || "Untitled Article"}
-            </h1>
-          )}
+          {/* Zone 1: Title + pencil edit button */}
+          <div className="group/title relative mb-3">
+            {isEditing ? (
+              <input
+                type="text"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                className="w-full font-serif font-normal leading-tight text-4xl text-[var(--color-text-primary)] bg-transparent border-b border-[var(--color-border)] focus:outline-none focus:border-[var(--color-accent)]"
+                placeholder="Article Title"
+              />
+            ) : (
+              <h1 className="font-serif font-normal leading-tight text-4xl text-[var(--color-text-primary)] pr-12">
+                {displayTitle || "Untitled Article"}
+              </h1>
+            )}
+            <button
+              onClick={() => setIsEditingMeta((v) => !v)}
+              className="absolute top-2 right-0 opacity-0 group-hover/title:opacity-40 hover:!opacity-100 transition-opacity text-[var(--color-text-muted)] hover:text-[var(--color-accent)] p-2 -mr-2 -mt-2"
+              title="Edit title, author, and date"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                />
+              </svg>
+            </button>
+          </div>
 
-          {/* Byline — two rows: article attribution / reader info */}
-          <div className="flex flex-col gap-1 mb-4 font-mono text-xs tracking-tight">
-            {/* Row 1: article attribution — author + published date */}
-            {(content.author || content.published_date) && (
-              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[var(--color-text-muted)]">
-                {content.author && (
-                  <span className="text-[var(--color-text-secondary)] truncate max-w-[20ch] sm:max-w-none">
-                    {content.author}
-                  </span>
-                )}
-                {content.author && content.published_date && (
-                  <span className="text-[var(--color-text-faint)]">·</span>
-                )}
-                {content.published_date && (
+          {/* Byline — Zone 2 + Zone 3 */}
+          <div className="flex flex-col mb-4 font-mono text-xs tracking-tight">
+            {/* Zone 2: article attribution — author wraps freely + published date */}
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[var(--color-text-muted)]">
+              {displayAuthor && (
+                <span
+                  className={`text-[var(--color-text-secondary)] ${displayAuthor.includes(",") || displayAuthor.includes(" and ") ? "basis-full mb-0.5" : ""}`}
+                >
+                  {displayAuthor}
+                </span>
+              )}
+              {displayPublishedDate && (
+                <>
+                  {displayAuthor &&
+                    !(
+                      displayAuthor.includes(",") ||
+                      displayAuthor.includes(" and ")
+                    ) && (
+                      <span className="text-[var(--color-text-faint)]">·</span>
+                    )}
                   <span>
                     published{" "}
-                    {new Date(content.published_date).toLocaleDateString(
+                    {new Date(displayPublishedDate).toLocaleDateString(
                       undefined,
-                      {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                      },
+                      { year: "numeric", month: "short", day: "numeric" },
                     )}
                   </span>
-                )}
+                </>
+              )}
+              {!displayAuthor && !displayPublishedDate && (
+                <span className="text-[var(--color-text-faint)] italic">
+                  no attribution
+                </span>
+              )}
+            </div>
+
+            {/* Inline meta edit panel */}
+            {isEditingMeta && (
+              <div className="mt-3 mb-2 p-3 border border-[var(--color-border)] bg-[var(--color-bg-secondary)] space-y-2">
+                <div>
+                  <label className="block text-[10px] uppercase tracking-widest text-[var(--color-text-muted)] mb-1">
+                    Title
+                  </label>
+                  <input
+                    type="text"
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    className="w-full bg-[var(--color-bg-primary)] border border-[var(--color-border)] px-2 py-1.5 text-xs text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)] font-sans"
+                    placeholder="Article title"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-widest text-[var(--color-text-muted)] mb-1">
+                      Author
+                    </label>
+                    <input
+                      type="text"
+                      value={editAuthor}
+                      onChange={(e) => setEditAuthor(e.target.value)}
+                      className="w-full bg-[var(--color-bg-primary)] border border-[var(--color-border)] px-2 py-1.5 text-xs text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)] font-sans"
+                      placeholder="Author name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-widest text-[var(--color-text-muted)] mb-1">
+                      Published
+                    </label>
+                    <input
+                      type="date"
+                      value={editPublishedDate}
+                      onChange={(e) => setEditPublishedDate(e.target.value)}
+                      className="w-full bg-[var(--color-bg-primary)] border border-[var(--color-border)] px-2 py-1.5 text-xs text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)] font-sans"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center justify-end gap-3 pt-1">
+                  {metadataSaved && (
+                    <span className="text-[10px] font-mono text-[var(--color-accent)]">
+                      Saved.
+                    </span>
+                  )}
+                  <button
+                    onClick={() => setIsEditingMeta(false)}
+                    className="text-[10px] font-mono uppercase tracking-widest text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={async () => {
+                      await handleSaveMetadata();
+                      setIsEditingMeta(false);
+                    }}
+                    disabled={isSaving}
+                    className="text-[10px] font-mono uppercase tracking-widest px-3 py-1 border border-[var(--color-border)] text-[var(--color-text-primary)] hover:border-[var(--color-accent)] transition-colors disabled:opacity-50"
+                  >
+                    {isSaving ? "Saving…" : "Save"}
+                  </button>
+                </div>
               </div>
             )}
-            {/* Row 2: reader info — added date · read time · confidence · domain */}
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[var(--color-text-faint)]">
+            {/* Zone 3: reader info — added date · read time · confidence · domain */}
+            <div className="pt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[var(--color-text-faint)]">
               <span>
                 added{" "}
                 {new Date(content.created_at).toLocaleDateString(undefined, {
@@ -1707,10 +1870,10 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
                   day: "numeric",
                 })}
               </span>
-              {content.reading_time_minutes && (
+              {estimatedReadingTime && (
                 <>
                   <span>·</span>
-                  <span>{content.reading_time_minutes} min read</span>
+                  <span>{estimatedReadingTime} min read</span>
                 </>
               )}
               {extractionConfidence && (
@@ -1736,6 +1899,62 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
                       extraction.
                     </span>
                   </span>
+                </>
+              )}
+              {user?.is_public && (
+                <>
+                  <span>·</span>
+                  <button
+                    onClick={() =>
+                      onStatusChange({ is_public: !content.is_public })
+                    }
+                    className={`inline-flex items-center gap-1 transition-colors ${
+                      content.is_public
+                        ? "text-[var(--color-accent)] hover:opacity-70"
+                        : "hover:text-[var(--color-text-primary)]"
+                    }`}
+                    title={
+                      content.is_public
+                        ? "Publicly visible (Click to make private)"
+                        : "Private (Click to make public)"
+                    }
+                  >
+                    {content.is_public ? (
+                      <>
+                        <svg
+                          className="w-3 h-3"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                        Public
+                      </>
+                    ) : (
+                      <>
+                        <svg
+                          className="w-3 h-3"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                          />
+                        </svg>
+                        Private
+                      </>
+                    )}
+                  </button>
                 </>
               )}
               <span>·</span>

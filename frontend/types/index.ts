@@ -1,8 +1,12 @@
 export interface User {
   id: string;
   email: string;
+  username: string | null;
   full_name: string | null;
   is_active: boolean;
+  is_public: boolean;
+  is_queue_public: boolean;
+  is_crates_public: boolean;
   created_at: string;
   email_token?: string; // For email-to-save feature
 }
@@ -29,6 +33,7 @@ export interface ContentItem {
   published_date: string | null;
   is_read: boolean;
   is_archived: boolean;
+  is_public: boolean;
   read_position?: number;
   reading_status: "unread" | "in_progress" | "read" | "archived";
   processing_status: string;
@@ -68,6 +73,7 @@ export interface VinylRecord {
   rating: number | null;
   tags: string[];
   status: "collection" | "wantlist" | "library";
+  is_public: boolean;
   processing_status: string;
   processing_error: string | null;
   created_at: string;
@@ -80,6 +86,7 @@ export interface List {
   description: string | null;
   owner_id: string;
   is_shared: boolean;
+  is_public: boolean;
   created_at: string;
   updated_at: string;
   content_count?: number;

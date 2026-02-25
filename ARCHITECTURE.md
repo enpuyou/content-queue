@@ -101,6 +101,7 @@ Browser / Extension
 |--------|------|-------|
 | `id` | UUID PK | |
 | `email` | String unique | Login identifier. |
+| `username` | String unique | Public profile identifier (required). |
 | `hashed_password` | String | bcrypt hash, never plain text. |
 | `full_name` | String | Optional display name. |
 | `is_active` | Boolean | False = account disabled. |
@@ -186,8 +187,8 @@ See [§17 Crates](#17-crates--vinyl-record-collection).
 
 ### Registration
 
-1. Client POSTs `{email, password, full_name}` to `/auth/register`.
-2. Backend checks email uniqueness (400 if taken).
+1. Client POSTs `{email, password, username, full_name}` to `/auth/register`.
+2. Backend checks email uniqueness (400 if taken) and username uniqueness (400 if taken).
 3. Password is hashed with bcrypt.
 4. User row is inserted.
 5. **Onboarding content is seeded:** a "Getting Started with sed.i" guide article
@@ -480,16 +481,19 @@ Optional `mood` filter:
 | `/crates` | `crates/` | Vinyl record collection (feature-flagged). |
 | `/guide` | `guide/` | Static user guide page. |
 | `/login`, `/register` | auth pages | |
-| `/settings` | `settings/` | User preferences. |
+| `/settings` | `settings/` | User preferences. Reading settings via static property list + live preview. |
+| `/[username]` | `[username]/PublicProfileClient.tsx` | Public profile. Standard Navbar, same ContentItem/index layout as dashboard, all actions hidden (`readOnly`). List/index toggle persisted in localStorage. Identity breadcrumb `@username's queue`. |
+| `/[username]/content/[id]` | `[username]/content/[id]/page.tsx` | Public reader. Uses `publicAPI.getPublicContentItem()`. Guest limit: 3 reads per profile owner tracked in localStorage; shows signup prompt after limit. |
 
 ### Key components
 
 | Component | Location | Role |
 |-----------|----------|------|
 | `AddContentForm` | dashboard | Collects URL, submits to API. |
-| `ContentList` | dashboard | Fetches items, applies filters, pagination. |
-| `ContentItemCard` | dashboard | Individual card — mark read, archive, delete. |
-| `Reader` | content/[id] | Full article view. Saves scroll progress. |
+| `ContentList` | dashboard | Fetches items, client-side filter, list/index view toggle. Sort field/dir persisted in localStorage. RetroLoader on all loading states. Active sort header highlighted in accent color (no glyph). |
+| `ContentItem` | dashboard / public profile | Card view. Accepts `readOnly?: boolean` — hides all action buttons (read, archive, delete, tag, list) when true. Accepts `navigateTo?: string` to override default `/content/:id` link. |
+| `ContentIndexItem` | dashboard / public profile | Index row. Responsive layout layout: Desktop shows Date \| Title \| Author/Source \| hover menu. Mobile collapses to just Date \| Title to preserve space. Hovering reveals absolute-positioned multi-action tools (Read, Archive, Delete). Delete uses click→"Delete?"→click confirm. Accepts `readOnly` and `navigateTo` props. |
+| `Reader` | content/[id] | Full article view. Saves scroll progress. Inline metadata edit panel (pencil icon in byline): title, author, published date fields. `PATCH /content/:id` on save with inline "Saved." confirmation. |
 | `Sidebar` | layout | List navigation with counts. |
 | `CratesClient` | crates | Grid of records, search/sort/filter, Now Digging bar. |
 | `RecordDetail` | crates | Gatefold panel: art + metadata + tracklist + videos. |
@@ -497,6 +501,7 @@ Optional `mood` filter:
 | `VinylCard` | crates | Individual record card. |
 | `YouTubePlayer` | crates | Invisible div hosting YouTube IFrame API. Plays queue sequentially. |
 | `Navbar` | layout | Mini-player on mobile. `mounted` guard avoids SSR hydration mismatch. |
+| `ProfileSettings` | settings | Public profile toggles (is_public, is_queue_public, is_crates_public), username, full name. Inline "Saved." state replaces alert(). Preview link to `/{username}` shown when public. |
 
 ### React Contexts
 
@@ -640,7 +645,34 @@ Covered in §10.
 
 ---
 
-## 19. Testing
+## 19. Public Profiles
+
+**What it is:** Users can have a public profile accessible via `/[username]`. Content pieces, crates, and lists can be selectively marked as public. Unauthenticated users can view public content, but cannot edit or add to it.
+
+### Data Model Changes
+- `User.username` (String, unique) — Claimed at registration, identifies the profile.
+- `User.is_public` (Boolean) — Toggles profile visibility.
+- `ContentItem.is_public` (Boolean) — Visibility toggle.
+- `VinylRecord.is_public` (Boolean) — Visibility toggle.
+- `List.is_public` (Boolean) — Visibility toggle.
+
+### API Routes — `/public`
+These routes do not require authentication (`@router.get` without the `Depends(get_current_active_user)` guard). Implemented in `content-queue-backend/app/api/endpoints/public.py`.
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/public/u/{username}` | Profile details. 404 if not found, 403 if `is_public=False`. |
+| GET | `/public/u/{username}/content` | Paginated public queue items (only `is_public=True`, non-archived). Only succeeds if `user.is_queue_public=True`. |
+| GET | `/public/u/{username}/content/{item_id}` | Single public content item for the public reader. |
+| GET | `/public/u/{username}/vinyl` | Public vinyl records. Only succeeds if `user.is_crates_public=True`. |
+
+### Frontend UI
+- `app/[username]/PublicProfileClient.tsx` — Uses standard `Navbar`. Loads profile + queue + vinyl in parallel via `Promise.allSettled`. Tabs (Queue/Crates) only shown for whichever sections are publicly enabled. Content rendered with `readOnly={true}` via `ContentItem` / `ContentIndexItem`. Navigation links go to `/[username]/content/[id]`, not `/content/[id]`.
+- `app/[username]/content/[id]/page.tsx` — Public reader page. Calls `publicAPI.getPublicContentItem()`. Guest limit: reads tracked in `localStorage['publicReadsCount']` / `['publicReadsOwner']`; after 3 reads from the same profile, shows a signup prompt instead of article content.
+
+---
+
+## 20. Testing
 
 ### Backend — pytest
 

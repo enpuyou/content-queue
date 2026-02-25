@@ -129,8 +129,10 @@ def test_user(db_session):
         User: A test user object with email test@example.com
     """
     user = User(
-        email="test@example.com",
-        hashed_password=get_password_hash("testpassword123"),
+        email="testuser@example.com",
+        username="testuser",
+        hashed_password=get_password_hash("testpassword"),
+        full_name="Test User",
     )
     db_session.add(user)
     db_session.commit()

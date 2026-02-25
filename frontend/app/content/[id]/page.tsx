@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Reader from "@/components/Reader";
 import { contentAPI } from "@/lib/api";
 import { ContentItem } from "@/types";
+import Link from "next/link";
 
 export default function ContentPage() {
   const params = useParams();
@@ -40,6 +41,7 @@ export default function ContentPage() {
     is_archived?: boolean;
     read_position?: number;
     full_text?: string;
+    is_public?: boolean;
   }) => {
     if (!content) return;
 
@@ -107,12 +109,12 @@ export default function ContentPage() {
           <p className="text-[var(--color-text-secondary)] mb-6">
             {error || "This article could not be loaded."}
           </p>
-          <a
+          <Link
             href="/dashboard"
             className="inline-block bg-[var(--color-accent)] text-white px-6 py-2 hover:bg-[var(--color-accent-hover)] transition-colors"
           >
             Back to Dashboard
-          </a>
+          </Link>
         </div>
       </div>
     );

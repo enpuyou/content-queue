@@ -29,6 +29,7 @@ class VinylRecordBase(BaseModel):
     rating: Optional[int] = Field(None, ge=1, le=5)
     tags: List[str] = []
     status: str = "collection"
+    is_public: bool = False
 
 
 class VinylRecordCreate(BaseModel):
@@ -47,6 +48,7 @@ class VinylRecordUpdate(BaseModel):
     rating: Optional[int] = Field(None, ge=1, le=5)
     tags: Optional[List[str]] = None
     status: Optional[str] = None
+    is_public: Optional[bool] = None
     videos: Optional[List[VinylVideo]] = None
 
 

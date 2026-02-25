@@ -7,7 +7,7 @@ from app.core.database import get_db
 from app.core.security import verify_password, get_password_hash, create_access_token
 from app.core.deps import get_current_active_user
 from app.models.user import User
-from app.schemas.user import UserCreate, UserResponse, Token
+from app.schemas.user import UserCreate, UserResponse, Token, UserUpdate
 from app.models.content import ContentItem
 from app.models.highlight import Highlight
 from app.models.vinyl import VinylRecord
@@ -35,12 +35,19 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
             status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
         )
 
+    if db.query(User).filter(User.username == user_data.username).first():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already registered",
+        )
+
     # Hash the password
     hashed_password = get_password_hash(user_data.password)
 
     # Create new user
     new_user = User(
         email=user_data.email,
+        username=user_data.username,
         hashed_password=hashed_password,
         full_name=user_data.full_name,
     )
@@ -72,6 +79,9 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
 
     <h2>3. Distraction-Free Reading</h2>
     <p>We strip away ads, popups, and clutter. You can customize your reading experience (font, size, theme) using the "Aa" menu in the top right.</p>
+
+    <h2>4. Public Profiles</h2>
+    <p>Share your favorite content with the world. Claim a username in your Settings to enable your public profile, then toggle any article or vinyl record to "Public" so others can see it!</p>
 
     <h3>Ready to start?</h3>
     <p>Add your first article by pasting a URL above, or install our browser extension to save content with one click.</p>
@@ -232,4 +242,45 @@ def get_current_user_info(current_user: User = Depends(get_current_active_user))
 
     This route is PROTECTED - requires valid JWT token.
     """
+    return current_user
+
+
+@router.put("/me", response_model=UserResponse)
+def update_current_user_info(
+    user_update: UserUpdate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Update current logged-in user's profile information.
+    """
+    # Check if someone is trying to take an existing username
+    if (
+        user_update.username is not None
+        and user_update.username != current_user.username
+    ):
+        existing = db.query(User).filter(User.username == user_update.username).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username is already taken",
+            )
+        current_user.username = user_update.username
+
+    if user_update.full_name is not None:
+        current_user.full_name = user_update.full_name
+
+    if user_update.is_public is not None:
+        current_user.is_public = user_update.is_public
+
+    if user_update.is_queue_public is not None:
+        current_user.is_queue_public = user_update.is_queue_public
+
+    if user_update.is_crates_public is not None:
+        current_user.is_crates_public = user_update.is_crates_public
+
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+
     return current_user

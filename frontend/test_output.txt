@@ -2,397 +2,1100 @@
 > frontend@0.1.0 test
 > jest --watchAll=false
 
+PASS __tests__/components/bionicReading.test.ts
 PASS __tests__/components/InlineHighlight.test.tsx
 PASS __tests__/components/FilterDropdownContent.test.tsx
 PASS __tests__/components/HighlightToolbar.test.tsx
 FAIL __tests__/components/ContentItem.test.tsx
-  ● ContentItem › Delete Functionality › shows confirmation modal when delete button clicked
+  ● ContentItem › Rendering - Basic Information › renders content title
 
-    TestingLibraryElementError: Unable to find an element with the text: Delete Article. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+    useAuth must be used within an AuthProvider
 
-    Ignored nodes: comments, script, style
-    [36m<body>[39m
-      [36m<div>[39m
-        [36m<div[39m
-          [33mclass[39m=[32m"group py-8 px-4 border-b border-dashed border-[var(--color-border-subtle)] last:border-b-0 transition-all duration-300 cursor-pointer relative
-            hover:bg-[var(--color-bg-secondary)]
+      89 |   const context = useContext(AuthContext);
+      90 |   if (context === undefined) {
+    > 91 |     throw new Error("useAuth must be used within an AuthProvider");
+         |           ^
+      92 |   }
+      93 |   return context;
+      94 | };
 
-          "[39m
-        [36m>[39m
-          [36m<div[39m
-            [33mclass[39m=[32m"flex items-start gap-4"[39m
-          [36m>[39m
-            [36m<div[39m
-              [33mclass[39m=[32m"flex-1 min-w-0"[39m
-              [33mstyle[39m=[32m"padding-right: 30px;"[39m
-            [36m>[39m
-              [36m<div[39m
-                [33mclass[39m=[32m"flex items-center gap-3 mb-2 text-xs text-[var(--color-text-muted)]"[39m
-              [36m>[39m
-                [36m<span[39m
-                  [33mclass[39m=[32m"inline-block w-2.5 h-2.5 rounded-full bg-[var(--color-status-unread)] "[39m
-                  [33mtitle[39m=[32m"Unread"[39m
-                [36m/>[39m
-                [36m<span[39m
-                  [33mclass[39m=[32m"tracking-wide"[39m
-                [36m>[39m
-                  [0m2024-01-15[0m
-                [36m</span>[39m
-                [36m<span>[39m
-                  [0m·[0m
-                [36m</span>[39m
-                [36m<span>[39m
-                  [0m5[0m
-                  [0m min read[0m
-                [36m</span>[39m
-              [36m</div>[39m
-              [36m<a[39m
-                [33mhref[39m=[32m"/content/test-content-123"[39m
-              [36m>[39m
-                [36m<h3[39m
-                  [33mclass[39m=[32m"font-serif text-2xl font-normal text-[var(--color-text-primary)] group-hover:text-[var(--color-accent)] transition-colors leading-tight"[39m
-                [36m>[39m
-                  [0mTest Article Title[0m
-                [36m</h3>[39m
-              [36m</a>[39m
-              [36m<p[39m
-                [33mclass[39m=[32m"text-sm text-[var(--color-text-muted)] line-clamp-2 mb-2"[39m
-              [36m>[39m
-                [0mThis is a test article description[0m
-              [36m</p>[39m
-              [36m<div[39m
-                [33mclass[39m=[32m"mb-3 flex items-center gap-2 flex-wrap"[39m
-              [36m>[39m
-                [36m<span[39m
-                  [33mclass[39m=[32m"text-xs text-[var(--color-text-muted)] border-b border-[var(--color-border)] pb-0.5 flex items-center gap-1"[39m
-                [36m>[39m
-                  [0mjavascript[0m
-                [36m</span>[39m
-                [36m<span[39m
-                  [33mclass[39m=[32m"text-xs text-[var(--color-text-muted)] border-b border-[var(--color-border)] pb-0.5 flex items-center gap-1"[39m
-                [36m>[39m
-                  [0mtesting[0m
-                [36m</span>[39m
-              [36m</div>[39m
-              [36m<div[39m
-                [33mclass[39m=[32m"flex items-center gap-2"[39m
-              [36m>[39m
-                [36m<div[39m
-                  [33mclass[39m=[32m"sm:hidden"[39m
-                [36m>[39m
-                  [36m<div[39m
-                    [33mclass[39m=[32m"relative"[39m
-                  [36m>[39m
-                    [36m<button[39m
-                      [33maria-label[39m=[32m"More actions"[39m
-                      [33mclass[39m=[32m"text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors p-2 -m-2"[39m
-                    [36m>[39m
-                      [36m<svg[39m
-                        [33mclass[39m=[32m"w-5 h-5"[39m
-                        [33mfill[39m=[32m"currentColor"[39m
-                        [33mviewBox[39m=[32m"0 0 24 24"[39m
-                      [36m>[39m
-                        [36m<circle[39m
-                          [33mcx[39m=[32m"12"[39m
-                          [33mcy[39m=[32m"5"[39m
-                          [33mr[39m=[32m"2"[39m
-                        [36m/>[39m
-                        [36m<circle[39m
-                          [33mcx[39m=[32m"12"[39m
-                          [33mcy[39m=[32m"12"[39m
-                          [33mr[39m=[32m"2"[39m
-                        [36m/>[39m
-                        [36m<circle[39m
-                          [33mcx[39m=[32m"12"[39m
-                          [33mcy[39m=[32m"19"[39m
-                          [33mr[39m=[32m"2"[39m
-                        [36m/>[39m
-                      [36m</svg>[39m
-                    [36m</button>[39m
-                  [36m</div>[39m
-                [36m</div>[39m
-                [36m<div[39m
-                  [33mclass[39m=[32m"hidden sm:flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity flex-wrap"[39m
-                [36m>[39m
-                  [36m<button[39m
-                    [33mclass[39m=[32m"text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"[39m
-                    [33mtitle[39m=[32m"Mark as read"[39m
-                  [36m>[39m
-                    [0mRead[0m
-                  [36m</button>[39m
-                  [36m<button[39m
-                    [33mclass[39m=[32m"text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"[39m
-                    [33mtitle[39m=[32m"Archive"[39m
-                  [36m>[39m
-                    [0mArchive[0m
-                  [36m</button>[39m
-                  [36m<button[39m
-                    [33mclass[39m=[32m"text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"[39m
-                    [33mtitle[39m=[32m"Add tag"[39m
-                  [36m>[39m
-                    [0m+ Tag[0m
-                  [36m</button>[39m
-                  [36m<button[39m
-                    [33mclass[39m=[32m"text-xs px-2 py-1 rounded-none border transition-colors border-red-400 text-red-500 dark:text-red-400"[39m
-                    [33mtitle[39m=[32m"Delete article"[39m
-                  [36m>[39m
-                    [0mConfirm?[0m
-                  [36m</button>[39m
-                [36m</div>[39m
-              [36m</div>[39m
-            [36m</div>[39m
-            [36m<div[39m
-              [33mclass[39m=[32m"flex-shrink-0 hidden sm:block pl-6"[39m
-            [36m>[39m
-              [36m<div[39m
-                [33mclass[39m=[32m"w-24 h-24 bg-[var(--color-bg-secondary)]"[39m
-                [33mstyle[39m=[32m"margin-top: 40px;"[39m
-              [36m>[39m
-                [36m<img[39m
-                  [33malt[39m=[32m"Test Article Title"[39m
-                  [33mclass[39m=[32m"w-full h-full object-cover opacity-90 hover:opacity-100 transition-opacity"[39m
-                  [33msrc[39m=[32m"https://example.com/thumb.jpg"[39m
-                  [33mstyle[39m=[32m"width: 100px; height: 100px;"[39m
-                [36m/>[39m
-              [36m</div>[39m
-            [36m</div>[39m
-          [36m</div>[39m
-          [36m<div[39m
-            [33mclass[39m=[32m"flex items-center justify-between px-4 py-2 border-t border-red-200 dark:border-red-800/40 sm:hidden"[39m
-          [36m>[39m
-            [36m<span[39m
-              [33mclass[39m=[32m"font-mono text-xs text-red-500 dark:text-red-400"[39m
-            [36m>[39m
-              [0mDelete this article?[0m
-            [36m</span>[39m
-            [36m<div[39m
-              [33mclass[39m=[32m"flex items-center gap-2"[39m
-            [36m>[39m
-              [36m<button[39m
-                [33mclass[39m=[32m"font-mono text-xs px-2 py-0.5 border border-red-400 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"[39m
-              [36m>[39m
-                [0mconfirm[0m
-              [36m</button>[39m
-              [36m<button[39m
-                [33mclass[39m=[32m"font-mono text-xs px-2 py-0.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"[39m
-              [36m>[39m
-                [0mcancel[0m
-              [36m</button>[39m
-            [36m</div>[39m
-          [36m</div>[39m
-        [36m</div>[39m
-      [36m</div>[39m
-    [36m</body>[39m
+      at useAuth (contexts/AuthContext.tsx:91:11)
+      at ContentItem (components/ContentItem.tsx:64:27)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateFunctionComponent (node_modules/react-dom/cjs/react-dom-client.development.js:10166:19)
+      at beginWork (node_modules/react-dom/cjs/react-dom-client.development.js:11778:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at Object.<anonymous> (__tests__/components/ContentItem.test.tsx:83:13)
 
-      518 |       fireEvent.click(deleteButton);
-      519 |
-    > 520 |       expect(screen.getByText("Delete Article")).toBeInTheDocument();
-          |                     ^
-      521 |       expect(
-      522 |         screen.getByText(/this action cannot be undone/i),
-      523 |       ).toBeInTheDocument();
+  ● ContentItem › Rendering - Basic Information › renders description when available
 
-      at Object.getElementError (node_modules/@testing-library/dom/dist/config.js:37:19)
-      at node_modules/@testing-library/dom/dist/query-helpers.js:76:38
-      at node_modules/@testing-library/dom/dist/query-helpers.js:52:17
-      at node_modules/@testing-library/dom/dist/query-helpers.js:95:19
-      at Object.getByText (__tests__/components/ContentItem.test.tsx:520:21)
+    useAuth must be used within an AuthProvider
+
+      89 |   const context = useContext(AuthContext);
+      90 |   if (context === undefined) {
+    > 91 |     throw new Error("useAuth must be used within an AuthProvider");
+         |           ^
+      92 |   }
+      93 |   return context;
+      94 | };
+
+      at useAuth (contexts/AuthContext.tsx:91:11)
+      at ContentItem (components/ContentItem.tsx:64:27)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateFunctionComponent (node_modules/react-dom/cjs/react-dom-client.development.js:10166:19)
+      at beginWork (node_modules/react-dom/cjs/react-dom-client.development.js:11778:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at Object.<anonymous> (__tests__/components/ContentItem.test.tsx:95:13)
+
+  ● ContentItem › Rendering - Basic Information › shows "Untitled" when no title provided
+
+    useAuth must be used within an AuthProvider
+
+      89 |   const context = useContext(AuthContext);
+      90 |   if (context === undefined) {
+    > 91 |     throw new Error("useAuth must be used within an AuthProvider");
+         |           ^
+      92 |   }
+      93 |   return context;
+      94 | };
+
+      at useAuth (contexts/AuthContext.tsx:91:11)
+      at ContentItem (components/ContentItem.tsx:64:27)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateFunctionComponent (node_modules/react-dom/cjs/react-dom-client.development.js:10166:19)
+      at beginWork (node_modules/react-dom/cjs/react-dom-client.development.js:11778:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at Object.<anonymous> (__tests__/components/ContentItem.test.tsx:111:13)
+
+  ● ContentItem › Rendering - Basic Information › renders thumbnail when available
+
+    useAuth must be used within an AuthProvider
+
+      89 |   const context = useContext(AuthContext);
+      90 |   if (context === undefined) {
+    > 91 |     throw new Error("useAuth must be used within an AuthProvider");
+         |           ^
+      92 |   }
+      93 |   return context;
+      94 | };
+
+      at useAuth (contexts/AuthContext.tsx:91:11)
+      at ContentItem (components/ContentItem.tsx:64:27)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateFunctionComponent (node_modules/react-dom/cjs/react-dom-client.development.js:10166:19)
+      at beginWork (node_modules/react-dom/cjs/react-dom-client.development.js:11778:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at Object.<anonymous> (__tests__/components/ContentItem.test.tsx:123:13)
+
+  ● ContentItem › Rendering - Basic Information › does not render thumbnail when not available
+
+    useAuth must be used within an AuthProvider
+
+      89 |   const context = useContext(AuthContext);
+      90 |   if (context === undefined) {
+    > 91 |     throw new Error("useAuth must be used within an AuthProvider");
+         |           ^
+      92 |   }
+      93 |   return context;
+      94 | };
+
+      at useAuth (contexts/AuthContext.tsx:91:11)
+      at ContentItem (components/ContentItem.tsx:64:27)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateFunctionComponent (node_modules/react-dom/cjs/react-dom-client.development.js:10166:19)
+      at beginWork (node_modules/react-dom/cjs/react-dom-client.development.js:11778:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at Object.<anonymous> (__tests__/components/ContentItem.test.tsx:141:13)
+
+  ● ContentItem › Rendering - Basic Information › shows reading time when available
+
+    useAuth must be used within an AuthProvider
+
+      89 |   const context = useContext(AuthContext);
+      90 |   if (context === undefined) {
+    > 91 |     throw new Error("useAuth must be used within an AuthProvider");
+         |           ^
+      92 |   }
+      93 |   return context;
+      94 | };
+
+      at useAuth (contexts/AuthContext.tsx:91:11)
+      at ContentItem (components/ContentItem.tsx:64:27)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateFunctionComponent (node_modules/react-dom/cjs/react-dom-client.development.js:10166:19)
+      at beginWork (node_modules/react-dom/cjs/react-dom-client.development.js:11778:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at Object.<anonymous> (__tests__/components/ContentItem.test.tsx:153:13)
+
+  ● ContentItem › Rendering - Basic Information › links to reader view
+
+    useAuth must be used within an AuthProvider
+
+      89 |   const context = useContext(AuthContext);
+      90 |   if (context === undefined) {
+    > 91 |     throw new Error("useAuth must be used within an AuthProvider");
+         |           ^
+      92 |   }
+      93 |   return context;
+      94 | };
+
+      at useAuth (contexts/AuthContext.tsx:91:11)
+      at ContentItem (components/ContentItem.tsx:64:27)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateFunctionComponent (node_modules/react-dom/cjs/react-dom-client.development.js:10166:19)
+      at beginWork (node_modules/react-dom/cjs/react-dom-client.development.js:11778:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at Object.<anonymous> (__tests__/components/ContentItem.test.tsx:165:13)
+
+  ● ContentItem › Status Badges › shows Unread status indicator when not read
+
+    useAuth must be used within an AuthProvider
+
+      89 |   const context = useContext(AuthContext);
+      90 |   if (context === undefined) {
+    > 91 |     throw new Error("useAuth must be used within an AuthProvider");
+         |           ^
+      92 |   }
+      93 |   return context;
+      94 | };
+
+      at useAuth (contexts/AuthContext.tsx:91:11)
+      at ContentItem (components/ContentItem.tsx:64:27)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateFunctionComponent (node_modules/react-dom/cjs/react-dom-client.development.js:10166:19)
+      at beginWork (node_modules/react-dom/cjs/react-dom-client.development.js:11778:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at Object.<anonymous> (__tests__/components/ContentItem.test.tsx:180:13)
+
+  ● ContentItem › Status Badges › shows Read status indicator when read
+
+    useAuth must be used within an AuthProvider
+
+      89 |   const context = useContext(AuthContext);
+      90 |   if (context === undefined) {
+    > 91 |     throw new Error("useAuth must be used within an AuthProvider");
+         |           ^
+      92 |   }
+      93 |   return context;
+      94 | };
+
+      at useAuth (contexts/AuthContext.tsx:91:11)
+      at ContentItem (components/ContentItem.tsx:64:27)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateFunctionComponent (node_modules/react-dom/cjs/react-dom-client.development.js:10166:19)
+      at beginWork (node_modules/react-dom/cjs/react-dom-client.development.js:11778:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at Object.<anonymous> (__tests__/components/ContentItem.test.tsx:198:13)
+
+  ● ContentItem › Status Badges › shows Archived status indicator when archived
+
+    useAuth must be used within an AuthProvider
+
+      89 |   const context = useContext(AuthContext);
+      90 |   if (context === undefined) {
+    > 91 |     throw new Error("useAuth must be used within an AuthProvider");
+         |           ^
+      92 |   }
+      93 |   return context;
+      94 | };
+
+      at useAuth (contexts/AuthContext.tsx:91:11)
+      at ContentItem (components/ContentItem.tsx:64:27)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateFunctionComponent (node_modules/react-dom/cjs/react-dom-client.development.js:10166:19)
+      at beginWork (node_modules/react-dom/cjs/react-dom-client.development.js:11778:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at Object.<anonymous> (__tests__/components/ContentItem.test.tsx:216:13)
+
+  ● ContentItem › Status Badges › prioritizes archived status over read status
+
+    useAuth must be used within an AuthProvider
+
+      89 |   const context = useContext(AuthContext);
+      90 |   if (context === undefined) {
+    > 91 |     throw new Error("useAuth must be used within an AuthProvider");
+         |           ^
+      92 |   }
+      93 |   return context;
+      94 | };
+
+      at useAuth (contexts/AuthContext.tsx:91:11)
+      at ContentItem (components/ContentItem.tsx:64:27)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateFunctionComponent (node_modules/react-dom/cjs/react-dom-client.development.js:10166:19)
+      at beginWork (node_modules/react-dom/cjs/react-dom-client.development.js:11778:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at Object.<anonymous> (__tests__/components/ContentItem.test.tsx:235:13)
+
+  ● ContentItem › Mark as Read/Unread › calls onStatusChange when marking as read
+
+    useAuth must be used within an AuthProvider
+
+      89 |   const context = useContext(AuthContext);
+      90 |   if (context === undefined) {
+    > 91 |     throw new Error("useAuth must be used within an AuthProvider");
+         |           ^
+      92 |   }
+      93 |   return context;
+      94 | };
+
+      at useAuth (contexts/AuthContext.tsx:91:11)
+      at ContentItem (components/ContentItem.tsx:64:27)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateFunctionComponent (node_modules/react-dom/cjs/react-dom-client.development.js:10166:19)
+      at beginWork (node_modules/react-dom/cjs/react-dom-client.development.js:11778:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at Object.<anonymous> (__tests__/components/ContentItem.test.tsx:251:13)
+
+  ● ContentItem › Mark as Read/Unread › calls onStatusChange when marking as unread
+
+    useAuth must be used within an AuthProvider
+
+      89 |   const context = useContext(AuthContext);
+      90 |   if (context === undefined) {
+    > 91 |     throw new Error("useAuth must be used within an AuthProvider");
+         |           ^
+      92 |   }
+      93 |   return context;
+      94 | };
+
+      at useAuth (contexts/AuthContext.tsx:91:11)
+      at ContentItem (components/ContentItem.tsx:64:27)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateFunctionComponent (node_modules/react-dom/cjs/react-dom-client.development.js:10166:19)
+      at beginWork (node_modules/react-dom/cjs/react-dom-client.development.js:11778:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at Object.<anonymous> (__tests__/components/ContentItem.test.tsx:270:13)
+
+  ● ContentItem › Archive/Unarchive › calls onStatusChange when archiving
+
+    useAuth must be used within an AuthProvider
+
+      89 |   const context = useContext(AuthContext);
+      90 |   if (context === undefined) {
+    > 91 |     throw new Error("useAuth must be used within an AuthProvider");
+         |           ^
+      92 |   }
+      93 |   return context;
+      94 | };
+
+      at useAuth (contexts/AuthContext.tsx:91:11)
+      at ContentItem (components/ContentItem.tsx:64:27)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateFunctionComponent (node_modules/react-dom/cjs/react-dom-client.development.js:10166:19)
+      at beginWork (node_modules/react-dom/cjs/react-dom-client.development.js:11778:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at Object.<anonymous> (__tests__/components/ContentItem.test.tsx:290:13)
+
+  ● ContentItem › Archive/Unarchive › calls onStatusChange when unarchiving
+
+    useAuth must be used within an AuthProvider
+
+      89 |   const context = useContext(AuthContext);
+      90 |   if (context === undefined) {
+    > 91 |     throw new Error("useAuth must be used within an AuthProvider");
+         |           ^
+      92 |   }
+      93 |   return context;
+      94 | };
+
+      at useAuth (contexts/AuthContext.tsx:91:11)
+      at ContentItem (components/ContentItem.tsx:64:27)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateFunctionComponent (node_modules/react-dom/cjs/react-dom-client.development.js:10166:19)
+      at beginWork (node_modules/react-dom/cjs/react-dom-client.development.js:11778:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at Object.<anonymous> (__tests__/components/ContentItem.test.tsx:314:13)
+
+  ● ContentItem › Tag Management › displays existing tags
+
+    useAuth must be used within an AuthProvider
+
+      89 |   const context = useContext(AuthContext);
+      90 |   if (context === undefined) {
+    > 91 |     throw new Error("useAuth must be used within an AuthProvider");
+         |           ^
+      92 |   }
+      93 |   return context;
+      94 | };
+
+      at useAuth (contexts/AuthContext.tsx:91:11)
+      at ContentItem (components/ContentItem.tsx:64:27)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateFunctionComponent (node_modules/react-dom/cjs/react-dom-client.development.js:10166:19)
+      at beginWork (node_modules/react-dom/cjs/react-dom-client.development.js:11778:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at Object.<anonymous> (__tests__/components/ContentItem.test.tsx:333:13)
+
+  ● ContentItem › Tag Management › shows "+ Tag" button to add new tags
+
+    useAuth must be used within an AuthProvider
+
+      89 |   const context = useContext(AuthContext);
+      90 |   if (context === undefined) {
+    > 91 |     throw new Error("useAuth must be used within an AuthProvider");
+         |           ^
+      92 |   }
+      93 |   return context;
+      94 | };
+
+      at useAuth (contexts/AuthContext.tsx:91:11)
+      at ContentItem (components/ContentItem.tsx:64:27)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateFunctionComponent (node_modules/react-dom/cjs/react-dom-client.development.js:10166:19)
+      at beginWork (node_modules/react-dom/cjs/react-dom-client.development.js:11778:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at Object.<anonymous> (__tests__/components/ContentItem.test.tsx:346:13)
+
+  ● ContentItem › Tag Management › enters edit mode when "+ Tag" clicked
+
+    useAuth must be used within an AuthProvider
+
+      89 |   const context = useContext(AuthContext);
+      90 |   if (context === undefined) {
+    > 91 |     throw new Error("useAuth must be used within an AuthProvider");
+         |           ^
+      92 |   }
+      93 |   return context;
+      94 | };
+
+      at useAuth (contexts/AuthContext.tsx:91:11)
+      at ContentItem (components/ContentItem.tsx:64:27)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateFunctionComponent (node_modules/react-dom/cjs/react-dom-client.development.js:10166:19)
+      at beginWork (node_modules/react-dom/cjs/react-dom-client.development.js:11778:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at Object.<anonymous> (__tests__/components/ContentItem.test.tsx:358:13)
+
+  ● ContentItem › Tag Management › shows remove buttons for tags in edit mode
+
+    useAuth must be used within an AuthProvider
+
+      89 |   const context = useContext(AuthContext);
+      90 |   if (context === undefined) {
+    > 91 |     throw new Error("useAuth must be used within an AuthProvider");
+         |           ^
+      92 |   }
+      93 |   return context;
+      94 | };
+
+      at useAuth (contexts/AuthContext.tsx:91:11)
+      at ContentItem (components/ContentItem.tsx:64:27)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateFunctionComponent (node_modules/react-dom/cjs/react-dom-client.development.js:10166:19)
+      at beginWork (node_modules/react-dom/cjs/react-dom-client.development.js:11778:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at Object.<anonymous> (__tests__/components/ContentItem.test.tsx:375:13)
+
+  ● ContentItem › Tag Management › adds a new tag when user types and clicks Add
+
+    useAuth must be used within an AuthProvider
+
+      89 |   const context = useContext(AuthContext);
+      90 |   if (context === undefined) {
+    > 91 |     throw new Error("useAuth must be used within an AuthProvider");
+         |           ^
+      92 |   }
+      93 |   return context;
+      94 | };
+
+      at useAuth (contexts/AuthContext.tsx:91:11)
+      at ContentItem (components/ContentItem.tsx:64:27)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateFunctionComponent (node_modules/react-dom/cjs/react-dom-client.development.js:10166:19)
+      at beginWork (node_modules/react-dom/cjs/react-dom-client.development.js:11778:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at Object.<anonymous> (__tests__/components/ContentItem.test.tsx:397:13)
+
+  ● ContentItem › Tag Management › prevents adding duplicate tags
+
+    useAuth must be used within an AuthProvider
+
+      89 |   const context = useContext(AuthContext);
+      90 |   if (context === undefined) {
+    > 91 |     throw new Error("useAuth must be used within an AuthProvider");
+         |           ^
+      92 |   }
+      93 |   return context;
+      94 | };
+
+      at useAuth (contexts/AuthContext.tsx:91:11)
+      at ContentItem (components/ContentItem.tsx:64:27)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateFunctionComponent (node_modules/react-dom/cjs/react-dom-client.development.js:10166:19)
+      at beginWork (node_modules/react-dom/cjs/react-dom-client.development.js:11778:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at Object.<anonymous> (__tests__/components/ContentItem.test.tsx:428:13)
+
+  ● ContentItem › Tag Management › removes a tag when × button clicked
+
+    useAuth must be used within an AuthProvider
+
+      89 |   const context = useContext(AuthContext);
+      90 |   if (context === undefined) {
+    > 91 |     throw new Error("useAuth must be used within an AuthProvider");
+         |           ^
+      92 |   }
+      93 |   return context;
+      94 | };
+
+      at useAuth (contexts/AuthContext.tsx:91:11)
+      at ContentItem (components/ContentItem.tsx:64:27)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateFunctionComponent (node_modules/react-dom/cjs/react-dom-client.development.js:10166:19)
+      at beginWork (node_modules/react-dom/cjs/react-dom-client.development.js:11778:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at Object.<anonymous> (__tests__/components/ContentItem.test.tsx:458:13)
+
+  ● ContentItem › Tag Management › exits edit mode when Done clicked
+
+    useAuth must be used within an AuthProvider
+
+      89 |   const context = useContext(AuthContext);
+      90 |   if (context === undefined) {
+    > 91 |     throw new Error("useAuth must be used within an AuthProvider");
+         |           ^
+      92 |   }
+      93 |   return context;
+      94 | };
+
+      at useAuth (contexts/AuthContext.tsx:91:11)
+      at ContentItem (components/ContentItem.tsx:64:27)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateFunctionComponent (node_modules/react-dom/cjs/react-dom-client.development.js:10166:19)
+      at beginWork (node_modules/react-dom/cjs/react-dom-client.development.js:11778:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at Object.<anonymous> (__tests__/components/ContentItem.test.tsx:485:13)
+
+  ● ContentItem › Delete Functionality › requires confirmation to delete
+
+    useAuth must be used within an AuthProvider
+
+      89 |   const context = useContext(AuthContext);
+      90 |   if (context === undefined) {
+    > 91 |     throw new Error("useAuth must be used within an AuthProvider");
+         |           ^
+      92 |   }
+      93 |   return context;
+      94 | };
+
+      at useAuth (contexts/AuthContext.tsx:91:11)
+      at ContentItem (components/ContentItem.tsx:64:27)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateFunctionComponent (node_modules/react-dom/cjs/react-dom-client.development.js:10166:19)
+      at beginWork (node_modules/react-dom/cjs/react-dom-client.development.js:11778:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at Object.<anonymous> (__tests__/components/ContentItem.test.tsx:510:13)
 
   ● ContentItem › Delete Functionality › calls onDelete when deletion confirmed
 
-    Unable to find an element with the text: Delete Article. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+    useAuth must be used within an AuthProvider
 
-    Ignored nodes: comments, script, style
-    [36m<body>[39m
-      [36m<div>[39m
-        [36m<div[39m
-          [33mclass[39m=[32m"group py-8 px-4 border-b border-dashed border-[var(--color-border-subtle)] last:border-b-0 transition-all duration-300 cursor-pointer relative
-            hover:bg-[var(--color-bg-secondary)]
+      89 |   const context = useContext(AuthContext);
+      90 |   if (context === undefined) {
+    > 91 |     throw new Error("useAuth must be used within an AuthProvider");
+         |           ^
+      92 |   }
+      93 |   return context;
+      94 | };
 
-          "[39m
-        [36m>[39m
-          [36m<div[39m
-            [33mclass[39m=[32m"flex items-start gap-4"[39m
-          [36m>[39m
-            [36m<div[39m
-              [33mclass[39m=[32m"flex-1 min-w-0"[39m
-              [33mstyle[39m=[32m"padding-right: 30px;"[39m
-            [36m>[39m
-              [36m<div[39m
-                [33mclass[39m=[32m"flex items-center gap-3 mb-2 text-xs text-[var(--color-text-muted)]"[39m
-              [36m>[39m
-                [36m<span[39m
-                  [33mclass[39m=[32m"inline-block w-2.5 h-2.5 rounded-full bg-[var(--color-status-unread)] "[39m
-                  [33mtitle[39m=[32m"Unread"[39m
-                [36m/>[39m
-                [36m<span[39m
-                  [33mclass[39m=[32m"tracking-wide"[39m
-                [36m>[39m
-                  [0m2024-01-15[0m
-                [36m</span>[39m
-                [36m<span>[39m
-                  [0m·[0m
-                [36m</span>[39m
-                [36m<span>[39m
-                  [0m5[0m
-                  [0m min read[0m
-                [36m</span>[39m
-              [36m</div>[39m
-              [36m<a[39m
-                [33mhref[39m=[32m"/content/test-content-123"[39m
-              [36m>[39m
-                [36m<h3[39m
-                  [33mclass[39m=[32m"font-serif text-2xl font-normal text-[var(--color-text-primary)] group-hover:text-[var(--color-accent)] transition-colors leading-tight"[39m
-                [36m>[39m
-                  [0mTest Article Title[0m
-                [36m</h3>[39m
-              [36m</a>[39m
-              [36m<p[39m
-                [33mclass[39m=[32m"text-sm text-[var(--color-text-muted)] line-clamp-2 mb-2"[39m
-              [36m>[39m
-                [0mThis is a test article description[0m
-              [36m</p>[39m
-              [36m<div[39m
-                [33mclass[39m=[32m"mb-3 flex items-center gap-2 flex-wrap"[39m
-              [36m>[39m
-                [36m<span[39m
-                  [33mclass[39m=[32m"text-xs text-[var(--color-text-muted)] border-b border-[var(--color-border)] pb-0.5 flex items-center gap-1"[39m
-                [36m>[39m
-                  [0mjavascript[0m
-                [36m</span>[39m
-                [36m<span[39m
-                  [33mclass[39m=[32m"text-xs text-[var(--color-text-muted)] border-b border-[var(--color-border)] pb-0.5 flex items-center gap-1"[39m
-                [36m>[39m
-                  [0mtesting[0m
-                [36m</span>[39m
-              [36m</div>[39m
-              [36m<div[39m
-                [33mclass[39m=[32m"flex items-center gap-2"[39m
-              [36m>[39m
-                [36m<div[39m
-                  [33mclass[39m=[32m"sm:hidden"[39m
-                [36m>[39m
-                  [36m<div[39m
-                    [33mclass[39m=[32m"relative"[39m
-                  [36m>[39m
-                    [36m<button[39m
-                      [33maria-label[39m=[32m"More actions"[39m
-                      [33mclass[39m=[32m"text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors p-2 -m-2"[39m
-                    [36m>[39m
-                      [36m<svg[39m
-                        [33mclass[39m=[32m"w-5 h-5"[39m
-                        [33mfill[39m=[32m"currentColor"[39m
-                        [33mviewBox[39m=[32m"0 0 24 24"[39m
-                      [36m>[39m
-                        [36m<circle[39m
-                          [33mcx[39m=[32m"12"[39m
-                          [33mcy[39m=[32m"5"[39m
-                          [33mr[39m=[32m"2"[39m
-                        [36m/>[39m
-                        [36m<circle[39m
-                          [33mcx[39m=[32m"12"[39m
-                          [33mcy[39m=[32m"12"[39m
-                          [33mr[39m=[32m"2"[39m
-                        [36m/>[39m
-                        [36m<circle[39m
-                          [33mcx[39m=[32m"12"[39m
-                          [33mcy[39m=[32m"19"[39m
-                          [33mr[39m=[32m"2"[39m
-                        [36m/>[39m
-                      [36m</svg>[39m
-                    [36m</button>[39m
-                  [36m</div>[39m
-                [36m</div>[39m
-                [36m<div[39m
-                  [33mclass[39m=[32m"hidden sm:flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity flex-wrap"[39m
-                [36m>[39m
-                  [36m<button[39m
-                    [33mclass[39m=[32m"text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"[39m
-                    [33mtitle[39m=[32m"Mark as read"[39m
-                  [36m>[39m
-                    [0mRead[0m
-                  [36m</button>[39m
-                  [36m<button[39m
-                    [33mclass[39m=[32m"text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"[39m
-                    [33mtitle[39m=[32m"Archive"[39m
-                  [36m>[39m
-                    [0mArchive[0m
-                  [36m</button>[39m
-                  [36m<button[39m
-                    [33mclass[39m=[32m"text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"[39m
-                    [33mtitle[39m=[32m"Add tag"[39m
-                  [36m>[39m
-                    [0m+ Tag[0m
-                  [36m</button>[39m
-                  [36m<button[39m
-                    [33mclass[39m=[32m"text-xs px-2 py-1 rounded-none border transition-colors border-red-400 text-red-500 dark:text-red-400"[39m
-                    [33mtitle[39m=[32m"Delete article"[39m
-                  [36m>[39m
-                    [0mConfirm?[0m
-                  [36m</button>[39m
-                [36m</div>[39m
-              [36m</div>[39m
-            [36m</div>[39m
-            [36m<div[39m
-              [33mclass[39m=[32m"flex-shrink-0 hidden sm:block pl-6"[39m
-            [36m>[39m
-              [36m<div[39m
-                [33mclass[39m=[32m"w-24 h-24 bg-[var(--color-bg-secondary)]"[39m
-                [33mstyle[39m=[32m"margin-top: 40px;"[39m
-              [36m>[39m
-                [36m<img[39m
-                  [33malt[39m=[32m"Test Article Title"[39m
-                  [33mclass[39m=[32m"w-full h-full object-cover opacity-90 hover:opacity-100 transition-opacity"[39m
-                  [33msrc[39m=[32m"https://example.com/thumb.jpg"[39m
-                  [33mstyle[39m=[32m"width: 100px; height: 100px;"[39m
-                [36m/>[39m
-              [36m</div>[39m
-            [36m</div>[39m
-          [36m</div>[39m
-          [36m<div[39m
-            [33mclass[39m=[32m"flex items-center justify-between px-4 py-2 border-t border-red-200 dark:border-red-800/40 sm:hidden"[39m
-          [36m>[39m
-            [36m<span[39m
-              [33mclass[39m=[32m"font-mono text-xs text-red-500 dark:text-red-400"[39m
-            [36m>[39m
-              [0mDelete this article?[0m
-            [36m</span>[39m
-            [36m<div[39m
-              [33mclass[39m=[32m"flex items-center gap-2"[39m
-            [36m>[39m
-              [36m<button[39m
-                [33mclass[39m=[32m"font-mono text-xs px-2 py-0.5 border border-red-400 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"[39m
-              [36m>[39m
-                [0mconfirm[0m
-              [36m</button>[39m
-              [36m<button[39m
-                [33mclass[39m=[32m"font-mono text-xs px-2 py-0.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"[39m
-              [36m>[39m
-                [0mcancel[0m
-              [36m</button>[39m
-            [36m</div>[39m
-          [36m</div>[39m
-        [36m</div>[39m
-      [36m</div>[39m
-    [36m</body>[39m
+      at useAuth (contexts/AuthContext.tsx:91:11)
+      at ContentItem (components/ContentItem.tsx:64:27)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateFunctionComponent (node_modules/react-dom/cjs/react-dom-client.development.js:10166:19)
+      at beginWork (node_modules/react-dom/cjs/react-dom-client.development.js:11778:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at Object.<anonymous> (__tests__/components/ContentItem.test.tsx:527:13)
 
-      537 |
-      538 |       // Wait for modal to appear
-    > 539 |       await waitFor(() => {
-          |                    ^
-      540 |         expect(screen.getByText("Delete Article")).toBeInTheDocument();
-      541 |       });
-      542 |
+  ● ContentItem › Delete Functionality › closes confirmation when cancelled via mobile menu
 
-      at waitForWrapper (node_modules/@testing-library/dom/dist/wait-for.js:163:27)
-      at Object.<anonymous> (__tests__/components/ContentItem.test.tsx:539:20)
+    useAuth must be used within an AuthProvider
 
-FAIL __tests__/components/HighlightsPanel.test.tsx
+      89 |   const context = useContext(AuthContext);
+      90 |   if (context === undefined) {
+    > 91 |     throw new Error("useAuth must be used within an AuthProvider");
+         |           ^
+      92 |   }
+      93 |   return context;
+      94 | };
+
+      at useAuth (contexts/AuthContext.tsx:91:11)
+      at ContentItem (components/ContentItem.tsx:64:27)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateFunctionComponent (node_modules/react-dom/cjs/react-dom-client.development.js:10166:19)
+      at beginWork (node_modules/react-dom/cjs/react-dom-client.development.js:11778:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at Object.<anonymous> (__tests__/components/ContentItem.test.tsx:545:13)
+
+  ● ContentItem › Add to List › shows add to list button when lists provided
+
+    useAuth must be used within an AuthProvider
+
+      89 |   const context = useContext(AuthContext);
+      90 |   if (context === undefined) {
+    > 91 |     throw new Error("useAuth must be used within an AuthProvider");
+         |           ^
+      92 |   }
+      93 |   return context;
+      94 | };
+
+      at useAuth (contexts/AuthContext.tsx:91:11)
+      at ContentItem (components/ContentItem.tsx:64:27)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateFunctionComponent (node_modules/react-dom/cjs/react-dom-client.development.js:10166:19)
+      at beginWork (node_modules/react-dom/cjs/react-dom-client.development.js:11778:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at Object.<anonymous> (__tests__/components/ContentItem.test.tsx:578:13)
+
+  ● ContentItem › Add to List › does not show add to list button when no lists
+
+    useAuth must be used within an AuthProvider
+
+      89 |   const context = useContext(AuthContext);
+      90 |   if (context === undefined) {
+    > 91 |     throw new Error("useAuth must be used within an AuthProvider");
+         |           ^
+      92 |   }
+      93 |   return context;
+      94 | };
+
+      at useAuth (contexts/AuthContext.tsx:91:11)
+      at ContentItem (components/ContentItem.tsx:64:27)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateFunctionComponent (node_modules/react-dom/cjs/react-dom-client.development.js:10166:19)
+      at beginWork (node_modules/react-dom/cjs/react-dom-client.development.js:11778:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at Object.<anonymous> (__tests__/components/ContentItem.test.tsx:593:13)
+
+  ● ContentItem › Add to List › shows list dropdown when add to list clicked
+
+    useAuth must be used within an AuthProvider
+
+      89 |   const context = useContext(AuthContext);
+      90 |   if (context === undefined) {
+    > 91 |     throw new Error("useAuth must be used within an AuthProvider");
+         |           ^
+      92 |   }
+      93 |   return context;
+      94 | };
+
+      at useAuth (contexts/AuthContext.tsx:91:11)
+      at ContentItem (components/ContentItem.tsx:64:27)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateFunctionComponent (node_modules/react-dom/cjs/react-dom-client.development.js:10166:19)
+      at beginWork (node_modules/react-dom/cjs/react-dom-client.development.js:11778:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at Object.<anonymous> (__tests__/components/ContentItem.test.tsx:605:13)
+
+  ● ContentItem › Add to List › calls onAddToList when list selected
+
+    useAuth must be used within an AuthProvider
+
+      89 |   const context = useContext(AuthContext);
+      90 |   if (context === undefined) {
+    > 91 |     throw new Error("useAuth must be used within an AuthProvider");
+         |           ^
+      92 |   }
+      93 |   return context;
+      94 | };
+
+      at useAuth (contexts/AuthContext.tsx:91:11)
+      at ContentItem (components/ContentItem.tsx:64:27)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateFunctionComponent (node_modules/react-dom/cjs/react-dom-client.development.js:10166:19)
+      at beginWork (node_modules/react-dom/cjs/react-dom-client.development.js:11778:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at Object.<anonymous> (__tests__/components/ContentItem.test.tsx:624:13)
+
+  ● ContentItem › Remove from List › shows remove from list button when onRemoveFromList provided
+
+    useAuth must be used within an AuthProvider
+
+      89 |   const context = useContext(AuthContext);
+      90 |   if (context === undefined) {
+    > 91 |     throw new Error("useAuth must be used within an AuthProvider");
+         |           ^
+      92 |   }
+      93 |   return context;
+      94 | };
+
+      at useAuth (contexts/AuthContext.tsx:91:11)
+      at ContentItem (components/ContentItem.tsx:64:27)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateFunctionComponent (node_modules/react-dom/cjs/react-dom-client.development.js:10166:19)
+      at beginWork (node_modules/react-dom/cjs/react-dom-client.development.js:11778:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at Object.<anonymous> (__tests__/components/ContentItem.test.tsx:648:13)
+
+  ● ContentItem › Remove from List › calls onRemoveFromList when clicked
+
+    useAuth must be used within an AuthProvider
+
+      89 |   const context = useContext(AuthContext);
+      90 |   if (context === undefined) {
+    > 91 |     throw new Error("useAuth must be used within an AuthProvider");
+         |           ^
+      92 |   }
+      93 |   return context;
+      94 | };
+
+      at useAuth (contexts/AuthContext.tsx:91:11)
+      at ContentItem (components/ContentItem.tsx:64:27)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateFunctionComponent (node_modules/react-dom/cjs/react-dom-client.development.js:10166:19)
+      at beginWork (node_modules/react-dom/cjs/react-dom-client.development.js:11778:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at Object.<anonymous> (__tests__/components/ContentItem.test.tsx:662:13)
+
+  ● ContentItem › Date Formatting › shows 'Just now' for recently added content (within 10 minutes)
+
+    useAuth must be used within an AuthProvider
+
+      89 |   const context = useContext(AuthContext);
+      90 |   if (context === undefined) {
+    > 91 |     throw new Error("useAuth must be used within an AuthProvider");
+         |           ^
+      92 |   }
+      93 |   return context;
+      94 | };
+
+      at useAuth (contexts/AuthContext.tsx:91:11)
+      at ContentItem (components/ContentItem.tsx:64:27)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateFunctionComponent (node_modules/react-dom/cjs/react-dom-client.development.js:10166:19)
+      at beginWork (node_modules/react-dom/cjs/react-dom-client.development.js:11778:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at Object.<anonymous> (__tests__/components/ContentItem.test.tsx:685:13)
+
+  ● ContentItem › Date Formatting › shows formatted date for older content (more than 10 minutes old)
+
+    useAuth must be used within an AuthProvider
+
+      89 |   const context = useContext(AuthContext);
+      90 |   if (context === undefined) {
+    > 91 |     throw new Error("useAuth must be used within an AuthProvider");
+         |           ^
+      92 |   }
+      93 |   return context;
+      94 | };
+
+      at useAuth (contexts/AuthContext.tsx:91:11)
+      at ContentItem (components/ContentItem.tsx:64:27)
+      at Object.react_stack_bottom_frame (node_modules/react-dom/cjs/react-dom-client.development.js:25904:20)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom-client.development.js:7662:22)
+      at updateFunctionComponent (node_modules/react-dom/cjs/react-dom-client.development.js:10166:19)
+      at beginWork (node_modules/react-dom/cjs/react-dom-client.development.js:11778:18)
+      at runWithFiberInDEV (node_modules/react-dom/cjs/react-dom-client.development.js:874:13)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom-client.development.js:17641:22)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom-client.development.js:17469:41)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom-client.development.js:17450:11)
+      at performWorkOnRoot (node_modules/react-dom/cjs/react-dom-client.development.js:16583:35)
+      at performWorkOnRootViaSchedulerTask (node_modules/react-dom/cjs/react-dom-client.development.js:18957:7)
+      at flushActQueue (node_modules/react/cjs/react.development.js:590:34)
+      at process.env.NODE_ENV.exports.act (node_modules/react/cjs/react.development.js:884:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:46:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:189:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:291:10)
+      at Object.<anonymous> (__tests__/components/ContentItem.test.tsx:707:13)
+
+PASS __tests__/components/HighlightsPanel.test.tsx
   ● Console
 
     console.error
+      Error deleting highlight: Error: Delete failed
+          at Object.<anonymous> (/Users/enpuyou/cmpsc/projects/content-queue/frontend/__tests__/components/HighlightsPanel.test.tsx:395:52)
+          at Promise.finally.completed (/Users/enpuyou/cmpsc/projects/content-queue/frontend/node_modules/jest-circus/build/jestAdapterInit.js:1557:28)
+          at new Promise (<anonymous>)
+          at callAsyncCircusFn (/Users/enpuyou/cmpsc/projects/content-queue/frontend/node_modules/jest-circus/build/jestAdapterInit.js:1497:10)
+          at _callCircusTest (/Users/enpuyou/cmpsc/projects/content-queue/frontend/node_modules/jest-circus/build/jestAdapterInit.js:1007:40)
+          at _runTest (/Users/enpuyou/cmpsc/projects/content-queue/frontend/node_modules/jest-circus/build/jestAdapterInit.js:947:3)
+          at /Users/enpuyou/cmpsc/projects/content-queue/frontend/node_modules/jest-circus/build/jestAdapterInit.js:849:7
+          at _runTestsForDescribeBlock (/Users/enpuyou/cmpsc/projects/content-queue/frontend/node_modules/jest-circus/build/jestAdapterInit.js:862:11)
+          at _runTestsForDescribeBlock (/Users/enpuyou/cmpsc/projects/content-queue/frontend/node_modules/jest-circus/build/jestAdapterInit.js:857:11)
+          at _runTestsForDescribeBlock (/Users/enpuyou/cmpsc/projects/content-queue/frontend/node_modules/jest-circus/build/jestAdapterInit.js:857:11)
+          at run (/Users/enpuyou/cmpsc/projects/content-queue/frontend/node_modules/jest-circus/build/jestAdapterInit.js:761:3)
+          at runAndTransformResultsToJestFormat (/Users/enpuyou/cmpsc/projects/content-queue/frontend/node_modules/jest-circus/build/jestAdapterInit.js:1918:21)
+          at jestAdapter (/Users/enpuyou/cmpsc/projects/content-queue/frontend/node_modules/jest-circus/build/runner.js:101:19)
+          at runTestInternal (/Users/enpuyou/cmpsc/projects/content-queue/frontend/node_modules/jest-runner/build/testWorker.js:275:16)
+          at runTest (/Users/enpuyou/cmpsc/projects/content-queue/frontend/node_modules/jest-runner/build/testWorker.js:343:7)
+          at Object.worker (/Users/enpuyou/cmpsc/projects/content-queue/frontend/node_modules/jest-runner/build/testWorker.js:497:12)
+
+      74 |       onHighlightDeleted();
+      75 |     } catch (error) {
+    > 76 |       console.error("Error deleting highlight:", error);
+         |               ^
+      77 |     } finally {
+      78 |       setIsDeleting(null);
+      79 |       setDeleteConfirmId(null);
+
+      at error (components/HighlightsPanel.tsx:76:15)
+
+    console.error
       Failed to copy highlights: Error: Clipboard error
-          at Object.<anonymous> (/Users/enpuyou/cmpsc/projects/content-queue/frontend/__tests__/components/HighlightsPanel.test.tsx:500:9)
+          at Object.<anonymous> (/Users/enpuyou/cmpsc/projects/content-queue/frontend/__tests__/components/HighlightsPanel.test.tsx:486:9)
           at Promise.finally.completed (/Users/enpuyou/cmpsc/projects/content-queue/frontend/node_modules/jest-circus/build/jestAdapterInit.js:1557:28)
           at new Promise (<anonymous>)
           at callAsyncCircusFn (/Users/enpuyou/cmpsc/projects/content-queue/frontend/node_modules/jest-circus/build/jestAdapterInit.js:1497:10)
@@ -422,223 +1125,10 @@ FAIL __tests__/components/HighlightsPanel.test.tsx
 
       at error (components/HighlightsPanel.tsx:96:15)
 
-  ● HighlightsPanel › Delete Functionality › deletes highlight with confirmation
-
-    Unable to find an element with the text: Delete Highlight. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
-
-    Ignored nodes: comments, script, style
-    [36m<body>[39m
-      [36m<div>[39m
-        [36m<div[39m
-          [33mclass[39m=[32m"flex flex-col h-full"[39m
-        [36m>[39m
-          [36m<div[39m
-            [33mclass[39m=[32m"px-4 pt-4 pb-2"[39m
-          [36m>[39m
-            [36m<button[39m
-              [33maria-label[39m=[32m"Copy all highlights"[39m
-              [33mclass[39m=[32m"text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"[39m
-              [33mtitle[39m=[32m"Copy all highlights as Markdown"[39m
-            [36m>[39m
-              [0mCopy (1)[0m
-            [36m</button>[39m
-          [36m</div>[39m
-          [36m<div[39m
-            [33mclass[39m=[32m"flex-1 overflow-y-auto px-4 pb-4"[39m
-          [36m>[39m
-            [36m<div[39m
-              [33mclass[39m=[32m"border border-transparent hover:border-[var(--color-accent)] p-2 mb-4 transition-colors rounded-none"[39m
-              [33mrole[39m=[32m"listitem"[39m
-            [36m>[39m
-              [36m<div[39m
-                [33maria-label[39m=[32m"Go to highlight: Highlight to delete"[39m
-                [33mclass[39m=[32m"p-2 rounded-none mb-2 text-sm outline-none cursor-pointer"[39m
-                [33mrole[39m=[32m"button"[39m
-                [33mstyle[39m=[32m"background-color: var(--highlight-yellow);"[39m
-                [33mtabindex[39m=[32m"0"[39m
-              [36m>[39m
-                [0mHighlight to delete[0m
-              [36m</div>[39m
-              [36m<div[39m
-                [33mclass[39m=[32m"flex gap-2"[39m
-              [36m>[39m
-                [36m<button[39m
-                  [33maria-label[39m=[32m"Edit"[39m
-                  [33mclass[39m=[32m"text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"[39m
-                [36m>[39m
-                  [0mEdit[0m
-                [36m</button>[39m
-                [36m<button[39m
-                  [33maria-label[39m=[32m"Delete"[39m
-                  [33mclass[39m=[32m"text-xs px-2 py-1 rounded-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-red-400 text-red-500 dark:text-red-400"[39m
-                [36m>[39m
-                  [0mConfirm?[0m
-                [36m</button>[39m
-              [36m</div>[39m
-            [36m</div>[39m
-          [36m</div>[39m
-        [36m</div>[39m
-      [36m</div>[39m
-    [36m</body>[39m
-
-      359 |
-      360 |       // Wait for modal to appear
-    > 361 |       await waitFor(() => {
-          |                    ^
-      362 |         expect(screen.getByText("Delete Highlight")).toBeInTheDocument();
-      363 |       });
-      364 |
-
-      at waitForWrapper (node_modules/@testing-library/dom/dist/wait-for.js:163:27)
-      at Object.<anonymous> (__tests__/components/HighlightsPanel.test.tsx:361:20)
-
-  ● HighlightsPanel › Delete Functionality › does not delete when user cancels
-
-    TestingLibraryElementError: Unable to find an element with the text: Delete Highlight. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
-
-    Ignored nodes: comments, script, style
-    [36m<body>[39m
-      [36m<div>[39m
-        [36m<div[39m
-          [33mclass[39m=[32m"flex flex-col h-full"[39m
-        [36m>[39m
-          [36m<div[39m
-            [33mclass[39m=[32m"px-4 pt-4 pb-2"[39m
-          [36m>[39m
-            [36m<button[39m
-              [33maria-label[39m=[32m"Copy all highlights"[39m
-              [33mclass[39m=[32m"text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"[39m
-              [33mtitle[39m=[32m"Copy all highlights as Markdown"[39m
-            [36m>[39m
-              [0mCopy (1)[0m
-            [36m</button>[39m
-          [36m</div>[39m
-          [36m<div[39m
-            [33mclass[39m=[32m"flex-1 overflow-y-auto px-4 pb-4"[39m
-          [36m>[39m
-            [36m<div[39m
-              [33mclass[39m=[32m"border border-transparent hover:border-[var(--color-accent)] p-2 mb-4 transition-colors rounded-none"[39m
-              [33mrole[39m=[32m"listitem"[39m
-            [36m>[39m
-              [36m<div[39m
-                [33maria-label[39m=[32m"Go to highlight: Highlight to delete"[39m
-                [33mclass[39m=[32m"p-2 rounded-none mb-2 text-sm outline-none cursor-pointer"[39m
-                [33mrole[39m=[32m"button"[39m
-                [33mstyle[39m=[32m"background-color: var(--highlight-yellow);"[39m
-                [33mtabindex[39m=[32m"0"[39m
-              [36m>[39m
-                [0mHighlight to delete[0m
-              [36m</div>[39m
-              [36m<div[39m
-                [33mclass[39m=[32m"flex gap-2"[39m
-              [36m>[39m
-                [36m<button[39m
-                  [33maria-label[39m=[32m"Edit"[39m
-                  [33mclass[39m=[32m"text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"[39m
-                [36m>[39m
-                  [0mEdit[0m
-                [36m</button>[39m
-                [36m<button[39m
-                  [33maria-label[39m=[32m"Delete"[39m
-                  [33mclass[39m=[32m"text-xs px-2 py-1 rounded-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-red-400 text-red-500 dark:text-red-400"[39m
-                [36m>[39m
-                  [0mConfirm?[0m
-                [36m</button>[39m
-              [36m</div>[39m
-            [36m</div>[39m
-          [36m</div>[39m
-        [36m</div>[39m
-      [36m</div>[39m
-    [36m</body>[39m
-
-      391 |
-      392 |       // Modal should appear
-    > 393 |       expect(screen.getByText("Delete Highlight")).toBeInTheDocument();
-          |                     ^
-      394 |
-      395 |       // Click Cancel
-      396 |       const cancelButton = screen.getByRole("button", { name: /cancel/i });
-
-      at Object.getElementError (node_modules/@testing-library/dom/dist/config.js:37:19)
-      at node_modules/@testing-library/dom/dist/query-helpers.js:76:38
-      at node_modules/@testing-library/dom/dist/query-helpers.js:52:17
-      at node_modules/@testing-library/dom/dist/query-helpers.js:95:19
-      at Object.getByText (__tests__/components/HighlightsPanel.test.tsx:393:21)
-
-  ● HighlightsPanel › Delete Functionality › handles delete error gracefully
-
-    Unable to find an element with the text: Delete Highlight. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
-
-    Ignored nodes: comments, script, style
-    [36m<body>[39m
-      [36m<div>[39m
-        [36m<div[39m
-          [33mclass[39m=[32m"flex flex-col h-full"[39m
-        [36m>[39m
-          [36m<div[39m
-            [33mclass[39m=[32m"px-4 pt-4 pb-2"[39m
-          [36m>[39m
-            [36m<button[39m
-              [33maria-label[39m=[32m"Copy all highlights"[39m
-              [33mclass[39m=[32m"text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"[39m
-              [33mtitle[39m=[32m"Copy all highlights as Markdown"[39m
-            [36m>[39m
-              [0mCopy (1)[0m
-            [36m</button>[39m
-          [36m</div>[39m
-          [36m<div[39m
-            [33mclass[39m=[32m"flex-1 overflow-y-auto px-4 pb-4"[39m
-          [36m>[39m
-            [36m<div[39m
-              [33mclass[39m=[32m"border border-transparent hover:border-[var(--color-accent)] p-2 mb-4 transition-colors rounded-none"[39m
-              [33mrole[39m=[32m"listitem"[39m
-            [36m>[39m
-              [36m<div[39m
-                [33maria-label[39m=[32m"Go to highlight: Highlight to delete"[39m
-                [33mclass[39m=[32m"p-2 rounded-none mb-2 text-sm outline-none cursor-pointer"[39m
-                [33mrole[39m=[32m"button"[39m
-                [33mstyle[39m=[32m"background-color: var(--highlight-yellow);"[39m
-                [33mtabindex[39m=[32m"0"[39m
-              [36m>[39m
-                [0mHighlight to delete[0m
-              [36m</div>[39m
-              [36m<div[39m
-                [33mclass[39m=[32m"flex gap-2"[39m
-              [36m>[39m
-                [36m<button[39m
-                  [33maria-label[39m=[32m"Edit"[39m
-                  [33mclass[39m=[32m"text-xs px-2 py-1 rounded-none bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border border-[var(--color-border)] hover:border-[var(--color-accent)] transition-colors"[39m
-                [36m>[39m
-                  [0mEdit[0m
-                [36m</button>[39m
-                [36m<button[39m
-                  [33maria-label[39m=[32m"Delete"[39m
-                  [33mclass[39m=[32m"text-xs px-2 py-1 rounded-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-red-400 text-red-500 dark:text-red-400"[39m
-                [36m>[39m
-                  [0mConfirm?[0m
-                [36m</button>[39m
-              [36m</div>[39m
-            [36m</div>[39m
-          [36m</div>[39m
-        [36m</div>[39m
-      [36m</div>[39m
-    [36m</body>[39m
-
-      421 |
-      422 |       // Wait for modal to appear
-    > 423 |       await waitFor(() => {
-          |                    ^
-      424 |         expect(screen.getByText("Delete Highlight")).toBeInTheDocument();
-      425 |       });
-      426 |
-
-      at waitForWrapper (node_modules/@testing-library/dom/dist/wait-for.js:163:27)
-      at Object.<anonymous> (__tests__/components/HighlightsPanel.test.tsx:423:20)
-
 PASS __tests__/components/AddContentForm.test.tsx
 
-Test Suites: 2 failed, 4 passed, 6 total
-Tests:       5 failed, 2 skipped, 84 passed, 91 total
+Test Suites: 1 failed, 6 passed, 7 total
+Tests:       34 failed, 2 skipped, 73 passed, 109 total
 Snapshots:   0 total
-Time:        7.566 s
+Time:        7.66 s
 Ran all test suites.

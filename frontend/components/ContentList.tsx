@@ -3,6 +3,7 @@
 import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import ContentItem from "./ContentItem";
+import ContentIndexItem from "./ContentIndexItem";
 import ContentCard from "./ContentCard";
 import RetroLoader from "./RetroLoader";
 import { contentAPI, listsAPI } from "@/lib/api";
@@ -103,6 +104,39 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
 
   // Filter dropdown state
   const [filterOpen, setFilterOpen] = useState(false);
+
+  // View Mode: 'list' or 'index'
+  const [viewMode, setViewMode] = useState<"list" | "index">("list");
+
+  useEffect(() => {
+    const savedView = localStorage.getItem("contentListViewMode");
+    if (savedView === "index") setViewMode("index");
+  }, []);
+
+  // Sort state (index view only)
+  type SortField = "date" | "title" | "author" | "source";
+  const [sortField, setSortField] = useState<SortField>("date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  useEffect(() => {
+    const sf = localStorage.getItem("contentListSortField") as SortField | null;
+    const sd = localStorage.getItem("contentListSortDir");
+    if (sf) setSortField(sf);
+    if (sd === "asc" || sd === "desc") setSortDir(sd);
+  }, []);
+
+  const toggleSort = (field: SortField) => {
+    if (field === sortField) {
+      const next = sortDir === "desc" ? "asc" : "desc";
+      setSortDir(next);
+      localStorage.setItem("contentListSortDir", next);
+    } else {
+      setSortField(field);
+      setSortDir("asc");
+      localStorage.setItem("contentListSortField", field);
+      localStorage.setItem("contentListSortDir", "asc");
+    }
+  };
 
   // Tag filter state
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -309,7 +343,7 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
    */
   const handleStatusChange = async (
     id: string,
-    updates: { is_read?: boolean; is_archived?: boolean },
+    updates: { is_read?: boolean; is_archived?: boolean; is_public?: boolean },
   ) => {
     // Save the old state in case we need to revert
     const previousContents = [...contents];
@@ -433,6 +467,39 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
     return true;
   });
 
+  // Sort filtered contents (index view only; list view preserves API order)
+  const sortedContents =
+    viewMode === "index"
+      ? [...filteredContents].sort((a, b) => {
+          let cmp = 0;
+          if (sortField === "date") {
+            cmp =
+              new Date(a.created_at).getTime() -
+              new Date(b.created_at).getTime();
+          } else if (sortField === "title") {
+            cmp = (a.title || "").localeCompare(b.title || "");
+          } else if (sortField === "author") {
+            cmp = (a.author || "").localeCompare(b.author || "");
+          } else if (sortField === "source") {
+            const getDomain = (c: typeof a) => {
+              try {
+                return new URL(c.original_url || "").hostname.replace(
+                  /^www\./,
+                  "",
+                );
+              } catch {
+                return "";
+              }
+            };
+            cmp = getDomain(a).localeCompare(getDomain(b));
+          }
+          return sortDir === "asc" ? cmp : -cmp;
+        })
+      : filteredContents;
+
+  const activeSortClass = (field: SortField) =>
+    sortField === field ? "text-[var(--color-accent)]" : "";
+
   return (
     <div className="space-y-4">
       {/* Error message - shown at top if something went wrong */}
@@ -517,6 +584,52 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
         <span>
           ({filteredContents.length} / {total} items)
         </span>
+
+        {/* View Mode Toggle */}
+        <div className="flex items-center gap-1.5 ml-auto">
+          <button
+            onClick={() => {
+              setViewMode("list");
+              localStorage.setItem("contentListViewMode", "list");
+            }}
+            title="List view"
+            className={`p-0.5 transition-colors ${viewMode === "list" ? "text-[var(--color-text-primary)]" : "text-[var(--color-text-faint)] hover:text-[var(--color-text-muted)]"}`}
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 14 14"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            >
+              <rect x="2" y="2" width="10" height="3" />
+              <rect x="2" y="7" width="10" height="3" />
+            </svg>
+          </button>
+          <button
+            onClick={() => {
+              setViewMode("index");
+              localStorage.setItem("contentListViewMode", "index");
+            }}
+            title="Index view"
+            className={`p-0.5 transition-colors ${viewMode === "index" ? "text-[var(--color-text-primary)]" : "text-[var(--color-text-faint)] hover:text-[var(--color-text-muted)]"}`}
+          >
+            <svg
+              className="mb-[1px]"
+              width="14"
+              height="14"
+              viewBox="0 0 14 14"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            >
+              <line x1="2" y1="3" x2="12" y2="3" />
+              <line x1="2" y1="7" x2="12" y2="7" />
+              <line x1="2" y1="11" x2="12" y2="11" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Content items list */}
@@ -537,36 +650,104 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
         </div>
       ) : (
         <>
-          {/* Mobile: Card layout */}
-          <div className="sm:hidden grid gap-4">
-            {filteredContents.map((content) => (
-              <ContentCard
-                key={content.id}
-                content={content}
-                onStatusChange={handleStatusChange}
-                onDelete={handleDelete}
-                onUpdate={handleUpdate}
-                availableLists={availableLists}
-                onAddToList={(listId) => handleAddToList(content.id, listId)}
-              />
-            ))}
-          </div>
+          {/* Mobile: Card layout (only when List Mode) */}
+          {viewMode === "list" && (
+            <div className="sm:hidden grid gap-4">
+              {filteredContents.map((content) => (
+                <ContentCard
+                  key={content.id}
+                  content={content}
+                  onStatusChange={handleStatusChange}
+                  onDelete={handleDelete}
+                  onUpdate={handleUpdate}
+                  availableLists={availableLists}
+                  onAddToList={(listId) => handleAddToList(content.id, listId)}
+                />
+              ))}
+            </div>
+          )}
 
-          {/* Desktop: List layout */}
-          <div className="hidden sm:block divide-y divide-[var(--color-border-subtle)]">
-            {filteredContents.map((content, idx) => (
-              <ContentItem
-                key={content.id}
-                id={`content-item-${idx}`}
-                isSelected={idx === selectedIndex}
-                content={content}
-                onStatusChange={handleStatusChange}
-                onDelete={handleDelete}
-                onUpdate={handleUpdate}
-                availableLists={availableLists}
-                onAddToList={(listId) => handleAddToList(content.id, listId)}
-              />
-            ))}
+          {/* Core Layouts Output (List vs Index) */}
+          <div
+            className={`${viewMode === "list" ? "hidden sm:block" : "block"}`}
+          >
+            {viewMode === "index" ? (
+              /* ---- Index View ---- */
+              <div>
+                {/* Sortable index headers — matches ContentIndexItem grid exactly */}
+                <div
+                  className="py-1 px-0 border-b border-[var(--color-text-primary)] font-mono text-[11px] uppercase tracking-wider text-[var(--color-text-muted)] sticky top-0 bg-[var(--color-bg-primary)] z-10 mb-2 whitespace-nowrap hidden sm:grid index-row-grid"
+                  style={{
+                    gridTemplateColumns:
+                      "var(--index-grid-cols, 3.5rem 1fr 8rem 6rem)",
+                    gap: "0 1rem",
+                  }}
+                >
+                  <button
+                    className={`text-left transition-colors hover:text-[var(--color-accent)] ${activeSortClass("date")}`}
+                    onClick={() => toggleSort("date")}
+                  >
+                    Date
+                  </button>
+                  <button
+                    className={`text-left transition-colors hover:text-[var(--color-accent)] ${activeSortClass("title")}`}
+                    onClick={() => toggleSort("title")}
+                  >
+                    Title
+                  </button>
+                  <button
+                    className={`text-left transition-colors hover:text-[var(--color-accent)] ${activeSortClass("author")}`}
+                    onClick={() => toggleSort("author")}
+                  >
+                    Author
+                  </button>
+                  <button
+                    className={`text-left transition-colors hover:text-[var(--color-accent)] hidden sm:block ${activeSortClass("source")}`}
+                    onClick={() => toggleSort("source")}
+                  >
+                    Source
+                  </button>
+                </div>
+
+                {/* Index Items */}
+                <div className="flex flex-col">
+                  {sortedContents.map((content, idx) => (
+                    <ContentIndexItem
+                      key={content.id}
+                      id={`content-item-${idx}`}
+                      isSelected={idx === selectedIndex}
+                      content={content}
+                      onStatusChange={handleStatusChange}
+                      onDelete={handleDelete}
+                      onUpdate={handleUpdate}
+                      availableLists={availableLists}
+                      onAddToList={(listId) =>
+                        handleAddToList(content.id, listId)
+                      }
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              /* ---- Standard Large Card List ---- */
+              <div className="divide-y divide-[var(--color-border-subtle)]">
+                {filteredContents.map((content, idx) => (
+                  <ContentItem
+                    key={content.id}
+                    id={`content-item-${idx}`}
+                    isSelected={idx === selectedIndex}
+                    content={content}
+                    onStatusChange={handleStatusChange}
+                    onDelete={handleDelete}
+                    onUpdate={handleUpdate}
+                    availableLists={availableLists}
+                    onAddToList={(listId) =>
+                      handleAddToList(content.id, listId)
+                    }
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </>
       )}

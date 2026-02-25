@@ -56,6 +56,24 @@ const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
   return response.json();
 };
 
+export const api = {
+  get: (url: string) => fetchWithAuth(`${API_BASE_URL}${url}`),
+  post: (url: string, data: unknown) =>
+    fetchWithAuth(`${API_BASE_URL}${url}`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  put: (url: string, data: unknown) =>
+    fetchWithAuth(`${API_BASE_URL}${url}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  delete: (url: string) =>
+    fetchWithAuth(`${API_BASE_URL}${url}`, { method: "DELETE" }),
+};
+
+export default api;
+
 // Auth API - matches your /auth endpoints
 export const authAPI = {
   login: async (username: string, password: string) => {
@@ -87,7 +105,12 @@ export const authAPI = {
     return data;
   },
 
-  register: async (fullName: string, email: string, password: string) => {
+  register: async (
+    fullName: string,
+    email: string,
+    password: string,
+    username: string,
+  ) => {
     const response = await fetch(`${API_BASE_URL}/auth/register`, {
       method: "POST",
       headers: {
@@ -96,6 +119,7 @@ export const authAPI = {
       body: JSON.stringify({
         email,
         password,
+        username,
         full_name: fullName || null,
       }),
     });
@@ -151,8 +175,11 @@ export const contentAPI = {
     data: {
       title?: string;
       description?: string;
+      author?: string;
+      published_date?: string | null;
       is_read?: boolean;
       is_archived?: boolean;
+      is_public?: boolean;
       read_position?: number;
       tags?: string[];
       auto_tags?: string[];
@@ -441,6 +468,7 @@ export const vinylAPI = {
       rating?: number;
       tags?: string[];
       status?: string;
+      is_public?: boolean;
       cover_url?: string;
       genres?: string[];
       styles?: string[];
@@ -476,6 +504,45 @@ export const vinylAPI = {
       return null;
     }
 
+    return response.json();
+  },
+};
+
+// Public API - unauthenticated routes for public profiles
+export const publicAPI = {
+  // Get public profile
+  getProfile: async (username: string) => {
+    const response = await fetch(`${API_BASE_URL}/public/u/${username}`);
+    if (!response.ok) {
+      if (response.status === 404) throw new Error("Profile not found");
+      if (response.status === 403) throw new Error("Profile is private");
+      throw new Error("Failed to load profile");
+    }
+    return response.json();
+  },
+
+  // Get public content for a user
+  getPublicContent: async (username: string) => {
+    const response = await fetch(
+      `${API_BASE_URL}/public/u/${username}/content`,
+    );
+    if (!response.ok) throw new Error("Failed to load public content");
+    return response.json();
+  },
+
+  // Get public vinyl records for a user
+  getPublicVinyl: async (username: string) => {
+    const response = await fetch(`${API_BASE_URL}/public/u/${username}/vinyl`);
+    if (!response.ok) throw new Error("Failed to load public crates");
+    return response.json();
+  },
+
+  // Get a single public content item by ID
+  getPublicContentItem: async (username: string, itemId: string) => {
+    const response = await fetch(
+      `${API_BASE_URL}/public/u/${username}/content/${itemId}`,
+    );
+    if (!response.ok) throw new Error("Not found");
     return response.json();
   },
 };

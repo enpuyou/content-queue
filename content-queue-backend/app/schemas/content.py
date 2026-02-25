@@ -46,6 +46,7 @@ class ContentItemResponse(BaseModel):
 
     is_read: bool
     is_archived: bool
+    is_public: bool
     processing_status: str
     created_at: datetime
     updated_at: datetime
@@ -98,6 +99,7 @@ class ContentItemUpdate(BaseModel):
     thumbnail_url: str | None = None
     content_type: str | None = "unknown"
     author: str | None = None
+    published_date: datetime | None = None
     content_vertical: str | None = "general"
     vertical_metadata: dict[str, Any] | None = None
 
@@ -105,6 +107,7 @@ class ContentItemUpdate(BaseModel):
 
     is_read: bool | None = None
     is_archived: bool | None = None
+    is_public: bool | None = None
     read_position: float | None = None
     tags: list[str] | None = None
     full_text: str | None = None  # Allow updating full text (e.g. for persistence)
