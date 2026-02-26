@@ -9,6 +9,9 @@ rm -rf .venv
 echo "=== Installing main dependencies from poetry.lock ==="
 poetry install --no-root --only main
 
+echo "=== Fixing OpenCV dependencies for headless environment ==="
+poetry run pip uninstall -y opencv-python || true
+
 echo "=== Running database migrations ==="
 poetry run alembic upgrade head
 
