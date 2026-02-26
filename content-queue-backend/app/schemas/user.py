@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, ConfigDict
+from pydantic import BaseModel, EmailStr, ConfigDict, field_validator
 from datetime import datetime
 from uuid import UUID
 
@@ -31,6 +31,11 @@ class UserResponse(BaseModel):
     is_queue_public: bool
     is_crates_public: bool
     created_at: datetime
+
+    @field_validator("is_public", "is_queue_public", "is_crates_public", mode="before")
+    @classmethod
+    def set_default_false(cls, v):
+        return False if v is None else v
 
     model_config = ConfigDict(from_attributes=True)
 
