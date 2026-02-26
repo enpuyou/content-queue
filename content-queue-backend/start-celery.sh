@@ -10,7 +10,8 @@ echo "=== Installing main dependencies from poetry.lock ==="
 poetry install --no-root --only main
 
 echo "=== Fixing OpenCV dependencies for headless environment ==="
-poetry run pip uninstall -y opencv-python || true
+poetry run pip uninstall -y opencv-python opencv-python-headless || true
+poetry run pip install opencv-python-headless
 
 echo "=== Starting Celery worker ==="
 exec poetry run celery -A app.core.celery_app worker --loglevel=info --concurrency=2 --pool=solo --beat
