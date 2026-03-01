@@ -492,7 +492,7 @@ function PublicProfileSection() {
         </div>
         <div className="flex border border-[var(--color-border)]">
           <span className="px-2.5 py-2 font-mono text-[10px] text-[var(--color-text-faint)] bg-[var(--color-bg-secondary)] border-r border-[var(--color-border)] whitespace-nowrap select-none">
-            read-sedi.vercel.app/
+            read-sedi.com/
           </span>
           <input
             type="text"

@@ -537,6 +537,9 @@ async def update_content_item(
     if update_data.tags is not None:
         item.tags = update_data.tags
 
+    if getattr(update_data, "auto_tags", None) is not None:
+        item.auto_tags = update_data.auto_tags
+
     if update_data.full_text is not None:
         item.full_text = update_data.full_text
 

@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from uuid import UUID
 from app.core.database import get_db
+from app.core.config import settings
 from app.core.deps import get_current_active_user
 from app.models.user import User
 from app.models.content import ContentItem
@@ -100,7 +101,7 @@ def semantic_search(
             processing_status,
             created_at,
             updated_at,
-            (1 - (embedding <=> CAST(:query_embedding AS vector)) / 2) as similarity
+            (1 - (embedding <=> CAST(:query_embedding AS vector))) as similarity
         FROM content_items
         WHERE user_id = :user_id
             AND deleted_at IS NULL
@@ -151,7 +152,7 @@ def semantic_search(
 )
 def find_highlight_connections(
     highlight_id: str,
-    threshold: float = Query(0.75, ge=0, le=1),
+    threshold: float = Query(settings.SIMILARITY_THRESHOLD_CONNECTIONS, ge=0, le=1),
     limit: int = Query(10, ge=1, le=50),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
@@ -196,7 +197,7 @@ def find_highlight_connections(
             h.color,
             h.content_item_id,
             ci.title as article_title,
-            (1 - (h.embedding <=> CAST(:source_embedding AS vector)) / 2) as similarity
+            (1 - (h.embedding <=> CAST(:source_embedding AS vector))) as similarity
         FROM highlights h
         JOIN content_items ci ON h.content_item_id = ci.id
         WHERE h.user_id = :user_id
@@ -204,7 +205,7 @@ def find_highlight_connections(
             AND h.embedding IS NOT NULL
             AND ci.deleted_at IS NULL
             AND LENGTH(h.text) >= 20
-            AND (1 - (h.embedding <=> CAST(:source_embedding AS vector)) / 2) >= :threshold
+            AND (1 - (h.embedding <=> CAST(:source_embedding AS vector))) >= :threshold
         ORDER BY h.embedding <=> CAST(:source_embedding AS vector)
         LIMIT :limit
     """
@@ -243,7 +244,7 @@ def find_highlight_connections(
 @router.get("/connections/article/{content_id}", response_model=list[ArticleConnection])
 def find_article_connections(
     content_id: str,
-    threshold: float = Query(0.75, ge=0, le=1),
+    threshold: float = Query(settings.SIMILARITY_THRESHOLD_CONNECTIONS, ge=0, le=1),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -354,6 +355,7 @@ def find_article_connections(
 @router.get("/{item_id}/similar", response_model=list[SimilarContentResponse])
 def find_similar_content(
     item_id: UUID,
+    threshold: float = Query(settings.SIMILARITY_THRESHOLD_CONNECTIONS, ge=0, le=1),
     limit: int = Query(10, ge=1, le=50),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
@@ -414,12 +416,13 @@ def find_similar_content(
             processing_status,
             created_at,
             updated_at,
-            (1 - (embedding <=> CAST(:source_embedding AS vector)) / 2) as similarity
+            (1 - (embedding <=> CAST(:source_embedding AS vector))) as similarity
         FROM content_items
         WHERE user_id = :user_id
             AND id != :source_id
             AND deleted_at IS NULL
             AND embedding IS NOT NULL
+            AND (1 - (embedding <=> CAST(:source_embedding AS vector))) >= :threshold
         ORDER BY embedding <=> CAST(:source_embedding AS vector)
         LIMIT :limit
     """
@@ -431,6 +434,7 @@ def find_similar_content(
             "source_embedding": embedding_str,
             "user_id": current_user.id,
             "source_id": item_id,
+            "threshold": threshold,
             "limit": limit,
         },
     ).fetchall()

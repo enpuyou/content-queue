@@ -110,6 +110,7 @@ class ContentItemUpdate(BaseModel):
     is_public: bool | None = None
     read_position: float | None = None
     tags: list[str] | None = None
+    auto_tags: list[str] | None = None
     full_text: str | None = None  # Allow updating full text (e.g. for persistence)
 
 
