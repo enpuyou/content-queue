@@ -11,6 +11,19 @@ class Settings(BaseSettings):
     DISCOGS_TOKEN: str = ""
     DEBUG: bool = True
 
+    # Feature Flags / Tuning
+    SIMILARITY_THRESHOLD_CONNECTIONS: float = 0.75
+    SIMILARITY_THRESHOLD_TAGS: float = 0.75
+
+    # Email Settings
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    EMAILS_FROM_EMAIL: str = "noreply@sed.i"
+    EMAILS_FROM_NAME: str = "sed.i Team"
+    FRONTEND_URL: str = "http://localhost:3000"
+
     model_config = SettingsConfigDict(env_file=".env")
 
 

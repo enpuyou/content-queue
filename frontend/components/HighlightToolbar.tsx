@@ -16,6 +16,7 @@ interface HighlightToolbarProps {
   contentId: string;
   onClose: () => void;
   onHighlightCreated?: (highlightId?: string) => void;
+  onOptimisticCreate?: (color: string) => void;
   // Note props removed as they are handled inline now
 }
 
@@ -26,6 +27,7 @@ export default function HighlightToolbar({
   contentId,
   onClose,
   onHighlightCreated,
+  onOptimisticCreate,
 }: HighlightToolbarProps) {
   const isEditing = !!selection?.existingHighlightId;
   const [isLoading, setIsLoading] = useState(false);
@@ -67,6 +69,9 @@ export default function HighlightToolbar({
           // We don't touch the note here
         });
       } else {
+        if (!isEditing && onOptimisticCreate) {
+          onOptimisticCreate(color);
+        }
         const newHighlight = await highlightsAPI.create(contentId, {
           text: selection.text,
           start_offset: selection.startOffset,

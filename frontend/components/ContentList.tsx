@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, useEffect, forwardRef, useImperativeHandle } from "react";
+import {
+  useState,
+  useEffect,
+  useLayoutEffect,
+  forwardRef,
+  useImperativeHandle,
+} from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import ContentItem from "./ContentItem";
 import ContentIndexItem from "./ContentIndexItem";
@@ -14,6 +20,12 @@ import { useHotkeys } from "@/hooks/useHotkeys";
 import { FilterDropdownContent } from "./FilterDropdownContent";
 
 /**
+ * Helper to ensure safe usage of useLayoutEffect in Next.js SSR
+ */
+const useIsomorphicLayoutEffect =
+  typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
+/**
  * Filter type matching the reading status values:
  * - 'all': Show everything (unread, in_progress, read, non-archived)
  * - 'unread': reading_status = 'unread'
@@ -24,13 +36,13 @@ import { FilterDropdownContent } from "./FilterDropdownContent";
 type FilterType = "all" | "unread" | "in_progress" | "read" | "archived";
 
 const CACHE_KEY = "contentListCache";
-const CACHE_DURATION = 30000; // 30 seconds
+const CACHE_DURATION = 3600000; // 1 hour
 
 export interface ContentListRef {
   addNewItem: (item: ContentItemType) => void;
 }
 
-const ContentList = forwardRef<ContentListRef>((props, ref) => {
+const ContentList = forwardRef<ContentListRef>((_, ref) => {
   // Toast context for showing success/error messages
   const { incrementListCount, decrementListCount } = useLists();
 
@@ -72,10 +84,16 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
   };
 
   // State for storing the content items from the backend
-  const [contents, setContents] = useState<ContentItemType[]>([]);
+  const [contents, setContents] = useState<ContentItemType[]>(() => {
+    const cached = getCachedData();
+    return cached ? cached.items : [];
+  });
 
   // Loading state - true while fetching data
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => {
+    const cached = getCachedData();
+    return cached ? false : true;
+  });
 
   // Error state - stores error message if fetch fails
   const [error, setError] = useState<string | null>(null);
@@ -100,7 +118,10 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Pagination state - backend returns total count
-  const [total, setTotal] = useState(0);
+  const [total, setTotal] = useState(() => {
+    const cached = getCachedData();
+    return cached ? cached.total : 0;
+  });
 
   // Filter dropdown state
   const [filterOpen, setFilterOpen] = useState(false);
@@ -150,8 +171,8 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
   useImperativeHandle(ref, () => ({
     addNewItem: (newItem: ContentItemType) => {
       // Add to the beginning of the list (most recent first)
-      setContents((prev) => [newItem, ...prev]);
-      setTotal((prev) => prev + 1);
+      setContents((prev: ContentItemType[]) => [newItem, ...prev]);
+      setTotal((prev: number) => prev + 1);
 
       // Clear cache so next fetch is fresh
       sessionStorage.removeItem(CACHE_KEY);
@@ -159,14 +180,35 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
   }));
 
   /**
-   * useEffect Hook - Runs when component mounts (empty dependency array [])
-   * This is where we fetch data from the API on initial page load
+   * Synchronously load cache before the browser paints to prevent
+   * a 1-frame flash of the RetroLoader.
+   */
+  useIsomorphicLayoutEffect(() => {
+    const cachedData = getCachedData();
+    if (cachedData) {
+      setContents(cachedData.items);
+      setTotal(cachedData.total);
+      setLoading(false);
+    }
+  }, []);
+
+  /**
+   * useEffect Hook - Runs when component mounts
+   * This is where we fetch fresh data if needed, and setup listeners
    */
 
   useEffect(() => {
     fetchContents();
     fetchAvailableLists();
     fetchAvailableTags();
+
+    // Auto-refresh silently when user switches back to this tab
+    const handleFocus = () => {
+      fetchContents(true, true); // forceRefresh=true, silent=true
+    };
+
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
   }, [filter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keyboard navigation state
@@ -221,30 +263,19 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
   };
 
   /**
-   * Restore scroll position when navigating back
-   * Scroll position is saved by ContentItem when user clicks to navigate
+   * Synchronously restore scroll position right after DOM renders the articles,
+   * but BEFORE the browser paints them. This prevents any visual "jumping".
    */
-  useEffect(() => {
-    // Disable browser's automatic scroll restoration
-    if ("scrollRestoration" in window.history) {
-      window.history.scrollRestoration = "manual";
-    }
-
-    // Restore scroll position on mount
-    const savedScrollPos = sessionStorage.getItem("contentListScrollPos");
-    if (savedScrollPos) {
-      const scrollY = parseInt(savedScrollPos, 10);
-
-      // Immediate scroll
-      window.scrollTo(0, scrollY);
-
-      // Delayed fallback to ensure it works after DOM renders
-      setTimeout(() => {
+  useIsomorphicLayoutEffect(() => {
+    if (!loading && contents.length > 0) {
+      const savedScrollPos = sessionStorage.getItem("contentListScrollPos");
+      if (savedScrollPos) {
+        const scrollY = parseInt(savedScrollPos, 10);
         window.scrollTo(0, scrollY);
         sessionStorage.removeItem("contentListScrollPos");
-      }, 100);
+      }
     }
-  }, []); // Only run on mount
+  }, [loading, contents.length]);
 
   /**
    * Polling hook - automatically updates items when processing completes
@@ -252,11 +283,14 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
    */
   useProcessingPolling(contents, (updatedItem) => {
     // When an item finishes processing, update it in our state
-    setContents((prevContents) =>
-      prevContents.map((content) =>
+    setContents((prevContents) => {
+      const newContents = prevContents.map((content) =>
         content.id === updatedItem.id ? updatedItem : content,
-      ),
-    );
+      );
+      // Update cache so if user navigates back, it doesn't revert to processing
+      setCachedData(newContents, total);
+      return newContents;
+    });
 
     // Show a toast notification
     if (updatedItem.processing_status === "completed") {
@@ -271,38 +305,33 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
    * Uses the contentAPI.getAll() helper from lib/api.ts
    * Backend returns: { items: ContentItem[], total: number, skip: number, limit: number }
    *
-   * Now includes caching to avoid unnecessary refetches on navigation
+   * Now includes caching and support for silent background refreshes
    */
-  const fetchContents = async () => {
-    try {
-      // Check if we have fresh cached data
-      const cachedData = getCachedData();
-      if (cachedData) {
-        // Use cached data
-        setContents(cachedData.items);
-        setTotal(cachedData.total);
+  const fetchContents = async (forceRefresh = false, silent = false) => {
+    // Cache hit with no force refresh — ensure loading is off and return
+    if (!forceRefresh) {
+      const cached = getCachedData();
+      if (cached) {
+        setContents(cached.items);
+        setTotal(cached.total);
         setLoading(false);
         return;
       }
+    }
 
-      setLoading(true);
-      setError(null);
+    if (!silent) setLoading(true);
+    setError(null);
 
-      // Call the backend API - this returns the paginated response
+    try {
       const response = await contentAPI.getAll();
-
-      // Backend returns { items, total, skip, limit }
       setContents(response.items);
       setTotal(response.total);
-
-      // Update cache
       setCachedData(response.items, response.total);
     } catch (err) {
       console.error("Failed to fetch contents:", err);
-      setError("Failed to load your content. Please try again.");
+      if (!silent) setError("Failed to load your content. Please try again.");
     } finally {
-      // Always run this, whether success or error
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -633,7 +662,7 @@ const ContentList = forwardRef<ContentListRef>((props, ref) => {
       </div>
 
       {/* Content items list */}
-      {loading ? (
+      {loading && contents.length === 0 ? (
         <div className="flex justify-center py-12">
           <RetroLoader
             text="Finding your articles"

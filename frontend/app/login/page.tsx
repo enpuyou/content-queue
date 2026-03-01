@@ -97,16 +97,24 @@ function LoginForm() {
       </form>
 
       {/* Footer link */}
-      <p className="mt-10 text-center font-mono text-[10px] uppercase tracking-widest text-[var(--color-text-faint)]">
-        No account?{" "}
+      <div className="mt-8 flex flex-col items-center gap-3">
         <Link
-          href="/register"
-          className="compact-touch text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
-          style={{ color: "var(--color-text-muted)" }}
+          href="/forgot-password"
+          className="font-mono text-[10px] uppercase tracking-widest text-[var(--color-text-faint)] hover:text-[var(--color-text-primary)] transition-colors"
         >
-          Sign up
+          Forgot Password?
         </Link>
-      </p>
+        <p className="font-mono text-[10px] uppercase tracking-widest text-[var(--color-text-faint)]">
+          No account?{" "}
+          <Link
+            href="/register"
+            className="compact-touch text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
+            style={{ color: "var(--color-text-muted)" }}
+          >
+            Sign up
+          </Link>
+        </p>
+      </div>
     </div>
   );
 }

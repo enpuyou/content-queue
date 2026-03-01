@@ -39,8 +39,6 @@ export default function ContentCard({
   const [tagInput, setTagInput] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [acceptingTags, setAcceptingTags] = useState(false);
-  const [dismissingTags, setDismissingTags] = useState(false);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const router = useRouter();
@@ -67,7 +65,22 @@ export default function ContentCard({
     if (!tagInput.trim()) return;
 
     try {
-      const updatedTags = [...(content.tags || []), tagInput.trim()];
+      const currentTags = content.tags || [];
+      if (currentTags.includes(tagInput.trim())) {
+        return;
+      }
+
+      const updatedTags = [...currentTags, tagInput.trim()];
+
+      // Optimistic update
+      const optimisticContent = {
+        ...content,
+        tags: updatedTags,
+      };
+      if (onUpdate) {
+        onUpdate(optimisticContent);
+      }
+
       const updated = await contentAPI.update(content.id, {
         tags: updatedTags,
       });
@@ -77,64 +90,43 @@ export default function ContentCard({
       setTagInput("");
     } catch (error) {
       console.error("Failed to add tag:", error);
+      // Revert optimistic update
+      if (onUpdate) {
+        onUpdate(content);
+      }
     }
   };
 
   const handleRemoveTag = async (tagToRemove: string) => {
     try {
       const updatedTags = (content.tags || []).filter((t) => t !== tagToRemove);
-      const updated = await contentAPI.update(content.id, {
-        tags: updatedTags,
-      });
-      if (onUpdate) {
-        onUpdate(updated);
-      }
-    } catch (error) {
-      console.error("Failed to remove tag:", error);
-    }
-  };
-
-  const handleAcceptAutoTags = async () => {
-    try {
-      setAcceptingTags(true);
-      const updated = await contentAPI.acceptTags(content.id);
-      if (onUpdate) {
-        onUpdate(updated);
-      }
-    } catch (error) {
-      console.error("Failed to accept auto-tags:", error);
-    } finally {
-      setAcceptingTags(false);
-    }
-  };
-
-  const handleDismissAutoTags = async () => {
-    try {
-      setDismissingTags(true);
-      const updated = await contentAPI.dismissTags(content.id);
-      if (onUpdate) {
-        onUpdate(updated);
-      }
-    } catch (error) {
-      console.error("Failed to dismiss auto-tags:", error);
-    } finally {
-      setDismissingTags(false);
-    }
-  };
-
-  const handleRemoveAutoTag = async (tagToRemove: string) => {
-    try {
       const updatedAutoTags = (content.auto_tags || []).filter(
         (t) => t !== tagToRemove,
       );
+
+      // Optimistic update
+      const optimisticContent = {
+        ...content,
+        tags: updatedTags,
+        auto_tags: updatedAutoTags,
+      };
+      if (onUpdate) {
+        onUpdate(optimisticContent);
+      }
+
       const updated = await contentAPI.update(content.id, {
+        tags: updatedTags,
         auto_tags: updatedAutoTags,
       });
       if (onUpdate) {
         onUpdate(updated);
       }
     } catch (error) {
-      console.error("Failed to remove auto-tag:", error);
+      console.error("Failed to remove tag:", error);
+      // Revert optimistic update
+      if (onUpdate) {
+        onUpdate(content);
+      }
     }
   };
 
@@ -324,18 +316,19 @@ export default function ContentCard({
           ) : null}
 
           {/* Tags */}
-          {content.tags?.length ||
-          0 > 0 ||
-          content.auto_tags?.length ||
-          0 > 0 ? (
-            <div className="space-y-2 mb-3">
-              {/* User-confirmed tags */}
-              {content.tags && content.tags.length > 0 && (
+          {(() => {
+            const allTags = Array.from(
+              new Set([...(content.tags || []), ...(content.auto_tags || [])]),
+            );
+            if (allTags.length === 0) return null;
+
+            return (
+              <div className="space-y-2 mb-3">
                 <div className="flex items-center gap-2 flex-wrap">
-                  {content.tags.slice(0, 3).map((tag, index) => (
+                  {allTags.map((tag, index) => (
                     <span
-                      key={`user-${index}`}
-                      className="text-xs text-[var(--color-text-muted)] border-b border-[var(--color-border)] pb-0.5 flex items-center gap-1"
+                      key={index}
+                      className="text-xs text-[var(--color-text-muted)] border-b border-[var(--color-border)] pb-0.5 flex items-center gap-1 cursor-default"
                     >
                       {tag}
                       {isEditingTags && (
@@ -344,90 +337,17 @@ export default function ContentCard({
                             e.stopPropagation();
                             handleRemoveTag(tag);
                           }}
-                          className="text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] ml-1"
+                          className="text-[var(--color-accent)] hover:text-[var(--color-accent-hover)] ml-1 cursor-pointer"
                         >
                           ×
                         </button>
                       )}
                     </span>
                   ))}
-                  {content.tags.length > 3 && (
-                    <span className="text-xs text-[var(--color-text-faint)]">
-                      +{content.tags.length - 3} more
-                    </span>
-                  )}
                 </div>
-              )}
-
-              {/* Auto-suggested tags (filtered to exclude existing tags) */}
-              {(() => {
-                const existingTags = new Set(content.tags || []);
-                const suggestedTags = (content.auto_tags || []).filter(
-                  (tag) => !existingTags.has(tag),
-                );
-
-                if (suggestedTags.length === 0) return null;
-
-                return (
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {suggestedTags.slice(0, 2).map((tag, index) => (
-                      <span
-                        key={`auto-${index}`}
-                        className="group text-xs text-[var(--color-text-muted)] opacity-60 border-b border-[var(--color-border)] border-dashed pb-0.5 flex items-center gap-1 cursor-pointer hover:opacity-100 transition-opacity"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          // Maybe clicking the tag accepts it? For now just show X
-                        }}
-                      >
-                        +{tag}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemoveAutoTag(tag);
-                          }}
-                          className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 text-[var(--color-text-muted)] hover:text-red-500 ml-0.5 transition-opacity"
-                          title="Dismiss suggestion"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                    {suggestedTags.length > 2 && (
-                      <span className="text-xs text-[var(--color-text-faint)] opacity-60">
-                        +{suggestedTags.length - 2} suggested
-                      </span>
-                    )}
-                    {/* Accept/Dismiss buttons for auto-tags (Hidden on mobile) */}
-                    <div
-                      className="hidden sm:flex gap-1"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAcceptAutoTags();
-                        }}
-                        disabled={acceptingTags}
-                        className="text-xs px-2 py-0.5 text-[var(--color-accent)] hover:bg-[var(--color-bg-secondary)] border border-[var(--color-accent)] rounded disabled:opacity-50"
-                      >
-                        {acceptingTags ? "..." : "✓"}
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDismissAutoTags();
-                        }}
-                        disabled={dismissingTags}
-                        className="text-xs px-2 py-0.5 text-[var(--color-text-muted)] hover:text-red-600 hover:border-red-300 border border-[var(--color-border)] rounded disabled:opacity-50"
-                      >
-                        {dismissingTags ? "..." : "✕"}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-          ) : null}
+              </div>
+            );
+          })()}
 
           {/* Tag editing UI */}
           {isEditingTags && (

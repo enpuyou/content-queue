@@ -14,6 +14,10 @@ import { SHOW_FOR_YOU } from "@/lib/flags";
 export default function DashboardClient() {
   const { user } = useAuth();
   const [showRecommended, setShowRecommended] = useState(false);
+  const [showVerificationBanner, setShowVerificationBanner] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return !localStorage.getItem("verificationBannerDismissed");
+  });
   const [mood, setMood] = useState<string | undefined>();
   const contentListRef = useRef<{ addNewItem: (item: ContentItem) => void }>(
     null,
@@ -28,28 +32,56 @@ export default function DashboardClient() {
     <div className="min-h-screen bg-[var(--color-bg-primary)]">
       <Navbar />
 
+      {user && !user.is_verified && showVerificationBanner && (
+        <div className="bg-blue-500/10 border-b border-blue-500/20 px-6 py-3 relative">
+          <p className="text-center text-sm font-medium text-blue-600 dark:text-blue-400 pr-6">
+            Please check your email to verify your account. You won't be able to
+            access all features until you do!
+          </p>
+          <button
+            onClick={() => {
+              setShowVerificationBanner(false);
+              localStorage.setItem("verificationBannerDismissed", "true");
+            }}
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-600/50 hover:text-blue-600 dark:text-blue-400/50 dark:hover:text-blue-400 transition-colors"
+            aria-label="Dismiss"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      )}
+
       <main className="max-w-3xl mx-auto px-5 sm:px-6 lg:px-8 py-8">
         <div className="space-y-4">
           {/* Header with Title and Add Form */}
           <div>
-            <h1 className="font-serif text-3xl font-normal text-[var(--color-text-primary)] mt-6">
-              {/* Prevent flash: render nothing or skeleton while loading, default to Hello */}
-              {!user ? (
-                // While loading or not logged in, show neutral
-                <span className="opacity-0">Hello</span>
-              ) : (
+            <h1 className="font-serif text-3xl font-normal text-[var(--color-text-primary)] mt-6 min-h-[1.2em]">
+              {user &&
                 (() => {
                   const hour = new Date().getHours();
-                  let greeting = "Hello";
-                  if (hour < 12) greeting = "Good morning";
-                  else if (hour < 18) greeting = "Good afternoon";
-                  else greeting = "Good evening";
-
+                  const greeting =
+                    hour < 12
+                      ? "Good morning"
+                      : hour < 18
+                        ? "Good afternoon"
+                        : "Good evening";
                   return user.full_name
                     ? `${greeting}, ${user.full_name.split(" ")[0]}`
                     : greeting;
-                })()
-              )}
+                })()}
             </h1>
             {/* Add Content Form */}
             <div className="mt-2">

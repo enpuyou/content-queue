@@ -1,39 +1,115 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useLayoutEffect } from "react";
 import { useParams } from "next/navigation";
 import Reader from "@/components/Reader";
 import { contentAPI } from "@/lib/api";
 import { ContentItem } from "@/types";
 import Link from "next/link";
 
+const useIsomorphicLayoutEffect =
+  typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
 export default function ContentPage() {
   const params = useParams();
   const contentId = params.id as string;
 
-  const [content, setContent] = useState<ContentItem | null>(null);
-  const [loading, setLoading] = useState(true);
+  const getCachedContent = () => {
+    if (typeof window === "undefined") return null;
+    try {
+      const cached = sessionStorage.getItem(`contentItemCache_${contentId}`);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && parsed.item && Date.now() - parsed.timestamp < 3600000) {
+          return parsed.item;
+        }
+      }
+    } catch {}
+    return null;
+  };
+
+  const [content, setContent] = useState<ContentItem | null>(() =>
+    getCachedContent(),
+  );
+  const [loading, setLoading] = useState<boolean>(() => {
+    const cached = getCachedContent();
+    return cached ? false : true;
+  });
   const [error, setError] = useState<string | null>(null);
 
-  const fetchContent = useCallback(async () => {
+  /**
+   * Synchronously load cache before the browser paints to prevent
+   * a 1-frame flash of the RetroLoader.
+   */
+  useIsomorphicLayoutEffect(() => {
     try {
-      setLoading(true);
-      setError(null);
-
-      const data = await contentAPI.getById(contentId);
-      setContent(data);
-    } catch (err) {
-      console.error("Failed to fetch content:", err);
-      setError(
-        "Failed to load article. It may not exist or you may not have access.",
-      );
-    } finally {
-      setLoading(false);
-    }
+      const cached = sessionStorage.getItem(`contentItemCache_${contentId}`);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && parsed.item && Date.now() - parsed.timestamp < 3600000) {
+          setContent(parsed.item);
+          setLoading(false);
+        }
+      }
+    } catch {}
   }, [contentId]);
+
+  const fetchContent = useCallback(
+    async (forceRefresh = false, silent = false) => {
+      try {
+        if (!forceRefresh) {
+          try {
+            const cached = sessionStorage.getItem(
+              `contentItemCache_${contentId}`,
+            );
+            if (cached) {
+              const parsed = JSON.parse(cached);
+              if (
+                parsed &&
+                parsed.item &&
+                Date.now() - parsed.timestamp < 3600000
+              ) {
+                setContent(parsed.item);
+                if (!silent) setLoading(false);
+                return;
+              }
+            }
+          } catch {}
+        }
+
+        if (!silent) setLoading(true);
+        setError(null);
+
+        const data = await contentAPI.getById(contentId);
+        setContent(data);
+
+        try {
+          sessionStorage.setItem(
+            `contentItemCache_${contentId}`,
+            JSON.stringify({ item: data, timestamp: Date.now() }),
+          );
+        } catch {}
+      } catch (err) {
+        console.error("Failed to fetch content:", err);
+        if (!silent)
+          setError(
+            "Failed to load article. It may not exist or you may not have access.",
+          );
+      } finally {
+        if (!silent) setLoading(false);
+      }
+    },
+    [contentId],
+  );
 
   useEffect(() => {
     fetchContent();
+
+    const handleFocus = () => {
+      fetchContent(true, true);
+    };
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
   }, [fetchContent]);
 
   const handleStatusChange = async (updates: {
@@ -59,6 +135,13 @@ export default function ContentPage() {
 
       // Update the cached content in sessionStorage so it reflects when navigating back
       try {
+        // Update specific item cache
+        sessionStorage.setItem(
+          `contentItemCache_${contentId}`,
+          JSON.stringify({ item: updatedContent, timestamp: Date.now() }),
+        );
+
+        // Update list cache
         const cachedData = sessionStorage.getItem("contentListCache");
         if (cachedData) {
           const cache = JSON.parse(cachedData);
