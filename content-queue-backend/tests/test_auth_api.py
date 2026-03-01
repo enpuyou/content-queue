@@ -20,6 +20,7 @@ def test_register_success(client):
     with (
         patch("app.tasks.extraction.extract_metadata.delay"),
         patch("app.tasks.discogs.fetch_discogs_metadata.delay"),
+        patch("app.api.auth.send_verification_email_task.delay"),
     ):
         response = client.post(
             "/auth/register",
@@ -47,6 +48,7 @@ def test_register_creates_onboarding_content(client, db_session):
     with (
         patch("app.tasks.extraction.extract_metadata.delay"),
         patch("app.tasks.discogs.fetch_discogs_metadata.delay"),
+        patch("app.api.auth.send_verification_email_task.delay"),
     ):
         response = client.post(
             "/auth/register",
@@ -85,6 +87,7 @@ def test_register_duplicate_email_returns_400(client):
     with (
         patch("app.tasks.extraction.extract_metadata.delay"),
         patch("app.tasks.discogs.fetch_discogs_metadata.delay"),
+        patch("app.api.auth.send_verification_email_task.delay"),
     ):
         client.post(
             "/auth/register",
@@ -117,6 +120,7 @@ def test_login_success_returns_token(client):
     with (
         patch("app.tasks.extraction.extract_metadata.delay"),
         patch("app.tasks.discogs.fetch_discogs_metadata.delay"),
+        patch("app.api.auth.send_verification_email_task.delay"),
     ):
         client.post(
             "/auth/register",
@@ -142,6 +146,7 @@ def test_login_wrong_password_returns_401(client):
     with (
         patch("app.tasks.extraction.extract_metadata.delay"),
         patch("app.tasks.discogs.fetch_discogs_metadata.delay"),
+        patch("app.api.auth.send_verification_email_task.delay"),
     ):
         client.post(
             "/auth/register",
