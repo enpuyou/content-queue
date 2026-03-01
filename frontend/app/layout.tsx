@@ -14,6 +14,7 @@ import { PlayerProvider } from "@/contexts/PlayerContext";
 import YouTubePlayer from "@/components/YouTubePlayer";
 import GlobalPlayer from "@/components/GlobalPlayer";
 import { ThemeScript } from "./theme-script";
+import { Analytics } from "@vercel/analytics/next";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -73,6 +74,7 @@ export default function RootLayout({
             </AuthProvider>
           </ThemeProvider>
         </ReadingSettingsProvider>
+        <Analytics />
       </body>
     </html>
   );
