@@ -18,6 +18,7 @@ class User(Base):
     is_public = Column(Boolean, default=False, index=True)
     is_queue_public = Column(Boolean, default=False)
     is_crates_public = Column(Boolean, default=False)
+    is_verified = Column(Boolean, default=False)
     reading_patterns = Column(
         JSONB, default=dict
     )  # Tracks: avg_reading_time, preferred_times, tag_preferences
@@ -29,4 +30,7 @@ class User(Base):
     # Relationships
     highlights = relationship(
         "Highlight", back_populates="user", cascade="all, delete-orphan"
+    )
+    tokens = relationship(
+        "VerificationToken", back_populates="user", cascade="all, delete-orphan"
     )

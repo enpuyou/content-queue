@@ -306,48 +306,16 @@ export default function GuideClient() {
             <SectionHeader num={5} id="extension" title="Chrome Extension" />
             <div className="mt-6 space-y-1 border-t border-[var(--color-border-subtle)] pt-4">
               <Feature label="Installation">
-                The official extension is currently under review by the Chrome
-                Web Store, but you can install it manually in the meantime!
-                Download the <Kbd>extension</Kbd> folder from the repository,
-                compress it into a zip file using the{" "}
+                Visit the{" "}
                 <a
-                  href="https://github.com/enpuyou/content-queue/blob/main/build-extension.sh"
+                  href="https://chromewebstore.google.com/detail/sedi/doojneiapaegndmglponeacdbcgaojnm"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-[var(--color-accent)] hover:underline"
                 >
-                  build-extension.sh
+                  Chrome Web Store page
                 </a>{" "}
-                script, and upload the zip directly to Chrome via the{" "}
-                <Kbd>chrome://extensions</Kbd> developer mode page.
-              </Feature>
-              <Feature label="Capability">
-                Once installed, the extension allows you to save any article you
-                are currently reading to your sed.i queue with a single click
-                without leaving the page.
-              </Feature>
-            </div>
-          </section>
-
-          {/* 05 Chrome Extension */}
-          <section>
-            <SectionHeader num={5} id="extension" title="Chrome Extension" />
-            <div className="mt-6 space-y-1 border-t border-[var(--color-border-subtle)] pt-4">
-              <Feature label="Installation">
-                The official extension is currently under review by the Chrome
-                Web Store, but you can install it manually in the meantime!
-                Download the <Kbd>extension</Kbd> folder from the repository,
-                compress it into a zip file using the{" "}
-                <a
-                  href="https://github.com/enpuyou/content-queue/blob/main/build-extension.sh"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[var(--color-accent)] hover:underline"
-                >
-                  build-extension.sh
-                </a>{" "}
-                script, and upload the zip directly to Chrome via the{" "}
-                <Kbd>chrome://extensions</Kbd> developer mode page.
+                and click "Add to Chrome" to use the official extension.
               </Feature>
               <Feature label="Capability">
                 Once installed, the extension allows you to save any article you

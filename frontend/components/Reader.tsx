@@ -643,7 +643,6 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
 
     // Events that wake up the interface
     window.addEventListener("scroll", resetIdleTimer, { passive: true });
-    window.addEventListener("mousemove", resetIdleTimer, { passive: true });
     // window.addEventListener("keydown", resetIdleTimer, { passive: true }); // Removed to reduce listeners, scroll/mouse is primary
     // window.addEventListener("click", resetIdleTimer, { passive: true });
 
@@ -652,7 +651,6 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
     return () => {
       clearTimeout(idleTimer);
       window.removeEventListener("scroll", resetIdleTimer);
-      window.removeEventListener("mousemove", resetIdleTimer);
     };
   }, []);
 
@@ -1442,6 +1440,20 @@ export default function Reader({ content, onStatusChange }: ReaderProps) {
         selection={selection}
         contentId={content.id}
         onClose={() => setSelection(null)}
+        onOptimisticCreate={(color) => {
+          if (selection) {
+            setHighlights((prev) => [
+              ...prev,
+              {
+                id: `temp-${Date.now()}`,
+                text: selection.text,
+                start_offset: selection.startOffset,
+                end_offset: selection.endOffset,
+                color,
+              },
+            ]);
+          }
+        }}
         onHighlightCreated={refreshHighlights}
       />
       {/* Sticky Header with Controls - Transparent floating style */}

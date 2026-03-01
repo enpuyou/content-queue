@@ -14,6 +14,12 @@ from app.models.vinyl import VinylRecord
 from app.tasks.extraction import extract_metadata
 from app.tasks.discogs import fetch_discogs_metadata
 
+import secrets
+from datetime import datetime, timezone
+from app.models.token import VerificationToken
+from app.tasks.email import send_verification_email_task, send_password_reset_email_task
+from app.schemas.user import ForgotPasswordRequest, ResetPasswordRequest, GenericMessage
+
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
@@ -55,6 +61,21 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)  # Get the auto-generated ID and timestamps
 
+    # Generate Verification Token
+    token_str = secrets.token_urlsafe(32)
+    verify_token = VerificationToken(
+        user_id=new_user.id,
+        token=token_str,
+        token_type="email_verification",
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=24),
+    )
+    db.add(verify_token)
+    db.commit()
+
+    # NOTE: email is sent after the token commit but before onboarding content
+    # is created below. This is acceptable — verification works independently.
+    send_verification_email_task.delay(new_user.email, token_str)
+
     # ---------------------------------------------------------
     # Create Default "User Guide" Article
     # ---------------------------------------------------------
@@ -65,26 +86,20 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
     <p><b>sed.i</b> is your calm, personal space for reading and thinking. This guide demonstrates how to use your new content queue effectively.</p>
 
     <h2>1. Smart Highlighting</h2>
-    <p>Reading is active. Select any text to highlight it. You can different colors to categorize your thoughts:</p>
-    <ul>
-        <li><b>Yellow</b> for key points</li>
-        <li><b>Green</b> for actionable ideas</li>
-        <li><b>Blue</b> for deep insights</li>
-        <li><b>Red</b> for things to question</li>
-    </ul>
-    <p>Try clicking the highlight below to see a note!</p>
+    <p>Reading is active. Select any text to highlight it. You can choose from multiple colors to categorize your thoughts as you see fit. All your highlights are saved automatically and can be reviewed in the Highlights Panel (press <b>H</b>).</p>
+    <p>Try highlighting a sentence below to see it in action!</p>
 
     <h2>2. Organization with Lists</h2>
     <p>Don't let your reading pile up. Create <b>Lists</b> to organize content by topic, project, or mood. You can find your lists in the sidebar or via the "Lists" menu on mobile.</p>
 
-    <h2>3. Distraction-Free Reading</h2>
-    <p>We strip away ads, popups, and clutter. You can customize your reading experience (font, size, theme) using the "Aa" menu in the top right.</p>
+    <h2>3. A Distraction-Free, Customizable Desktop</h2>
+    <p>We strip away ads, popups, and clutter. You can customize your entire reading experience—including fonts, text sizing, theme, and layout spacing—using the Settings menu in the top right. This is <b>your</b> space.</p>
 
     <h2>4. Public Profiles</h2>
     <p>Share your favorite content with the world. Claim a username in your Settings to enable your public profile, then toggle any article or vinyl record to "Public" so others can see it!</p>
 
     <h3>Ready to start?</h3>
-    <p>Add your first article by pasting a URL above, or install our browser extension to save content with one click.</p>
+    <p>Add your first article by pasting a URL above, or install our <a href="https://chromewebstore.google.com/detail/sedi/doojneiapaegndmglponeacdbcgaojnm" target="_blank">Chrome extension</a> to save content with one click.</p>
     """
 
     # Create the ContentItem
@@ -233,6 +248,113 @@ def login(
     )
 
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+@router.get("/verify-email", response_model=GenericMessage)
+def verify_email(token: str, db: Session = Depends(get_db)):
+    """Verifies a user's email with the token sent to them."""
+    verification_token = (
+        db.query(VerificationToken)
+        .filter(
+            VerificationToken.token == token,
+            VerificationToken.token_type == "email_verification",
+        )
+        .first()
+    )
+
+    if not verification_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token"
+        )
+
+    if verification_token.is_used:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Token already used"
+        )
+
+    if datetime.now(timezone.utc) > verification_token.expires_at.astimezone(
+        timezone.utc
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Token expired"
+        )
+
+    user = verification_token.user
+    user.is_verified = True
+    verification_token.is_used = True
+
+    db.add(user)
+    db.add(verification_token)
+    db.commit()
+
+    return {"message": "Email successfully verified!"}
+
+
+@router.post("/forgot-password", response_model=GenericMessage)
+def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    """Sends a password reset email if the user exists."""
+    user = db.query(User).filter(User.email == request.email).first()
+
+    if user:
+        # Invalidate any existing unused reset tokens for this user
+        db.query(VerificationToken).filter(
+            VerificationToken.user_id == user.id,
+            VerificationToken.token_type == "password_reset",
+            VerificationToken.is_used == False,  # noqa: E712
+        ).update({"is_used": True})
+
+        token_str = secrets.token_urlsafe(32)
+        reset_token = VerificationToken(
+            user_id=user.id,
+            token=token_str,
+            token_type="password_reset",
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+        )
+        db.add(reset_token)
+        db.commit()
+        send_password_reset_email_task.delay(user.email, token_str)
+
+    return {
+        "message": "If an account with that email exists, a password reset link has been sent."
+    }
+
+
+@router.post("/reset-password", response_model=GenericMessage)
+def reset_password(request: ResetPasswordRequest, db: Session = Depends(get_db)):
+    """Resets user's password using the token."""
+    reset_token = (
+        db.query(VerificationToken)
+        .filter(
+            VerificationToken.token == request.token,
+            VerificationToken.token_type == "password_reset",
+        )
+        .first()
+    )
+
+    if not reset_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token"
+        )
+
+    if reset_token.is_used:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Token already used"
+        )
+
+    if datetime.now(timezone.utc) > reset_token.expires_at.astimezone(timezone.utc):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Token expired"
+        )
+
+    user = reset_token.user
+    user.hashed_password = get_password_hash(request.new_password)
+    reset_token.is_used = True
+
+    db.add(user)
+    db.add(reset_token)
+    db.commit()
+
+    return {"message": "Password successfully reset."}
 
 
 @router.get("/me", response_model=UserResponse)

@@ -7,8 +7,8 @@ export interface User {
   is_public: boolean;
   is_queue_public: boolean;
   is_crates_public: boolean;
+  is_verified: boolean;
   created_at: string;
-  email_token?: string; // For email-to-save feature
 }
 
 export interface ContentItem {

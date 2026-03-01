@@ -142,6 +142,43 @@ export const authAPI = {
       window.location.href = "/login";
     }
   },
+
+  verifyEmail: async (token: string) => {
+    const response = await fetch(
+      `${API_BASE_URL}/auth/verify-email?token=${encodeURIComponent(token)}`,
+    );
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.detail || "Email verification failed");
+    }
+    return response.json();
+  },
+
+  forgotPassword: async (email: string) => {
+    const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.detail || "Failed to send password reset email");
+    }
+    return response.json();
+  },
+
+  resetPassword: async (token: string, newPassword: string) => {
+    const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, new_password: newPassword }),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.detail || "Password reset failed");
+    }
+    return response.json();
+  },
 };
 
 // Content API - matches your /content endpoints
@@ -340,20 +377,16 @@ export const searchAPI = {
   },
 
   // Find connections for a highlight (GET /search/connections/{highlight_id})
-  findHighlightConnections: async (
-    highlightId: string,
-    limit = 10,
-    threshold = 0.5,
-  ) => {
+  findHighlightConnections: async (highlightId: string, limit = 10) => {
     return fetchWithAuth(
-      `${API_BASE_URL}/search/connections/${highlightId}?limit=${limit}&threshold=${threshold}`,
+      `${API_BASE_URL}/search/connections/${highlightId}?limit=${limit}`,
     );
   },
 
   // Find all connections for an article's highlights (GET /search/connections/article/{content_id})
-  findArticleConnections: async (contentId: string, threshold = 0.5) => {
+  findArticleConnections: async (contentId: string) => {
     return fetchWithAuth(
-      `${API_BASE_URL}/search/connections/article/${contentId}?threshold=${threshold}`,
+      `${API_BASE_URL}/search/connections/article/${contentId}`,
     );
   },
 };

@@ -153,10 +153,12 @@ def find_similar_tags_by_embedding(db: Session, item: ContentItem) -> list:
     Uses pgvector cosine distance — only considers articles within a tight
     similarity threshold to avoid cross-contaminating unrelated content.
     """
-    # Cosine distance threshold: 0.25 means cosine similarity >= 0.75.
+    # Cosine distance threshold: e.g. 0.25 means cosine similarity >= 0.75.
     # L2 distance (<->) is used by pgvector's default index; for cosine
     # we use <=> (cosine distance operator).
-    SIMILARITY_THRESHOLD = 0.25  # cosine distance; lower = more similar
+    SIMILARITY_THRESHOLD = (
+        1.0 - settings.SIMILARITY_THRESHOLD_TAGS
+    )  # cosine distance; lower = more similar
 
     # op("<=>")(value) doesn't carry type info so pgvector can't bind the param.
     # Use raw SQL with CAST(:emb AS vector) which works reliably.

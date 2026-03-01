@@ -296,6 +296,18 @@ const HighlightRenderer = ({
 
   // ... (transform function)
   const transform = (node: DOMNode, index: number) => {
+    // Sanitize attribute names globally to prevent React "Invalid attribute name" crashes
+    // This happens when parsed HTML has unescaped quotes causing htmlparser2 to create malformed attribute keys
+    if (node instanceof Element && node.attribs) {
+      const validAttribs: Record<string, string> = {};
+      for (const key in node.attribs) {
+        if (/^[a-zA-Z0-9_\-:]+$/.test(key)) {
+          validAttribs[key] = node.attribs[key];
+        }
+      }
+      node.attribs = validAttribs;
+    }
+
     if (
       node instanceof Element &&
       node.name === "span" &&

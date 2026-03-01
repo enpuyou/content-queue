@@ -30,9 +30,12 @@ class UserResponse(BaseModel):
     is_public: bool
     is_queue_public: bool
     is_crates_public: bool
+    is_verified: bool
     created_at: datetime
 
-    @field_validator("is_public", "is_queue_public", "is_crates_public", mode="before")
+    @field_validator(
+        "is_public", "is_queue_public", "is_crates_public", "is_verified", mode="before"
+    )
     @classmethod
     def set_default_false(cls, v):
         return False if v is None else v
@@ -61,3 +64,16 @@ class UserUpdate(BaseModel):
     is_public: bool | None = None
     is_queue_public: bool | None = None
     is_crates_public: bool | None = None
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
+class GenericMessage(BaseModel):
+    message: str

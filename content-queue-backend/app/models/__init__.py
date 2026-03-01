@@ -3,6 +3,7 @@ from app.models.content import ContentItem
 from app.models.list import List, content_list_membership
 from app.models.highlight import Highlight
 from app.models.vinyl import VinylRecord
+from app.models.token import VerificationToken
 
 __all__ = [
     "User",
@@ -11,4 +12,5 @@ __all__ = [
     "content_list_membership",
     "Highlight",
     "VinylRecord",
+    "VerificationToken",
 ]

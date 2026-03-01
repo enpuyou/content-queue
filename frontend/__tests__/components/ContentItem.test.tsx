@@ -488,6 +488,7 @@ describe("ContentItem", () => {
           "test-content-123",
           {
             tags: ["testing"],
+            auto_tags: [],
           },
         );
       });
