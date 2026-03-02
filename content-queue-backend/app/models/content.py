@@ -82,7 +82,7 @@ class ContentItem(Base):
     )
 
     # Relationships
-    user = relationship("User", backref="content_items")
+    user = relationship("User", back_populates="content_items")
     highlights = relationship(
         "Highlight", back_populates="content_item", cascade="all, delete-orphan"
     )
