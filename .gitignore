@@ -75,3 +75,6 @@ temp/
 
 # Private files / secrets
 private/
+
+# Agents
+_agents/

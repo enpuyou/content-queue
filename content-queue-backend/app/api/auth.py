@@ -7,7 +7,13 @@ from app.core.database import get_db
 from app.core.security import verify_password, get_password_hash, create_access_token
 from app.core.deps import get_current_active_user
 from app.models.user import User
-from app.schemas.user import UserCreate, UserResponse, Token, UserUpdate
+from app.schemas.user import (
+    UserCreate,
+    UserResponse,
+    Token,
+    UserUpdate,
+    DeleteAccountRequest,
+)
 from app.models.content import ContentItem
 from app.models.highlight import Highlight
 from app.models.vinyl import VinylRecord
@@ -406,3 +412,22 @@ def update_current_user_info(
     db.refresh(current_user)
 
     return current_user
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+def delete_current_user(
+    body: DeleteAccountRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Permanently delete the authenticated user's account and all associated data.
+    Requires password confirmation.
+    """
+    if not verify_password(body.password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Incorrect password.",
+        )
+    db.delete(current_user)
+    db.commit()
