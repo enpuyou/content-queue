@@ -5,6 +5,7 @@ Covers:
 - POST /auth/register (success, duplicate email, Celery tasks mocked)
 - POST /auth/login (success, wrong password, unknown email)
 - GET /auth/me (authenticated, unauthenticated)
+- DELETE /auth/me (success, wrong password, unauthenticated, cascade)
 """
 
 from unittest.mock import patch
@@ -200,3 +201,100 @@ def test_get_me_tampered_token_returns_401(client):
         headers={"Authorization": "Bearer this.is.not.a.real.token"},
     )
     assert response.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# DELETE /auth/me
+# ---------------------------------------------------------------------------
+
+
+def test_delete_account_success(client, test_user, auth_headers, db_session):
+    """Correct password deletes the account and returns 204."""
+    from app.models.user import User
+
+    response = client.request(
+        "DELETE",
+        "/auth/me",
+        json={"password": "testpassword"},
+        headers=auth_headers,
+    )
+    assert response.status_code == 204
+    assert db_session.query(User).filter(User.id == test_user.id).first() is None
+
+
+def test_delete_account_wrong_password_returns_400(client, auth_headers):
+    """Wrong password returns 400 and account is not deleted."""
+    response = client.request(
+        "DELETE",
+        "/auth/me",
+        json={"password": "wrongpassword"},
+        headers=auth_headers,
+    )
+    assert response.status_code == 400
+    assert "incorrect password" in response.json()["detail"].lower()
+
+
+def test_delete_account_unauthenticated_returns_401(client):
+    """DELETE /auth/me without a token returns 401."""
+    response = client.request("DELETE", "/auth/me", json={"password": "anything"})
+    assert response.status_code == 401
+
+
+def test_delete_account_cascades_content(client, test_user, auth_headers, db_session):
+    """Deleting account removes all associated content items, highlights, and vinyl records."""
+    from app.models.content import ContentItem
+    from app.models.highlight import Highlight
+    from app.models.vinyl import VinylRecord
+
+    # Seed content item + highlight
+    item = ContentItem(
+        original_url="https://example.com/article",
+        title="To be deleted",
+        full_text="Some text " * 20,
+        user_id=test_user.id,
+        processing_status="completed",
+    )
+    db_session.add(item)
+    db_session.flush()
+
+    highlight = Highlight(
+        content_item_id=item.id,
+        user_id=test_user.id,
+        text="highlight text",
+        start_offset=0,
+        end_offset=14,
+    )
+    db_session.add(highlight)
+
+    vinyl = VinylRecord(
+        discogs_url="https://www.discogs.com/release/12345",
+        user_id=test_user.id,
+    )
+    db_session.add(vinyl)
+    db_session.commit()
+
+    response = client.request(
+        "DELETE",
+        "/auth/me",
+        json={"password": "testpassword"},
+        headers=auth_headers,
+    )
+    assert response.status_code == 204
+
+    # All child rows must be gone
+    assert (
+        db_session.query(ContentItem)
+        .filter(ContentItem.user_id == test_user.id)
+        .count()
+        == 0
+    )
+    assert (
+        db_session.query(Highlight).filter(Highlight.user_id == test_user.id).count()
+        == 0
+    )
+    assert (
+        db_session.query(VinylRecord)
+        .filter(VinylRecord.user_id == test_user.id)
+        .count()
+        == 0
+    )

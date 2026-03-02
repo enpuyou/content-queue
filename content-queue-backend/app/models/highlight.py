@@ -17,7 +17,9 @@ class Highlight(Base):
         ForeignKey("content_items.id", ondelete="CASCADE"),
         nullable=False,
     )
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    user_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
     text = Column(Text, nullable=False)
     note = Column(Text, nullable=True)
     start_offset = Column(Integer, nullable=False)
