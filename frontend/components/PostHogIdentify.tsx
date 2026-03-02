@@ -22,7 +22,7 @@ export default function PostHogIdentify() {
     async function identify() {
       if (user) {
         const emailHash = await hashString(user.email);
-        const usernameHash = await hashString(user.username);
+        const usernameHash = await hashString(user.username ?? "");
         ph.identify(String(user.id), {
           email_hash: emailHash,
           username_hash: usernameHash,
