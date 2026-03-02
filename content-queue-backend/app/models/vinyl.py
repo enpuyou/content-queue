@@ -68,4 +68,4 @@ class VinylRecord(Base):
     )
 
     # Relationships
-    user = relationship("User", backref="vinyl_records")
+    user = relationship("User", back_populates="vinyl_records")

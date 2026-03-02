@@ -29,8 +29,26 @@ class User(Base):
 
     # Relationships
     highlights = relationship(
-        "Highlight", back_populates="user", cascade="all, delete-orphan"
+        "Highlight",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
     tokens = relationship(
-        "VerificationToken", back_populates="user", cascade="all, delete-orphan"
+        "VerificationToken",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    content_items = relationship(
+        "ContentItem",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+    vinyl_records = relationship(
+        "VinylRecord",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
