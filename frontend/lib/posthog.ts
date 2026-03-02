@@ -1,10 +1,12 @@
 import posthog from "posthog-js";
 
+let _initialized = false;
+
 export function initPostHog() {
   if (
     typeof window === "undefined" ||
     !process.env.NEXT_PUBLIC_POSTHOG_KEY ||
-    posthog.__loaded
+    _initialized
   ) {
     return posthog;
   }
@@ -17,7 +19,12 @@ export function initPostHog() {
     capture_pageleave: true,
   });
 
+  _initialized = true;
   return posthog;
+}
+
+export function isPostHogReady() {
+  return _initialized;
 }
 
 export default posthog;

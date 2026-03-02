@@ -1,12 +1,15 @@
+import logging
+import os
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
+import posthog
+
 from app.core.config import settings
 from app.api import auth, content, lists, search, analytics, highlights, vinyl
 from app.api.endpoints import public
 from app.middleware.rate_limit import RateLimitMiddleware
-import os
-import posthog
 
 
 @asynccontextmanager
@@ -21,8 +24,8 @@ async def lifespan(application: FastAPI):
     # Shutdown: flush any buffered events
     try:
         posthog.shutdown()
-    except Exception:
-        pass
+    except Exception as exc:
+        logging.getLogger(__name__).warning("PostHog shutdown flush failed: %s", exc)
 
 
 app = FastAPI(

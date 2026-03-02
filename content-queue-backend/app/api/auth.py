@@ -26,6 +26,7 @@ from app.models.token import VerificationToken
 from app.tasks.email import send_verification_email_task, send_password_reset_email_task
 from app.schemas.user import ForgotPasswordRequest, ResetPasswordRequest, GenericMessage
 import posthog
+import hashlib
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -224,10 +225,12 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
     fetch_discogs_metadata.delay(str(default_vinyl.id))
 
     try:
+        email_hash = hashlib.sha256(new_user.email.encode()).hexdigest()
+        username_hash = hashlib.sha256(new_user.username.encode()).hexdigest()
         posthog.capture(
+            str(new_user.id),
             "user_signed_up",
-            distinct_id=str(new_user.id),
-            properties={"email": new_user.email, "username": new_user.username},
+            properties={"email_hash": email_hash, "username_hash": username_hash},
         )
     except Exception:
         pass
@@ -264,7 +267,7 @@ def login(
     )
 
     try:
-        posthog.capture("user_logged_in", distinct_id=str(user.id))
+        posthog.capture(str(user.id), "user_logged_in")
     except Exception:
         pass
 
@@ -445,7 +448,7 @@ def delete_current_user(
             detail="Incorrect password.",
         )
     try:
-        posthog.capture("account_deleted", distinct_id=str(current_user.id))
+        posthog.capture(str(current_user.id), "account_deleted")
     except Exception:
         pass
     db.delete(current_user)
