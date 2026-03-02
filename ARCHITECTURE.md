@@ -216,6 +216,38 @@ If `RESEND_API_KEY` is empty the helper logs a warning and skips the HTTP call
 Implementation: `app/core/email.py` — `_send_email`, `send_verification_email`,
 `send_password_reset_email`. Celery wrappers live in `app/tasks/email.py`.
 
+### Analytics — PostHog
+
+[PostHog](https://posthog.com) is used for product analytics: event tracking,
+user identification, and session recording.
+
+**Backend (Python SDK)**
+
+- Initialised in the FastAPI `lifespan` handler (`app/main.py`).
+  If `POSTHOG_API_KEY` is not set, `posthog.disabled = True` so nothing is sent.
+- Server-side events captured in `app/api/auth.py`:
+  - `user_signed_up` — on successful registration (includes `email`, `username`)
+  - `user_logged_in` — on successful login
+  - `account_deleted` — just before account removal
+
+**Frontend (posthog-js)**
+
+- `frontend/lib/posthog.ts` — initialises the SDK once on first client-side
+  render (`initPostHog()`).  Guard: skips if `NEXT_PUBLIC_POSTHOG_KEY` is absent.
+- `frontend/components/PostHogIdentify.tsx` — mounted inside `AuthProvider`;
+  calls `posthog.identify(userId, {email, username})` when the user is logged in,
+  and `posthog.reset()` on logout.
+- Autocapture, pageview, and pageleave events are enabled by default.
+
+**Environment variables required**
+
+| Env var | Where | Purpose |
+|---|---|---|
+| `POSTHOG_API_KEY` | Backend `.env` | PostHog project API key |
+| `POSTHOG_HOST` | Backend `.env` | PostHog ingest host (default `https://us.i.posthog.com`) |
+| `NEXT_PUBLIC_POSTHOG_KEY` | Frontend `.env.local` | PostHog project API key (public) |
+| `NEXT_PUBLIC_POSTHOG_HOST` | Frontend `.env.local` | PostHog ingest host |
+
 ### Login
 
 1. Client POSTs `{username=email, password}` to `/auth/login` (OAuth2PasswordRequestForm).

@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 from app.models.token import VerificationToken
 from app.tasks.email import send_verification_email_task, send_password_reset_email_task
 from app.schemas.user import ForgotPasswordRequest, ResetPasswordRequest, GenericMessage
+import posthog
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -222,6 +223,15 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
     # Trigger background Discogs metadata fetch
     fetch_discogs_metadata.delay(str(default_vinyl.id))
 
+    try:
+        posthog.capture(
+            "user_signed_up",
+            distinct_id=str(new_user.id),
+            properties={"email": new_user.email, "username": new_user.username},
+        )
+    except Exception:
+        pass
+
     return new_user
 
 
@@ -252,6 +262,11 @@ def login(
         data={"sub": user.email},  # "sub" is standard JWT claim for subject (user)
         expires_delta=access_token_expires,
     )
+
+    try:
+        posthog.capture("user_logged_in", distinct_id=str(user.id))
+    except Exception:
+        pass
 
     return {"access_token": access_token, "token_type": "bearer"}
 
@@ -429,5 +444,9 @@ def delete_current_user(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Incorrect password.",
         )
+    try:
+        posthog.capture("account_deleted", distinct_id=str(current_user.id))
+    except Exception:
+        pass
     db.delete(current_user)
     db.commit()

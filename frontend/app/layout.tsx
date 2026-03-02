@@ -15,6 +15,7 @@ import YouTubePlayer from "@/components/YouTubePlayer";
 import GlobalPlayer from "@/components/GlobalPlayer";
 import { ThemeScript } from "./theme-script";
 import { Analytics } from "@vercel/analytics/next";
+import PostHogIdentify from "@/components/PostHogIdentify";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -62,6 +63,7 @@ export default function RootLayout({
         <ReadingSettingsProvider>
           <ThemeProvider>
             <AuthProvider>
+              <PostHogIdentify />
               <ListsProvider>
                 <PlayerProvider>
                   <div className="min-h-screen bg-[var(--color-bg-primary)] transition-colors duration-300">

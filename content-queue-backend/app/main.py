@@ -1,16 +1,36 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.api import auth, content, lists, search, analytics, highlights, vinyl
 from app.api.endpoints import public
 from app.middleware.rate_limit import RateLimitMiddleware
 import os
+import posthog
+
+
+@asynccontextmanager
+async def lifespan(application: FastAPI):
+    # Startup: initialise PostHog (no-ops when key is absent)
+    if settings.POSTHOG_API_KEY:
+        posthog.project_api_key = settings.POSTHOG_API_KEY
+        posthog.host = settings.POSTHOG_HOST
+    else:
+        posthog.disabled = True
+    yield
+    # Shutdown: flush any buffered events
+    try:
+        posthog.shutdown()
+    except Exception:
+        pass
+
 
 app = FastAPI(
     title="Content Queue API",
     description="Personal content aggregation and reading queue",
     version="0.1.0",
     debug=settings.DEBUG,
+    lifespan=lifespan,
 )
 
 # CORS
