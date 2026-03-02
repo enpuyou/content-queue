@@ -1,4 +1,11 @@
-from app.schemas.user import UserCreate, UserLogin, UserResponse, Token, TokenData
+from app.schemas.user import (
+    UserCreate,
+    UserLogin,
+    UserResponse,
+    Token,
+    TokenData,
+    DeleteAccountRequest,
+)
 from app.schemas.content import (
     ContentItemCreate,
     ContentItemResponse,
@@ -26,6 +33,7 @@ __all__ = [
     "UserResponse",
     "Token",
     "TokenData",
+    "DeleteAccountRequest",
     "ContentItemCreate",
     "ContentItemResponse",
     "ContentItemUpdate",

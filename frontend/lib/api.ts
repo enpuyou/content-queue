@@ -53,7 +53,7 @@ const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
     throw new Error(`API error: ${response.status} - ${errorText}`);
   }
 
-  return response.json();
+  return response.status === 204 ? null : response.json();
 };
 
 export const api = {
@@ -68,8 +68,11 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(data),
     }),
-  delete: (url: string) =>
-    fetchWithAuth(`${API_BASE_URL}${url}`, { method: "DELETE" }),
+  delete: (url: string, data?: unknown) =>
+    fetchWithAuth(`${API_BASE_URL}${url}`, {
+      method: "DELETE",
+      ...(data !== undefined && { body: JSON.stringify(data) }),
+    }),
 };
 
 export default api;

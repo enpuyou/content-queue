@@ -191,10 +191,30 @@ See [§17 Crates](#17-crates--vinyl-record-collection).
 2. Backend checks email uniqueness (400 if taken) and username uniqueness (400 if taken).
 3. Password is hashed with bcrypt.
 4. User row is inserted.
-5. **Onboarding content is seeded:** a "Getting Started with sed.i" guide article
+5. A `VerificationToken` (type `email_verification`, TTL 24 h) is created and a
+   Celery task (`send_verification_email_task`) fires to deliver it via Resend.
+6. **Onboarding content is seeded:** a "Getting Started with sed.i" guide article
    (`processing_status='completed'`) is created for the user, with a demo highlight
    and a demo vinyl record entry. This runs synchronously in the register handler.
-6. Response: User object (201).
+7. Response: User object (201).
+
+### Email service — Resend
+
+All transactional emails (verification, password reset) are sent through the
+[Resend](https://resend.com) HTTP API (`POST https://api.resend.com/emails`).
+
+| Config var | Purpose |
+|---|---|
+| `RESEND_API_KEY` | Resend API key (required in production). |
+| `EMAILS_FROM_EMAIL` | Sender address (must be a verified domain in Resend). |
+| `EMAILS_FROM_NAME` | Display name for the sender. |
+| `FRONTEND_URL` | Base URL inserted into verification/reset links. |
+
+If `RESEND_API_KEY` is empty the helper logs a warning and skips the HTTP call
+(useful for local dev without email credentials).
+
+Implementation: `app/core/email.py` — `_send_email`, `send_verification_email`,
+`send_password_reset_email`. Celery wrappers live in `app/tasks/email.py`.
 
 ### Login
 
@@ -227,6 +247,8 @@ All routes require `Authorization: Bearer <token>` unless noted.
 | POST | `/auth/register` | Create user + seed onboarding content. |
 | POST | `/auth/login` | Return JWT token. |
 | GET | `/auth/me` | Current user info. |
+| PUT | `/auth/me` | Update profile (username, visibility toggles). |
+| DELETE | `/auth/me` | Delete account. Requires `{password}` body. Cascades all user data. |
 
 ### Content — `/content`
 

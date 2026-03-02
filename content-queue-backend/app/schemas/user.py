@@ -77,3 +77,7 @@ class ResetPasswordRequest(BaseModel):
 
 class GenericMessage(BaseModel):
     message: str
+
+
+class DeleteAccountRequest(BaseModel):
+    password: str

@@ -578,6 +578,101 @@ function PublicProfileSection() {
   );
 }
 
+// ── Danger zone ───────────────────────────────────────
+
+function DangerZone() {
+  const { logout } = useAuth();
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [password, setPassword] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    setError(null);
+    try {
+      await api.delete("/auth/me", { password });
+      logout();
+      router.push("/");
+    } catch (err) {
+      // fetchWithAuth throws Error with message like "API error: 400 - {"detail":"..."}"
+      let msg = "Could not delete account.";
+      if (err instanceof Error) {
+        const match = err.message.match(/"detail"\s*:\s*"([^"]+)"/);
+        if (match) msg = match[1];
+      }
+      setError(msg);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  return (
+    <div className="border border-red-500/20 px-5 py-4">
+      {!open ? (
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <div className="font-mono text-[9px] uppercase tracking-widest text-red-500/70 mb-1">
+              Delete Account
+            </div>
+            <div className="font-mono text-[9px] text-[var(--color-text-faint)]">
+              Permanently removes your account and all data. This cannot be
+              undone.
+            </div>
+          </div>
+          <button
+            onClick={() => setOpen(true)}
+            className="font-mono text-[9px] uppercase tracking-widest px-3 py-1.5 border border-red-500/30 text-red-500/70 hover:border-red-500 hover:text-red-500 transition-colors flex-shrink-0"
+          >
+            Delete →
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="font-mono text-[9px] uppercase tracking-widest text-red-500 mb-2">
+            Confirm deletion
+          </div>
+          <div className="font-mono text-[9px] text-[var(--color-text-faint)] mb-3">
+            Enter your password to permanently delete your account and all
+            associated content, highlights, and records.
+          </div>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password"
+            autoFocus
+            className="w-full bg-transparent border border-[var(--color-border)] px-3 py-2 font-mono text-[11px] text-[var(--color-text-primary)] placeholder-[var(--color-text-faint)] focus:outline-none focus:border-red-500/50"
+          />
+          {error && (
+            <div className="font-mono text-[9px] text-red-500">{error}</div>
+          )}
+          <div className="flex gap-3">
+            <button
+              onClick={handleDelete}
+              disabled={isDeleting || !password}
+              className="font-mono text-[9px] uppercase tracking-widest px-4 py-1.5 border border-red-500/50 text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {isDeleting ? "Deleting…" : "Confirm Delete"}
+            </button>
+            <button
+              onClick={() => {
+                setOpen(false);
+                setPassword("");
+                setError(null);
+              }}
+              className="font-mono text-[9px] uppercase tracking-widest px-4 py-1.5 border border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main page ──────────────────────────────────────────
 
 export default function SettingsPage() {
@@ -697,7 +792,7 @@ export default function SettingsPage() {
               </div>
 
               {/* § Public Profile */}
-              <div>
+              <div className="mb-8">
                 <div className="flex items-baseline gap-3 mb-3">
                   <span className="font-serif text-[var(--color-text-faint)] text-base select-none">
                     §
@@ -707,6 +802,19 @@ export default function SettingsPage() {
                   </span>
                 </div>
                 <PublicProfileSection />
+              </div>
+
+              {/* § Danger Zone */}
+              <div>
+                <div className="flex items-baseline gap-3 mb-3">
+                  <span className="font-serif text-[var(--color-text-faint)] text-base select-none">
+                    §
+                  </span>
+                  <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-red-500/60">
+                    Danger Zone
+                  </span>
+                </div>
+                <DangerZone />
               </div>
             </div>
           </div>

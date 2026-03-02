@@ -1,41 +1,50 @@
-import smtplib
-from email.message import EmailMessage
+import requests
 from app.core.config import settings
 import logging
 
 logger = logging.getLogger(__name__)
 
+RESEND_API_URL = "https://api.resend.com/emails"
+
 
 def _send_email(to_email: str, subject: str, html_content: str) -> None:
-    """Send an email using SMTP. If SMTP_HOST is not configured, just log it."""
+    """Send an email via the Resend HTTP API. Logs and no-ops if RESEND_API_KEY is not set."""
 
-    if not settings.SMTP_HOST:
+    if not settings.RESEND_API_KEY:
         logger.warning(
-            f"SMTP_HOST not configured. Would have sent email to {to_email} with subject '{subject}'."
+            f"RESEND_API_KEY not configured. Would have sent email to {to_email} "
+            f"with subject '{subject}'."
         )
         logger.info(f"Email Content HTML:\n{html_content}")
         return
 
-    msg = EmailMessage()
-    msg["Subject"] = subject
-    msg["From"] = f"{settings.EMAILS_FROM_NAME} <{settings.EMAILS_FROM_EMAIL}>"
-    msg["To"] = to_email
-
-    msg.add_alternative(html_content, subtype="html")
+    payload = {
+        "from": f"{settings.EMAILS_FROM_NAME} <{settings.EMAILS_FROM_EMAIL}>",
+        "to": [to_email],
+        "subject": subject,
+        "html": html_content,
+    }
 
     try:
-        if settings.SMTP_PORT == 465:
-            with smtplib.SMTP_SSL(settings.SMTP_HOST, settings.SMTP_PORT) as server:
-                if settings.SMTP_USER and settings.SMTP_PASSWORD:
-                    server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-                server.send_message(msg)
-        else:
-            with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
-                server.starttls()
-                if settings.SMTP_USER and settings.SMTP_PASSWORD:
-                    server.login(settings.SMTP_USER, settings.SMTP_PASSWORD)
-                server.send_message(msg)
-        logger.info(f"Email successfully sent to {to_email}")
+        response = requests.post(
+            RESEND_API_URL,
+            json=payload,
+            headers={
+                "Authorization": f"Bearer {settings.RESEND_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            timeout=10,
+        )
+        response.raise_for_status()
+        logger.info(
+            f"Email successfully sent to {to_email} via Resend "
+            f"(id={response.json().get('id')})"
+        )
+    except requests.exceptions.HTTPError as e:
+        logger.error(
+            f"Resend API error sending to {to_email}: "
+            f"{e.response.status_code} {e.response.text}"
+        )
     except Exception as e:
         logger.error(f"Failed to send email to {to_email}: {e}")
 
