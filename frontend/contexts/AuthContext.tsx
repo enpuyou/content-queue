@@ -9,6 +9,7 @@ import {
 } from "react";
 import { authAPI } from "@/lib/api";
 import { User } from "@/types";
+import { initPostHog } from "@/lib/posthog";
 
 interface AuthContextType {
   user: User | null;
@@ -31,6 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    initPostHog();
     // Check if user is logged in on mount
     const token = localStorage.getItem("token");
     if (token) {

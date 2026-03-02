@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     EMAILS_FROM_NAME: str = "sed.i Team"
     FRONTEND_URL: str = "http://localhost:3000"
 
+    # PostHog Analytics
+    POSTHOG_API_KEY: str = ""
+    POSTHOG_HOST: str = "https://us.i.posthog.com"
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
